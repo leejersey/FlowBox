@@ -287,118 +287,103 @@ export async function chatWithVision(params: {
   })
 }
 
-// ─── 语音转写：浏览器 Web Speech API ─────────────────
+// ─── 语音转写：火山引擎 ASR ──────────────────────────
 
-/**
- * 使用浏览器内置的 SpeechRecognition 进行实时转写。
- * 注意：此函数需要在录音时调用（实时流式识别），而非录完后离线识别。
- * 
- * 对于已录制的音频，我们改用「播放+识别」的方式来模拟转写。
- */
-
-/** 将 base64 Data URL 还原为 Blob */
-export function dataUrlToBlob(dataUrl: string): Blob {
+/** 将 base64 Data URL 的 base64 部分提取出来 */
+export function dataUrlToBase64(dataUrl: string): { base64: string; mimeType: string } {
   const parts = dataUrl.split(',')
-  const mime = parts[0].match(/:(.*?);/)?.[1] || 'audio/webm'
-  const bstr = atob(parts[1])
-  const u8arr = new Uint8Array(bstr.length)
-  for (let i = 0; i < bstr.length; i++) {
-    u8arr[i] = bstr.charCodeAt(i)
-  }
-  return new Blob([u8arr], { type: mime })
+  const mimeType = parts[0].match(/:(.*?);/)?.[1] || 'audio/wav'
+  return { base64: parts[1] || '', mimeType }
 }
 
 /**
- * 使用 Web Speech API 转写已录制的音频
- * 原理：将音频通过 AudioContext 播放到虚拟输出,同时用 SpeechRecognition 监听
- * 
- * 兜底：如果 SpeechRecognition 不可用（如 Tauri WebView），
- * 则回退到 DeepSeek/OpenAI 的 Whisper API（如果 apiKey 存在）。
+ * 使用火山引擎「大模型录音文件识别极速版」进行语音转文字
+ * 接口文档: https://www.volcengine.com/docs/6561
+ * 支持格式：wav, mp3, ogg, m4a, aac 等
  */
-export async function transcribeAudio(audioDataUrl: string): Promise<string> {
-  // 首先尝试 Web Speech API
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+async function transcribeWithVolcengine(audioDataUrl: string): Promise<string> {
+  const appId = await settingsService.settingsGet('asr.volc_app_id') ?? ''
+  const token = await settingsService.settingsGet('asr.volc_access_token') ?? ''
 
-  if (SpeechRecognition) {
-    return transcribeWithWebSpeech(audioDataUrl, SpeechRecognition)
+  if (!appId || !token) {
+    throw new Error('请先在设置 → 语音识别中填写火山引擎 ASR AppID 和 Access Token。')
   }
 
-  // 兜底：检查是否有 API Key 可以用 Whisper
+  const { base64 } = dataUrlToBase64(audioDataUrl)
+
+  const resp = await fetch('https://openspeech.bytedance.com/api/v2/asr/bigmodel', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-App-Key': appId,
+      'X-Api-Access-Key': token,
+      'X-Api-Resource-Id': 'volc.bigasr.file.record',
+    },
+    body: JSON.stringify({
+      audio: {
+        format: 'wav',
+        data: base64,
+      },
+      request: {
+        model_name: 'bigmodel',
+        language: 'zh-CN',
+        show_utterances: false,
+      },
+    }),
+  })
+
+  if (!resp.ok) {
+    const errBody = await resp.text()
+    throw new Error(`火山引擎 ASR 错误 (${resp.status}): ${errBody}`)
+  }
+
+  const data = await resp.json()
+
+  // 检查业务层错误码
+  const code = data.code ?? data.resp_code
+  if (code && code !== 0 && code !== 1000) {
+    throw new Error(`火山引擎 ASR 识别失败 (code=${code}): ${data.message ?? data.resp_message ?? '未知错误'}`)
+  }
+
+  // 提取识别文本
+  const text = data.result?.text || data.audio_info?.text || data.text
+  if (!text) {
+    throw new Error('火山引擎 ASR 未返回识别文本，请检查音频格式是否为 WAV。')
+  }
+
+  return text.trim()
+}
+
+/**
+ * 统一入口：优先使用火山引擎 ASR，兜底使用 Whisper（如果有 OpenAI Key）
+ */
+export async function transcribeAudio(audioDataUrl: string): Promise<string> {
+  const volcAppId = await settingsService.settingsGet('asr.volc_app_id')
+  const volcToken = await settingsService.settingsGet('asr.volc_access_token')
+
+  if (volcAppId && volcToken) {
+    return transcribeWithVolcengine(audioDataUrl)
+  }
+
+  // 兜底：Whisper（OpenAI）
   const config = await getAiConfig()
   if (config.apiKey && config.baseUrl.includes('openai')) {
     return transcribeWithWhisper(audioDataUrl, config.apiKey)
   }
 
-  throw new Error('当前环境不支持语音识别。请使用 Chrome 浏览器，或在设置中填入 OpenAI API Key。')
+  throw new Error('请先在设置 → 语音识别中配置火山引擎 ASR AppID 和 Access Token。')
 }
 
-/** Web Speech API 转写 */
-function transcribeWithWebSpeech(audioDataUrl: string, SpeechRecognitionClass: any): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const recognition = new SpeechRecognitionClass()
-    recognition.lang = 'zh-CN'
-    recognition.continuous = true
-    recognition.interimResults = false
-    recognition.maxAlternatives = 1
-
-    const blob = dataUrlToBlob(audioDataUrl)
-    const audioUrl = URL.createObjectURL(blob)
-    const audio = new Audio(audioUrl)
-
-    let fullTranscript = ''
-    let hasResult = false
-
-    recognition.onresult = (event: any) => {
-      hasResult = true
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          fullTranscript += event.results[i][0].transcript
-        }
-      }
-    }
-
-    recognition.onend = () => {
-      audio.pause()
-      URL.revokeObjectURL(audioUrl)
-      if (hasResult) {
-        resolve(fullTranscript || '（未识别到语音内容）')
-      } else {
-        resolve('（未识别到语音内容，请检查录音是否包含语音）')
-      }
-    }
-
-    recognition.onerror = (event: any) => {
-      audio.pause()
-      URL.revokeObjectURL(audioUrl)
-      if (event.error === 'no-speech') {
-        resolve('（未检测到语音）')
-      } else {
-        reject(new Error(`语音识别错误: ${event.error}`))
-      }
-    }
-
-    // 播放音频的同时启动识别
-    audio.play().then(() => {
-      recognition.start()
-    }).catch(err => {
-      reject(new Error(`播放音频失败: ${err.message}`))
-    })
-
-    // 音频播放完毕后停止识别
-    audio.onended = () => {
-      // 给一小段缓冲时间让识别完成
-      setTimeout(() => {
-        try { recognition.stop() } catch { /* already stopped */ }
-      }, 1500)
-    }
-  })
-}
-
-/** Whisper API 转写（兜底方案） */
+/** Whisper API 兜底方案 */
 async function transcribeWithWhisper(audioDataUrl: string, apiKey: string): Promise<string> {
-  const blob = dataUrlToBlob(audioDataUrl)
+  const { base64, mimeType } = dataUrlToBase64(audioDataUrl)
+  const bstr = atob(base64)
+  const u8arr = new Uint8Array(bstr.length)
+  for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i)
+  const blob = new Blob([u8arr], { type: mimeType })
+
   const formData = new FormData()
-  formData.append('file', blob, 'audio.webm')
+  formData.append('file', blob, 'audio.wav')
   formData.append('model', 'whisper-1')
   formData.append('language', 'zh')
 
@@ -416,6 +401,7 @@ async function transcribeWithWhisper(audioDataUrl: string, apiKey: string): Prom
   const data = await resp.json()
   return data.text || '（未识别到内容）'
 }
+
 
 // ─── 摘要提取：DeepSeek / OpenAI Chat Completions ────
 

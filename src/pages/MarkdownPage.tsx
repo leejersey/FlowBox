@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Sparkles, Diamond, UploadCloud, FolderOpen, Trash2, Copy, Check, FileText } from 'lucide-react'
+import { Sparkles, Diamond, UploadCloud, FolderOpen, Trash2, Copy, Check, FileText, ArrowRightLeft } from 'lucide-react'
 import TurndownService from 'turndown'
+import ReactMarkdown from 'react-markdown'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/hooks/useSettings'
 import { showToast } from '@/store/useToastStore'
@@ -85,6 +86,7 @@ export function MarkdownPage() {
   const { settings, setSetting } = useSettings()
   
   // State
+  const [mode, setMode] = useState<'html2md' | 'md2html'>('html2md')
   const [markdownText, setMarkdownText] = useState('')
   const [vaultPath, setVaultPath] = useState('')
   const [fileName, setFileName] = useState('')
@@ -92,6 +94,7 @@ export function MarkdownPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isFileNameCustomized, setIsFileNameCustomized] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
 
   // Load settings on mount
   useEffect(() => {
@@ -169,6 +172,29 @@ export function MarkdownPage() {
     }
   }
 
+  const handleCopyRichText = async () => {
+    if (!previewRef.current || !markdownText) return
+    try {
+      const htmlText = `<div style="font-family: var(--font-sans, sans-serif); color: inherit;">${previewRef.current.innerHTML}</div>`
+      const plainText = previewRef.current.innerText
+      if (typeof ClipboardItem !== 'undefined') {
+        const clipboardItem = new ClipboardItem({
+          'text/html': new Blob([htmlText], { type: 'text/html' }),
+          'text/plain': new Blob([plainText], { type: 'text/plain' })
+        })
+        await navigator.clipboard.write([clipboardItem])
+      } else {
+        await navigator.clipboard.writeText(plainText)
+      }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+      showToast('富文本排版已复制', 'success')
+    } catch (err) {
+      console.error(err)
+      showToast('复制富文本失败', 'error')
+    }
+  }
+
   const handleExportToObsidian = async () => {
     if (!markdownText) {
       showToast('没有可导出的 Markdown 内容', 'error')
@@ -210,6 +236,14 @@ export function MarkdownPage() {
         
         <div className="flex items-center gap-3">
           <button 
+            onClick={() => setMode(m => m === 'html2md' ? 'md2html' : 'html2md')}
+            className="px-4 py-2 text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all flex items-center gap-2"
+          >
+            <ArrowRightLeft className="w-4 h-4" /> 
+            {mode === 'html2md' ? '切换：MD 转网页' : '切换：网页 转 MD'}
+          </button>
+          <div className="w-[1px] h-6 bg-surface-container-highest mx-1"></div>
+          <button 
             onClick={handleClear}
             className="px-4 py-2 text-sm font-semibold text-outline hover:text-on-surface hover:bg-surface-container-high rounded-full transition-all flex items-center gap-2"
           >
@@ -230,20 +264,31 @@ export function MarkdownPage() {
         {/* Left Pane (Source) */}
         <div className="w-1/2 flex flex-col gap-3 min-w-0 h-full">
           <div className="flex items-center justify-between px-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-outline">Rich Text / HTML Source</label>
-            <span className="text-[10px] text-outline-variant">{isProcessing ? 'Processing...' : 'Auto-detecting format...'}</span>
+            <label className="text-xs font-bold uppercase tracking-widest text-outline">
+              {mode === 'html2md' ? 'Rich Text / HTML Source' : 'Markdown Source'}
+            </label>
+            <span className="text-[10px] text-outline-variant">{isProcessing ? 'Processing...' : (mode === 'html2md' ? 'Auto-detecting format...' : 'Edit Markdown...')}</span>
           </div>
           
           <div className="flex-1 bg-surface-container-low rounded-2xl p-5 relative group overflow-hidden border border-white/40 shadow-sm flex flex-col">
-            <div 
-              ref={editorRef}
-              className="flex-1 h-full w-full overflow-y-auto overflow-x-hidden custom-scrollbar focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-lg p-2 transition-all ProseMirror leading-relaxed break-words"
-              contentEditable 
-              onPaste={handlePaste}
-              onInput={handleInput}
-              data-placeholder="在此处 Ctrl+V 粘贴来源文档、网页富文本，或直接输入..."
-            >
-            </div>
+            {mode === 'html2md' ? (
+              <div 
+                ref={editorRef}
+                className="flex-1 h-full w-full overflow-y-auto overflow-x-hidden custom-scrollbar focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-lg p-2 transition-all ProseMirror leading-relaxed break-words"
+                contentEditable 
+                onPaste={handlePaste}
+                onInput={handleInput}
+                data-placeholder="在此处 Ctrl+V 粘贴来源文档、网页富文本，或直接输入..."
+              >
+              </div>
+            ) : (
+              <textarea
+                className="flex-1 w-full h-full bg-transparent resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-lg p-2 custom-scrollbar font-mono text-[13px] leading-relaxed text-on-surface"
+                placeholder="在此输入或粘贴 Markdown 代码..."
+                value={markdownText}
+                onChange={e => setMarkdownText(e.target.value)}
+              />
+            )}
           </div>
         </div>
 
@@ -253,32 +298,52 @@ export function MarkdownPage() {
         {/* Right Pane (Markdown Output) */}
         <div className="w-1/2 flex flex-col gap-3 min-w-0 h-full">
           <div className="flex items-center justify-between px-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-outline">Markdown Output</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-outline">
+              {mode === 'html2md' ? 'Markdown Output' : 'Rich Text Preview'}
+            </label>
             <button 
-              onClick={handleCopyMarkdown}
+              onClick={mode === 'html2md' ? handleCopyMarkdown : handleCopyRichText}
               className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-container transition-colors p-1 rounded-md hover:bg-primary/10"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? '已复制' : '复制 Markdown'}
+              {copied ? '已复制' : (mode === 'html2md' ? '复制 Markdown' : '复制富文本')}
             </button>
           </div>
           
-          <div className="flex-1 bg-surface-container-highest/30 rounded-2xl p-5 border border-white/20 shadow-inner font-mono text-[13px] leading-relaxed text-on-surface overflow-hidden relative group">
-            <pre className="h-full w-full overflow-y-auto custom-scrollbar break-words whitespace-pre-wrap">
-              <code className="text-primary/90">
-                {markdownText || (
+          {mode === 'html2md' ? (
+            <div className="flex-1 bg-surface-container-highest/30 rounded-2xl p-5 border border-white/20 shadow-inner font-mono text-[13px] leading-relaxed text-on-surface overflow-hidden relative group">
+              <pre className="h-full w-full overflow-y-auto custom-scrollbar break-words whitespace-pre-wrap">
+                <code className="text-primary/90">
+                  {markdownText || (
+                    <span className="text-on-surface-variant/50 flex flex-col items-center justify-center h-full opacity-50 select-none text-sm font-sans gap-2">
+                      <FileText className="w-12 h-12 stroke-[1]" />
+                      等待转换结果...
+                    </span>
+                  )}
+                </code>
+              </pre>
+            </div>
+          ) : (
+            <div className="flex-1 bg-surface-container-lowest/80 rounded-2xl p-6 border border-white/20 shadow-inner overflow-hidden relative group flex flex-col">
+              <div className="h-full w-full overflow-y-auto custom-scrollbar">
+                {markdownText ? (
+                  <div ref={previewRef} className="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:font-display prose-a:text-primary">
+                    <ReactMarkdown>{markdownText}</ReactMarkdown>
+                  </div>
+                ) : (
                   <span className="text-on-surface-variant/50 flex flex-col items-center justify-center h-full opacity-50 select-none text-sm font-sans gap-2">
-                    <FileText className="w-12 h-12 stroke-[1]" />
-                    等待转换结果...
+                    <Sparkles className="w-12 h-12 stroke-[1]" />
+                    输入 Markdown 查看实时排版...
                   </span>
                 )}
-              </code>
-            </pre>
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Bottom Action Bar (Obsidian Bridge) */}
+      {mode === 'html2md' && (
       <footer className="mx-6 mt-2 mb-6 p-6 bg-surface-container-low rounded-[24px] shadow-lg shadow-surface-tint/5 border border-white/40 shrink-0">
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
@@ -327,7 +392,7 @@ export function MarkdownPage() {
             <div className="md:col-span-3 pb-0.5">
               <button 
                 onClick={handleExportToObsidian}
-                className="w-full h-11 bg-on-surface text-surface-container-lowest rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary transition-all active:scale-[0.98] shadow-lg shadow-on-surface/5"
+                className="w-full h-11 bg-on-surface text-surface rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary hover:text-on-primary transition-all active:scale-[0.98] shadow-lg shadow-on-surface/5"
               >
                 <UploadCloud className="w-5 h-5" />
                 确认导出
@@ -336,6 +401,7 @@ export function MarkdownPage() {
           </div>
         </div>
       </footer>
+      )}
 
       {/* CSS For Placeholder styling and scrollbar */}
       <style>{`

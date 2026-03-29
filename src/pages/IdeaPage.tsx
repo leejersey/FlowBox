@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Mic, Clipboard as ClipboardIcon, MoreHorizontal, Archive, Trash2, Tag, X, Check, Calendar, ExternalLink } from 'lucide-react'
+import { Sparkles, Mic, Clipboard as ClipboardIcon, MoreHorizontal, Archive, Trash2, Tag, X, Check, Calendar, ExternalLink, Edit2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Idea } from '@/types/idea'
 import { useIdeas } from '@/hooks/useIdeas'
@@ -171,15 +171,30 @@ function IdeaCard({
 }
 
 /* ─── Detail Modal ───────────────────────────────────── */
-function IdeaDetailModal({ idea, onClose }: { idea: Idea; onClose: () => void }) {
+function IdeaDetailModal({ idea, onClose, onUpdate }: { idea: Idea; onClose: () => void; onUpdate: (id: number, data: {content: string}) => Promise<void> }) {
   let tags: string[] = []
   try { tags = JSON.parse(idea.tags || '[]') } catch { /* ignore */ }
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [content, setContent] = useState(idea.content)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
+
+  const handleSave = async () => {
+    if (!content.trim() || content === idea.content) {
+      setIsEditing(false)
+      return
+    }
+    setSaving(true)
+    await onUpdate(idea.id, { content: content.trim() })
+    setSaving(false)
+    setIsEditing(false)
+  }
 
   const sourceLabel = idea.source === 'voice' ? '语音录入' : idea.source === 'clipboard' ? '剪贴板捕获' : '手动输入'
   const sourceIcon = idea.source === 'voice' ? <Mic className="w-3.5 h-3.5" /> : idea.source === 'clipboard' ? <ClipboardIcon className="w-3.5 h-3.5" /> : <ExternalLink className="w-3.5 h-3.5" />
@@ -191,14 +206,34 @@ function IdeaDetailModal({ idea, onClose }: { idea: Idea; onClose: () => void })
         {/* Header */}
         <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-surface-container-highest shrink-0">
           <h2 className="text-lg font-display font-bold text-on-surface">灵感详情</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {!isEditing ? (
+              <button title="编辑灵感" onClick={() => setIsEditing(true)} className="p-1.5 rounded-lg hover:bg-surface-container-highest text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
+                <Edit2 className="w-5 h-5" />
+              </button>
+            ) : (
+              <button disabled={saving} title="保存更改" onClick={handleSave} className="p-1.5 rounded-lg hover:bg-surface-container-highest text-primary transition-colors disabled:opacity-50 cursor-pointer">
+                <Check className="w-5 h-5" />
+              </button>
+            )}
+            <button title="关闭" onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors cursor-pointer">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-7 py-6">
-          <p className="text-on-surface text-[15px] leading-relaxed whitespace-pre-wrap">{idea.content}</p>
+          {isEditing ? (
+            <textarea
+              autoFocus
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              className="w-full min-h-[150px] bg-surface-container-low border border-transparent focus:border-primary/20 rounded-2xl p-4 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none resize-none leading-relaxed transition-all"
+            />
+          ) : (
+            <p className="text-on-surface text-[15px] leading-relaxed whitespace-pre-wrap">{content}</p>
+          )}
 
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-6">
@@ -373,7 +408,11 @@ export function IdeaPage() {
 
       {/* Detail Modal */}
       {selectedIdea && (
-        <IdeaDetailModal idea={selectedIdea} onClose={() => setSelectedIdea(null)} />
+        <IdeaDetailModal 
+          idea={selectedIdea} 
+          onClose={() => setSelectedIdea(null)} 
+          onUpdate={updateIdea}
+        />
       )}
     </div>
   )

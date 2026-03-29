@@ -3,6 +3,7 @@ import { Search, Pin, Copy, Bot, Trash2, Clock, Code2, Type, Image as ImageIcon 
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
 import * as clipboardService from '@/services/clipboardService'
+import { showToast } from '@/store/useToastStore'
 import type { ClipboardItem } from '@/types/clipboard'
 import { useClipboardWatcher } from '@/hooks/useClipboardWatcher'
 
@@ -159,7 +160,12 @@ export function ClipboardPage() {
 
   const handleCopy = async (clip: ClipboardItem) => {
     if (clip.text_content) {
-      await navigator.clipboard.writeText(clip.text_content)
+      try {
+        await navigator.clipboard.writeText(clip.text_content)
+        showToast('已复制到剪贴板', 'success')
+      } catch (err) {
+        showToast('复制失败', 'error')
+      }
     }
   }
 

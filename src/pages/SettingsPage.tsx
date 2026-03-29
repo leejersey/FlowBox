@@ -55,15 +55,19 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('ai')
   const [localApiKey, setLocalApiKey] = useState('')
   const [butlerShortcut, setButlerShortcut] = useState(DEFAULT_BUTLER_SHORTCUT)
+  const [volcAppId, setVolcAppId] = useState('')
+  const [volcToken, setVolcToken] = useState('')
   const { mode: themeMode, setMode: setThemeMode } = useThemeStore()
   const { settings, saved, setSetting, toggleSetting } = useSettings()
 
-  // Sync apiKey from settings to local state when settings load
   useEffect(() => {
-    if (settings['ai.openai_api_key']) {
-      setLocalApiKey(settings['ai.openai_api_key'])
-    }
+    if (settings['ai.openai_api_key']) setLocalApiKey(settings['ai.openai_api_key'])
   }, [settings['ai.openai_api_key']])
+
+  useEffect(() => {
+    if (settings['asr.volc_app_id']) setVolcAppId(settings['asr.volc_app_id'])
+    if (settings['asr.volc_access_token']) setVolcToken(settings['asr.volc_access_token'])
+  }, [settings['asr.volc_app_id'], settings['asr.volc_access_token']])
 
   useEffect(() => {
     setButlerShortcut(settings['shortcuts.butler_hotkey'] || DEFAULT_BUTLER_SHORTCUT)
@@ -71,6 +75,11 @@ export function SettingsPage() {
 
   const saveApiKey = async () => {
     await setSetting('ai.openai_api_key', localApiKey)
+  }
+
+  const saveAsrKeys = async () => {
+    await setSetting('asr.volc_app_id', volcAppId)
+    await setSetting('asr.volc_access_token', volcToken)
   }
 
   const saveButlerShortcut = async () => {
@@ -215,6 +224,48 @@ export function SettingsPage() {
                         保存
                       </button>
                     </div>
+                  </div>
+                </section>
+
+                {/* Volcengine ASR */}
+                <section className="mb-10">
+                  <h3 className="text-sm font-bold text-on-surface mb-1 uppercase tracking-wider">语音识别（ASR）</h3>
+                  <p className="text-xs text-on-surface-variant mb-4">使用火山引擎大模型录音文件识别，将录音精准转为文字。<a href="https://console.volcengine.com/speech" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 ml-1">前往控制台获取 Key →</a></p>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-on-surface-variant">火山引擎 AppID</label>
+                      <input
+                        type="text"
+                        value={volcAppId}
+                        onChange={e => setVolcAppId(e.target.value)}
+                        placeholder="请输入 AppID（如：123456789）"
+                        className="h-11 bg-surface-container px-4 rounded-xl text-sm text-on-surface border border-transparent focus:border-primary/50 focus:outline-none transition-all font-mono"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-on-surface-variant">火山引擎 Access Token</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="password"
+                          value={volcToken}
+                          onChange={e => setVolcToken(e.target.value)}
+                          placeholder="请输入 Access Token"
+                          className="flex-1 h-11 bg-surface-container px-4 rounded-xl text-sm text-on-surface border border-transparent focus:border-primary/50 focus:outline-none transition-all font-mono"
+                        />
+                        <button
+                          onClick={saveAsrKeys}
+                          className="h-11 px-6 rounded-xl bg-surface-container hover:bg-surface-container-highest transition-colors font-medium text-sm text-on-surface"
+                        >
+                          保存
+                        </button>
+                      </div>
+                    </div>
+                    {settings['asr.volc_app_id'] && settings['asr.volc_access_token'] && (
+                      <div className="flex items-center gap-2 text-xs font-medium text-green-600">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        已配置 — 可在录音列表中点击「转写」使用
+                      </div>
+                    )}
                   </div>
                 </section>
 

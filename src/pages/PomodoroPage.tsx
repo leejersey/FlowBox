@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Play, Pause, Square, SkipForward, ChevronRight, ListChecks } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Select } from '@/components/ui/Select'
 import * as pomodoroService from '@/services/pomodoroService'
 import { useTodos } from '@/hooks/useTodos'
 import type { PomodoroType, PomodoroState, PomodoroSession } from '@/types/pomodoro'
@@ -98,20 +99,17 @@ export function PomodoroPage() {
       <div className="flex-none xl:flex-[3] flex flex-col items-center justify-center w-full gap-6 lg:gap-10 py-6 xl:p-8">
         {/* Todo Selector */}
         <div className="w-full flex justify-center shrink-0 z-20">
-          <div className="flex items-center gap-2 bg-surface-container-low px-4 py-2.5 rounded-full border border-white/5 shadow-sm transition-all focus-within:border-primary/20 focus-within:ring-1 focus-within:ring-primary/20">
-            <ListChecks className="w-4 h-4 text-primary" />
-            <select
-              value={selectedTodoId ?? ''}
-              onChange={e => setSelectedTodoId(e.target.value ? Number(e.target.value) : null)}
-              disabled={isActive}
-              className="bg-transparent text-sm font-medium text-on-surface outline-none cursor-pointer disabled:opacity-50 appearance-none min-w-[120px]"
-            >
-              <option value="">(不关联待办)</option>
-              {activeTodos.map(t => (
-                <option key={t.id} value={t.id}>{t.title}</option>
-              ))}
-            </select>
-          </div>
+          <Select
+            disabled={isActive}
+            value={selectedTodoId}
+            onChange={(val: string | number | null) => setSelectedTodoId(val ? Number(val) : null)}
+            icon={<ListChecks className="w-4 h-4" />}
+            className="min-w-[200px] max-w-[280px]"
+            options={[
+              { label: '(不关联待办)', value: null as any },
+              ...activeTodos.map(t => ({ label: t.title, value: t.id }))
+            ]}
+          />
         </div>
 
         <div className="relative w-64 h-64 lg:w-80 lg:h-80 flex flex-col items-center justify-center shrink-0">

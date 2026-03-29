@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Calendar, Tag as TagIcon, Flag, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DatePicker } from '@/components/ui/DatePicker'
 import type { Todo, UpdateTodoPayload } from '@/types/todo'
 
 interface TodoDetailModalProps {
@@ -157,11 +158,10 @@ export function TodoDetailModal({ todo, onClose, onSave }: TodoDetailModalProps)
               <label className="text-xs font-bold text-on-surface-variant flex items-center gap-1.5 px-1">
                 <Calendar className="w-3.5 h-3.5" /> 截止日期
               </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className="bg-surface-container text-sm font-medium text-on-surface rounded-xl px-3 py-1.5 outline-none"
+              <DatePicker
+                value={dueDate || ''}
+                onChange={setDueDate}
+                placeholder="设置截止日期"
               />
             </div>
 

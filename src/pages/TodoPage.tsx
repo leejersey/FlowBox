@@ -48,6 +48,11 @@ function TodoCard({ todo, onToggle, onDelete, onClick }: {
           )}>
             {todo.title}
           </span>
+          {todo.status === 'in_progress' && (
+            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[11px] font-bold flex items-center gap-1">
+              🏃 进行中
+            </span>
+          )}
           {todo.source !== 'manual' && (
             <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center gap-1">
               ✨ {todo.source === 'voice' ? 'AI 提取' : '剪贴板'}

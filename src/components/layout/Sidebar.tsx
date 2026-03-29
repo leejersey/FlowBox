@@ -14,16 +14,22 @@ const navItems = [
 
 export function Sidebar() {
   return (
-    <aside className="w-16 h-full flex flex-col items-center py-6 glass-sidebar pt-12 shrink-0 z-40 relative">
-      <nav className="flex-1 flex flex-col gap-4 mt-8 w-full items-center">
+    <aside className="w-16 h-full flex flex-col items-center py-6 glass-sidebar pt-8 shrink-0 z-40 relative">
+      {/* App Logo */}
+      <div className="w-10 h-10 rounded-[14px] overflow-hidden shadow-lg shadow-black/40 border border-white/10 flex-shrink-0 mb-8 cursor-pointer hover:scale-105 transition-transform group relative" title="FlowBox">
+        <img src="/logo.png" alt="FlowBox Logo" className="w-full h-full object-cover pointer-events-none" />
+        <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors pointer-events-none" />
+      </div>
+
+      <nav className="flex-1 flex flex-col gap-4 w-full items-center">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
               cn(
-                "p-3 rounded-2xl transition-all duration-200 relative group text-on-surface-variant hover:text-on-surface hover:bg-white/30",
-                isActive && "text-primary bg-white/50 shadow-sm"
+                "p-3 rounded-2xl transition-all duration-200 relative group text-on-surface-variant hover:text-on-surface hover:bg-on-surface/10",
+                isActive && "text-primary bg-primary/15 shadow-sm"
               )
             }
             title={item.label}
@@ -38,8 +44,8 @@ export function Sidebar() {
           to="/settings"
           className={({ isActive }) =>
             cn(
-              "p-3 rounded-2xl transition-all duration-200 text-on-surface-variant hover:text-on-surface hover:bg-white/30",
-              isActive && "text-primary bg-white/50 shadow-sm"
+              "p-3 rounded-2xl transition-all duration-200 text-on-surface-variant hover:text-on-surface hover:bg-on-surface/10",
+              isActive && "text-primary bg-primary/15 shadow-sm"
             )
           }
           title="Settings"

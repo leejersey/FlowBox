@@ -1,5 +1,10 @@
 # 🧊 FlowBox — AI 桌面效率工具
 
+![Version](https://img.shields.io/badge/version-v0.2.0-blue?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+![Tech](https://img.shields.io/badge/stack-Tauri%20v2%20%2B%20React%2019-purple?style=flat-square)
+
 > **Local-First · AI-Powered · Privacy-Centric**
 >
 > FlowBox 是一款面向个人开发者和知识工作者的 macOS 桌面 AI 效率工具，集成待办管理、灵感速记、番茄专注、智能剪贴板、语音备忘录、效率分析六大核心模块，所有数据本地存储，AI 能力按需接入。
@@ -29,7 +34,7 @@
 
 ### 🎙️ 语音备忘录
 - **一键录音**：浏览器 MediaRecorder API，实时计时 + 脉冲动画
-- **AI 转写**：浏览器 Web Speech API（免费） / OpenAI Whisper（兜底）
+- **AI 转写**：火山引擎 ASR（推荐） / OpenAI Whisper（兜底）
 - **智能摘要**：DeepSeek / OpenAI 自动提取摘要和待办事项
 - 原声回放，导出文本
 
@@ -82,7 +87,8 @@
 | **状态管理** | Zustand (persist) | 主题、Toast、Butler 对话历史 |
 | **图表** | Recharts | 折线图、饼图 |
 | **Markdown** | react-markdown + remark-gfm | AI 回复富文本渲染 |
-| **AI** | DeepSeek / OpenAI / Ollama | 对话、摘要提取、语音转写、剪贴板分类 |
+| **AI** | DeepSeek / OpenAI / Ollama | 对话、摘要提取、剪贴板分类 |
+| **语音 ASR** | 火山引擎 / OpenAI Whisper | 语音转文字 |
 
 ---
 
@@ -202,15 +208,17 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 | **OpenAI** | Butler 对话、摘要、Whisper 转写、截图分析 | 质量最优，支持 Vision |
 | **Ollama** | Butler 对话、本地推理 | 完全离线，隐私最高 |
 
-语音转写默认使用浏览器内置 Web Speech API（免费），如需更高精度可切换到 OpenAI Whisper。
+语音转写推荐使用**火山引擎 ASR**（需在语音技术控制台申请 AppID + Token），如需更高精度可切换到 OpenAI Whisper。
 
 ---
 
-## 📝 Markdown 转换器
+## 📝 Markdown 双向转换器
 
-- 粘贴富文本 / HTML，自动转为结构化 Markdown（基于 Turndown）
-- 实时预览 + 手动编辑
-- Obsidian Vault 导出桥接（占位，待完善）
+- **网页 → Markdown**：粘贴富文本 / HTML，自动转为结构化 Markdown（基于 Turndown）
+- **Markdown → 富文本**：输入 Markdown，实时渲染为精美排版（基于 react-markdown + @tailwindcss/typography）
+- **一键复制富文本**：复制后可直接粘贴到 Word、飞书、Notion、微信公众号等，样式完美保留
+- 顶部一键方向切换按钮
+- Obsidian Vault 导出桥接
 
 ---
 
@@ -227,10 +235,38 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 
 - [x] Butler 流式输出（Streaming SSE）
 - [x] Butler 对话历史从 localStorage 迁移至 SQLite
+- [x] 火山引擎 ASR 语音转写集成
+- [x] Markdown 双向转换 + 富文本复制
+- [x] 剪贴板复制反馈 + 待办"进行中"状态标识
+- [x] 暗色模式 UI 全面适配（Sidebar / 按钮 / 图标去底色）
 - [ ] Obsidian Vault 自动导出集成
 - [ ] AI 周报自动生成（基于效率分析数据）
 - [ ] 多语言 i18n 支持
 - [ ] Windows / Linux 跨平台适配
+
+---
+
+## 📌 版本记录
+
+### v0.2.0 — 2026-03-29
+
+> 双向转换 · ASR 集成 · 暗色模式全面适配
+
+- ✨ **Markdown 双向转换器**：新增 MD → 富文本 模式，实时排版预览 + 一键复制带样式富文本
+- ✨ **火山引擎 ASR**：语音转写接入火山引擎语音识别 REST API，替换不稳定的 Web Speech API
+- 🎨 **暗色模式修复**：Sidebar 激活态、导出按钮对比度、应用图标去白底
+- 🔧 **剪贴板复制优化**：复制操作增加 Toast 反馈
+- 🔧 **待办进行中状态**：卡片标题旁新增 `🏃 进行中` 标签
+- 🔧 **CSP 策略更新**：放行 `openspeech.bytedance.com` API 请求
+
+### v0.1.0 — 2026-03-28
+
+> 核心功能上线
+
+- 🎉 六大功能模块上线：待办、灵感、番茄、剪贴板、语音、效率分析
+- 🤖 AI Butler 多轮对话 + Markdown 渲染
+- 📊 效率分析看板 + 应用使用追踪
+- 🔐 Local-First 隐私设计
 
 ---
 

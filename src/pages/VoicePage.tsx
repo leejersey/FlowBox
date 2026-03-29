@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Mic, Play, Pause, Trash2, Download, RefreshCw, Square } from 'lucide-react'
+import { Mic, Play, Pause, Trash2, Square, RefreshCw } from 'lucide-react'
 import { isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
 import * as voiceService from '@/services/voiceService'
@@ -103,9 +103,9 @@ function RecordCard({ record, onDelete, onExpand, expanded, onTranscribe, transc
           record.status === 'done' ? "bg-green-500/10 text-green-600" :
           record.status === 'processing' ? "bg-amber-500/10 text-amber-600 animate-pulse" :
           record.status === 'error' ? "bg-red-500/10 text-red-600" :
-          "bg-red-500/10 text-red-600"
+          "bg-surface-container-highest text-on-surface-variant"
         )}>
-          {record.status === 'done' ? '✅ 已转写' : record.status === 'processing' ? '⏳ 转写中' : record.status === 'error' ? '❌ 失败' : '🎙️ 录音中'}
+          {record.status === 'done' ? '✅ 已转写' : record.status === 'processing' ? '⏳ 转写中' : record.status === 'error' ? '❌ 失败' : '🎙️ 待转写'}
         </div>
       </div>
 
@@ -152,12 +152,10 @@ function RecordCard({ record, onDelete, onExpand, expanded, onTranscribe, transc
                 <button onClick={(e) => { e.stopPropagation(); onDelete(record.id) }} className="p-2.5 hover:bg-surface-container rounded-xl text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-sm font-medium">
                   <Trash2 className="w-4 h-4" /> 删除录音
                 </button>
-                <button className="p-2.5 hover:bg-surface-container rounded-xl text-on-surface-variant transition-colors flex items-center gap-2 text-sm font-medium">
-                  <Download className="w-4 h-4" /> 导出文本
-                </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onTranscribe?.(record.id) }}
-                  disabled={transcribing}
+                  disabled={transcribing || record.status === 'processing'}
+                  title="使用火山引擎 ASR 转写"
                   className={cn(
                     "p-2.5 rounded-xl transition-colors flex items-center gap-2 text-sm font-medium",
                     transcribing
@@ -166,7 +164,7 @@ function RecordCard({ record, onDelete, onExpand, expanded, onTranscribe, transc
                   )}
                 >
                   <RefreshCw className={cn("w-4 h-4", transcribing && "animate-spin")} />
-                  {transcribing ? '转写中...' : '重新转写'}
+                  {transcribing ? '转写中...' : '转写'}
                 </button>
               </div>
             </div>
@@ -227,7 +225,7 @@ export function VoicePage() {
   return (
     <div className="flex flex-col h-full animate-fade-in w-full max-w-4xl mx-auto pb-10 overflow-y-auto overflow-x-hidden">
       {/* Recording Panel */}
-      <div className="bg-surface-container-low rounded-[32px] p-8 md:p-12 mb-10 flex flex-col items-center justify-center relative shadow-sm border border-white/40 overflow-hidden">
+      <div className="shrink-0 bg-surface-container-low rounded-[32px] p-6 lg:p-10 mb-8 lg:mb-10 flex flex-col items-center justify-center relative shadow-sm border border-white/40 overflow-hidden">
         
         <div className="relative flex items-center justify-center mb-6 pt-2 h-32 w-32">
           {/* Animated background rings when recording */}
@@ -274,7 +272,7 @@ export function VoicePage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-6 px-1">
+      <div className="shrink-0 flex items-center justify-between mb-6 px-1">
         <h3 className="text-xl font-display font-bold text-on-surface">
           录音历史
           {records.length > 0 && <span className="ml-2 text-sm font-normal text-on-surface-variant">{records.length} 条</span>}
