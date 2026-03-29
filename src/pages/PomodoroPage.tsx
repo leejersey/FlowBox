@@ -92,12 +92,12 @@ export function PomodoroPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-full animate-fade-in w-full max-w-6xl mx-auto gap-8 overflow-y-auto lg:overflow-hidden pb-10 lg:pb-0">
+    <div className="flex flex-col xl:flex-row h-full animate-fade-in w-full max-w-6xl mx-auto gap-4 lg:gap-8 overflow-y-auto lg:overflow-hidden pb-4 lg:pb-0">
 
       {/* Left: Timer */}
-      <div className="flex-[3] flex flex-col items-center justify-center p-8 relative min-h-[500px] lg:min-h-0">
+      <div className="flex-none xl:flex-[3] flex flex-col items-center justify-center w-full gap-6 lg:gap-10 py-6 xl:p-8">
         {/* Todo Selector */}
-        <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20">
+        <div className="w-full flex justify-center shrink-0 z-20">
           <div className="flex items-center gap-2 bg-surface-container-low px-4 py-2.5 rounded-full border border-white/5 shadow-sm transition-all focus-within:border-primary/20 focus-within:ring-1 focus-within:ring-primary/20">
             <ListChecks className="w-4 h-4 text-primary" />
             <select
@@ -114,10 +114,10 @@ export function PomodoroPage() {
           </div>
         </div>
 
-        <div className="relative w-80 h-80 flex items-center justify-center mb-12">
+        <div className="relative w-64 h-64 lg:w-80 lg:h-80 flex flex-col items-center justify-center shrink-0">
           <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
 
-          <svg className="absolute inset-0 w-full h-full -rotate-90">
+          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 320 320">
             <circle cx="160" cy="160" r="150" stroke="currentColor" strokeWidth="8" fill="none" className="text-surface-container-highest" />
             <circle
               cx="160" cy="160" r="150"
@@ -136,7 +136,7 @@ export function PomodoroPage() {
           </svg>
 
           <div className="relative flex flex-col items-center z-10">
-            <span className="text-[5rem] font-display font-bold text-on-surface tabular-nums tracking-tight leading-none mb-4">
+            <span className="text-6xl lg:text-[5rem] font-display font-bold text-on-surface tabular-nums tracking-tight leading-none mb-4">
               {isActive ? formatTime(remaining) : formatTime(config.minutes * 60)}
             </span>
             <span className="px-3 py-1 bg-surface-container-highest text-on-surface-variant font-medium text-sm rounded-full">
@@ -147,7 +147,7 @@ export function PomodoroPage() {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-6 mb-12">
+        <div className="flex items-center gap-6 shrink-0">
           {isActive && (
             <button onClick={handleStop} className="p-4 rounded-full bg-surface-container hover:bg-surface-container-highest active:scale-95 transition-all text-on-surface-variant group">
               <Square className="w-5 h-5 group-hover:text-red-500 fill-current" />
@@ -172,7 +172,7 @@ export function PomodoroPage() {
         </div>
 
         {/* Session Type Chips */}
-        <div className="flex items-center gap-3 absolute bottom-8">
+        <div className="flex items-center justify-center flex-wrap gap-2 lg:gap-3 shrink-0">
           {typeConfigs.map(tc => (
             <button
               key={tc.type}
@@ -192,7 +192,7 @@ export function PomodoroPage() {
       </div>
 
       {/* Right: Stats */}
-      <div className="flex-[2] bg-surface-container-low/50 rounded-[32px] p-8 flex flex-col h-full overflow-hidden border border-white/40 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
+      <div className="flex-none xl:flex-[2] bg-surface-container-low/50 rounded-[32px] p-6 lg:p-8 flex flex-col xl:h-full xl:overflow-hidden border border-white/40 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
         <h2 className="text-2xl font-display font-bold text-on-surface mb-8">今日专注</h2>
 
         <div className="grid grid-cols-2 gap-4 mb-8">
@@ -219,7 +219,7 @@ export function PomodoroPage() {
         </div>
 
         {/* Timeline */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 xl:overflow-y-auto">
           <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">时间线</h3>
 
           {sessions.length === 0 && (
