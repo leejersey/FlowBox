@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FlowBox - 待办事项</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-high": "#e7e8eb",
+                        "inverse-primary": "#c3c0ff",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "secondary-fixed": "#e2dfff",
+                        "on-surface-variant": "#464555",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "on-primary-fixed": "#0f0069",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffd2be",
+                        "surface": "#f8f9fc",
+                        "on-surface": "#191c1e",
+                        "secondary-container": "#b6b4ff",
+                        "surface-dim": "#d9dadd",
+                        "surface-container": "#edeef1",
+                        "primary": "#3525cd",
+                        "on-tertiary-fixed": "#351000",
+                        "surface-bright": "#f8f9fc",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-container-low": "#f2f3f6",
+                        "surface-container-highest": "#e1e2e5",
+                        "on-primary-container": "#dad7ff",
+                        "on-secondary": "#ffffff",
+                        "outline": "#777587",
+                        "tertiary": "#7e3000",
+                        "inverse-on-surface": "#f0f1f4",
+                        "background": "#f8f9fc",
+                        "on-secondary-fixed": "#140f54",
+                        "on-background": "#191c1e",
+                        "surface-tint": "#4d44e3",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "outline-variant": "#c7c4d8",
+                        "secondary": "#58579b",
+                        "primary-fixed": "#e2dfff",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#a44100",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "primary-container": "#4f46e5",
+                        "surface-variant": "#e1e2e5",
+                        "on-secondary-container": "#454386",
+                        "inverse-surface": "#2e3133",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fc;
+        }
+        .glass-sidebar {
+            background: rgba(248, 249, 252, 0.7);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body select-none">
+<!-- Top Navigation Anchor (Window Controls & Brand) -->
+<header class="fixed top-0 left-0 w-full h-12 flex items-center justify-between px-6 z-50 bg-slate-50 dark:bg-slate-900 no-border font-headline font-semibold tracking-tight">
+<div class="flex items-center gap-4">
+<!-- macOS Window Controls -->
+<div class="flex gap-2 mr-4">
+<div class="w-3 h-3 rounded-full bg-rose-500/80"></div>
+<div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+<div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+</div>
+<span class="text-base font-black text-slate-900 dark:text-slate-100 ml-16">FlowBox</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 bg-primary text-on-primary px-4 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                新建待办
+            </button>
+</div>
+</header>
+<!-- SideNavBar Anchor -->
+<nav class="fixed left-0 top-0 h-full z-40 w-16 glass-sidebar flex flex-col items-center py-4 font-manrope antialiased shadow-none">
+<div class="mt-14 flex flex-col items-center gap-4 flex-1 w-full">
+<!-- Active: Todo (待办) -->
+<a class="bg-indigo-600/10 text-indigo-600 dark:text-indigo-300 rounded-xl p-3 scale-95 active:scale-90 transition-transform group relative" href="#" title="待办">
+<span class="material-symbols-outlined" data-icon="check_box">check_box</span>
+</a>
+<a class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-xl scale-95 active:scale-90 transition-transform" href="#" title="灵感">
+<span class="material-symbols-outlined" data-icon="lightbulb">lightbulb</span>
+</a>
+<a class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-xl scale-95 active:scale-90 transition-transform" href="#" title="番茄钟">
+<span class="material-symbols-outlined" data-icon="timer">timer</span>
+</a>
+<a class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-xl scale-95 active:scale-90 transition-transform" href="#" title="剪贴板">
+<span class="material-symbols-outlined" data-icon="content_paste">content_paste</span>
+</a>
+<a class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-xl scale-95 active:scale-90 transition-transform" href="#" title="语音">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</a>
+<a class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-xl scale-95 active:scale-90 transition-transform" href="#" title="报表">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+</a>
+</div>
+<div class="mt-auto">
+<a class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors rounded-xl scale-95 active:scale-90 transition-transform" href="#" title="设置">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-16 pt-12 min-h-screen bg-surface">
+<div class="max-w-6xl mx-auto px-10 py-8">
+<!-- Toolbar Area -->
+<div class="flex flex-col gap-6 mb-10">
+<div class="flex items-center justify-between">
+<h1 class="text-3xl font-headline font-extrabold text-on-surface tracking-tight">我的待办</h1>
+<div class="flex items-center gap-3">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px] transition-colors group-focus-within:text-primary">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-high border-none rounded-xl text-sm w-64 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all" placeholder="搜索待办..." type="text"/>
+</div>
+<button class="p-2 text-outline hover:bg-surface-container-high rounded-lg transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Filter Chips -->
+<div class="flex items-center gap-2 overflow-x-auto pb-2">
+<button class="px-5 py-2 rounded-full bg-primary text-on-primary text-xs font-semibold shadow-md shadow-primary/10">全部</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-on-surface-variant text-xs font-semibold hover:bg-surface-container-high transition-colors">进行中</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-on-surface-variant text-xs font-semibold hover:bg-surface-container-high transition-colors">已完成</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-on-surface-variant text-xs font-semibold hover:bg-surface-container-high transition-colors">高优先级</button>
+</div>
+</div>
+<!-- Content Grid/List -->
+<div class="space-y-10">
+<!-- Section: 进行中 -->
+<section>
+<div class="flex items-center gap-2 mb-4">
+<h2 class="text-lg font-headline font-bold text-on-surface/80">进行中</h2>
+<span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">2</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Todo Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-start gap-4 hover:shadow-xl hover:shadow-surface-tint/5 transition-all group cursor-pointer">
+<div class="mt-1">
+<div class="w-5 h-5 border-2 border-outline-variant rounded-md group-hover:border-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-transparent text-[16px] group-hover:text-primary/30">check</span>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-1">
+<h3 class="text-sm font-semibold text-on-surface">完成 FlowBox 架构文档</h3>
+<div class="w-2 h-2 rounded-full bg-error" title="高优先级"></div>
+</div>
+<div class="flex items-center gap-2 text-[11px] text-outline font-medium">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">calendar_today</span>今天</span>
+<span class="px-2 py-0.5 bg-surface-container-low rounded-md text-primary">#工作</span>
+</div>
+</div>
+</div>
+<!-- Todo Card 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-start gap-4 hover:shadow-xl hover:shadow-surface-tint/5 transition-all group cursor-pointer">
+<div class="mt-1">
+<div class="w-5 h-5 border-2 border-outline-variant rounded-md group-hover:border-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-transparent text-[16px] group-hover:text-primary/30">check</span>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-1">
+<h3 class="text-sm font-semibold text-on-surface">学习 Rust 所有权机制</h3>
+<div class="w-2 h-2 rounded-full bg-amber-500" title="中优先级"></div>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 text-[11px] text-outline font-medium">
+<span class="px-2 py-0.5 bg-surface-container-low rounded-md text-primary">#学习</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container/30 text-on-secondary-container text-[10px] font-bold">
+<span class="material-symbols-outlined text-[12px]">auto_awesome</span>
+                                        🎙️ AI提取
+                                    </div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: 待处理 -->
+<section>
+<div class="flex items-center gap-2 mb-4">
+<h2 class="text-lg font-headline font-bold text-on-surface/80">待处理</h2>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-outline text-[10px] font-bold">2</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Todo Card 3 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-start gap-4 hover:shadow-xl hover:shadow-surface-tint/5 transition-all group cursor-pointer">
+<div class="mt-1">
+<div class="w-5 h-5 border-2 border-outline-variant rounded-md group-hover:border-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-transparent text-[16px] group-hover:text-primary/30">check</span>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-1">
+<h3 class="text-sm font-semibold text-on-surface">设计剪贴板 UI 原型</h3>
+<div class="w-2 h-2 rounded-full bg-emerald-500" title="低优先级"></div>
+</div>
+<div class="flex items-center gap-2 text-[11px] text-outline font-medium">
+<span class="px-2 py-0.5 bg-surface-container-low rounded-md text-primary">#设计</span>
+</div>
+</div>
+</div>
+<!-- Todo Card 4 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-start gap-4 hover:shadow-xl hover:shadow-surface-tint/5 transition-all group cursor-pointer">
+<div class="mt-1">
+<div class="w-5 h-5 border-2 border-outline-variant rounded-md group-hover:border-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-transparent text-[16px] group-hover:text-primary/30">check</span>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-1">
+<h3 class="text-sm font-semibold text-on-surface">整理本周会议纪要</h3>
+<div class="w-2 h-2 rounded-full bg-amber-500" title="中优先级"></div>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[14px]">mic</span>
+<span class="text-[11px] text-outline font-medium">语音</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: 已完成 (Collapsible) -->
+<section class="opacity-60 grayscale-[0.2]">
+<details class="group">
+<summary class="flex items-center gap-2 mb-4 list-none cursor-pointer">
+<span class="material-symbols-outlined text-[18px] transition-transform group-open:rotate-90">chevron_right</span>
+<h2 class="text-lg font-headline font-bold text-on-surface/80">已完成</h2>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-outline text-[10px] font-bold">12</span>
+</summary>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container p-4 rounded-xl flex items-start gap-4">
+<div class="mt-1">
+<div class="w-5 h-5 bg-primary rounded-md flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[16px]">check</span>
+</div>
+</div>
+<div class="flex-1">
+<h3 class="text-sm font-medium text-on-surface line-through decoration-on-surface/30">配置 AI 向量数据库环境</h3>
+<div class="text-[11px] text-outline">昨天</div>
+</div>
+</div>
+</div>
+</details>
+</section>
+</div>
+</div>
+<!-- Floating AI Insight Panel (Asymmetric Design Element) -->
+<aside class="fixed right-8 bottom-8 w-72 p-6 bg-surface-container-lowest/80 backdrop-blur-md rounded-3xl shadow-2xl shadow-primary/5 border border-white/40 hidden xl:block">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-[20px]">insights</span>
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">AI 智能洞察</span>
+</div>
+<p class="text-xs leading-relaxed text-on-surface-variant mb-4">
+                根据您最近的工作习惯，建议在 <span class="text-primary font-bold italic">14:00</span> 开始“Rust 学习”，这是您专注度最高的时候。
+            </p>
+<div class="h-[2px] w-full bg-surface-container-high rounded-full mb-4">
+<div class="h-full w-2/3 bg-primary rounded-full"></div>
+</div>
+<div class="flex justify-between items-center text-[10px] font-bold text-outline">
+<span>今日效率值</span>
+<span class="text-primary">68%</span>
+</div>
+</aside>
+</main>
+<!-- Visual Polish: Soft Ambient Glow -->
+<div class="fixed top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+<div class="fixed bottom-[-5%] left-[-5%] w-[30%] h-[30%] bg-secondary-container/10 blur-[100px] rounded-full pointer-events-none -z-10"></div>
+</body></html>

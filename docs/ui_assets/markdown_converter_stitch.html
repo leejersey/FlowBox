@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container": "#edeef1",
+                        "surface-dim": "#d9dadd",
+                        "outline-variant": "#c7c4d8",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "surface-variant": "#e1e2e5",
+                        "on-background": "#191c1e",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-highest": "#e1e2e5",
+                        "background": "#f8f9fc",
+                        "surface-tint": "#4d44e3",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-tertiary-fixed": "#351000",
+                        "tertiary-container": "#a44100",
+                        "outline": "#777587",
+                        "inverse-on-surface": "#f0f1f4",
+                        "secondary-container": "#b6b4ff",
+                        "primary-container": "#4f46e5",
+                        "surface": "#f8f9fc",
+                        "primary": "#3525cd",
+                        "on-secondary-fixed": "#140f54",
+                        "error": "#ba1a1a",
+                        "on-surface": "#191c1e",
+                        "on-primary-container": "#dad7ff",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "secondary-fixed": "#e2dfff",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#e7e8eb",
+                        "inverse-surface": "#2e3133",
+                        "inverse-primary": "#c3c0ff",
+                        "tertiary": "#7e3000",
+                        "on-primary-fixed": "#0f0069",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f2f3f6",
+                        "surface-bright": "#f8f9fc",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "secondary": "#58579b",
+                        "on-surface-variant": "#464555",
+                        "on-tertiary-container": "#ffd2be",
+                        "primary-fixed": "#e2dfff",
+                        "on-secondary-container": "#454386",
+                        "error-container": "#ffdad6"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-sidebar {
+            background: rgba(242, 243, 246, 0.7);
+            backdrop-filter: blur(20px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e1e2e5;
+            border-radius: 10px;
+        }
+        .traffic-light-red { background-color: #ff5f56; }
+        .traffic-light-yellow { background-color: #ffbd2e; }
+        .traffic-light-green { background-color: #27c93f; }
+        .active-nav-glow {
+            box-shadow: 0 0 15px rgba(77, 68, 227, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface h-full overflow-hidden flex">
+<!-- Persistent Narrow Sidebar (64px) -->
+<aside class="w-16 h-full glass-sidebar flex flex-col items-center py-6 gap-8 z-20 shrink-0">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">fluid</span>
+</div>
+<nav class="flex flex-col gap-6">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-outline hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">dashboard</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-outline hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">description</span>
+</button>
+<!-- Active State: Markdown Converter -->
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-surface-container-lowest text-primary shadow-sm active-nav-glow">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">markdown</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-outline hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">assignment</span>
+</button>
+</nav>
+<div class="mt-auto flex flex-col gap-6">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-outline hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high">
+<img class="w-full h-full object-cover" data-alt="close-up portrait of a professional modern user with soft natural lighting and a neutral blurred background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfWS6WNxMPope7GuQWpa4a65cfeO9jnzVuKJAXXxboklZvekBbceh3SZa5qE3dfRVlmnwivDEaXqga7vFiThc7wc2CrOnGV_pu8uoeQaxU2cZqxJQNS7ud-E5D4br5SbWB2j7MbVe8_3hIMXuZ9cUhVichBhNB_KhZ9IYXW7lzuk7EjT4Rk0-Hb8BjwmJTbLWGhdBPUhDGkFVz_xwDE27QaiFFJb6hhqcKeR7w6_AMtUHHj5ybrHHzCnS3UI1zdJY02UhMtf_4ERQ"/>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 bg-surface">
+<!-- macOS Style Title Bar -->
+<header class="h-10 flex items-center px-4 shrink-0 select-none">
+<div class="flex gap-2">
+<div class="w-3.5 h-3.5 rounded-full traffic-light-red"></div>
+<div class="w-3.5 h-3.5 rounded-full traffic-light-yellow"></div>
+<div class="w-3.5 h-3.5 rounded-full traffic-light-green"></div>
+</div>
+<div class="flex-1 text-center text-xs font-medium text-outline-variant font-headline">Markdown Studio — Digital Atelier</div>
+</header>
+<!-- Top Toolbar -->
+<section class="px-8 py-4 flex items-center justify-between">
+<h1 class="text-2xl font-extrabold font-headline tracking-tight text-on-surface flex items-center gap-3">
+<span class="text-primary material-symbols-outlined text-3xl">markdown_copy</span>
+                Markdown 转换器
+            </h1>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 text-sm font-semibold text-outline hover:text-on-surface hover:bg-surface-container-high rounded-full transition-all">
+                    清空
+                </button>
+<button class="px-5 py-2 text-sm font-bold text-on-primary bg-gradient-to-br from-primary to-primary-container rounded-full shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">auto_awesome</span>
+                    ✨ AI 智能还原 Markdown
+                </button>
+</div>
+</section>
+<!-- Split Pane Area -->
+<div class="flex-1 px-8 pb-4 flex gap-6 overflow-hidden">
+<!-- Left Pane (Source) -->
+<div class="flex-1 flex flex-col gap-3 min-w-0">
+<div class="flex items-center justify-between px-2">
+<label class="text-xs font-bold uppercase tracking-widest text-outline">Rich Text / HTML Source</label>
+<span class="text-[10px] text-outline-variant">Auto-detecting format...</span>
+</div>
+<div class="flex-1 bg-surface-container-low rounded-xl p-6 relative group overflow-hidden">
+<div class="h-full w-full overflow-y-auto custom-scrollbar font-body text-on-surface-variant leading-relaxed">
+<h2 class="text-xl font-bold text-on-surface mb-4">FlowBox 架构文档</h2>
+<ul class="list-disc list-inside space-y-2 mb-4">
+<li><strong class="text-primary">Tauri</strong>: 用于跨平台桌面渲染，提供极小的包体积</li>
+<li><strong class="text-primary">React</strong>: 用于 UI 交互和状态管理</li>
+<li><a class="text-primary underline underline-offset-4" href="https://flowbox.ai">查看官方文档</a></li>
+</ul>
+<p class="text-sm">粘贴富文本或拖入 HTML 内容，AI 将自动分析层级并保留语义...</p>
+</div>
+<!-- Subtle Ghost Border -->
+<div class="absolute inset-0 border-2 border-primary/0 group-hover:border-primary/5 rounded-xl pointer-events-none transition-colors"></div>
+</div>
+</div>
+<!-- Vertical Divider Decorative -->
+<div class="w-[1px] h-full bg-surface-container-high self-center"></div>
+<!-- Right Pane (Markdown Output) -->
+<div class="flex-1 flex flex-col gap-3 min-w-0">
+<div class="flex items-center justify-between px-2">
+<label class="text-xs font-bold uppercase tracking-widest text-outline">Markdown Output</label>
+<button class="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-container transition-colors">
+<span class="material-symbols-outlined text-sm">content_copy</span>
+                        复制 Markdown
+                    </button>
+</div>
+<div class="flex-1 bg-surface-container-highest/50 rounded-xl p-6 font-mono text-sm leading-relaxed text-on-surface overflow-hidden relative group">
+<pre class="h-full w-full overflow-y-auto custom-scrollbar"><code class="text-indigo-900 dark:text-indigo-200"># FlowBox 架构文档
+
+- **Tauri**: 用于跨平台桌面渲染
+- **React**: 用于 UI 交互
+- [查看文档](https://flowbox.ai)
+
+---
+&gt; Generated via FlowBox AI Engine</code></pre>
+<!-- Tonal Depth Layer -->
+<div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface-container-high/20 pointer-events-none"></div>
+</div>
+</div>
+</div>
+<!-- Bottom Action Bar (Obsidian Bridge) -->
+<footer class="mx-8 mb-8 p-6 bg-surface-container-lowest rounded-2xl shadow-xl shadow-surface-tint/5 border border-outline-variant/10">
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">diamond</span>
+</div>
+<h3 class="font-bold font-headline text-on-surface">导出到 Obsidian</h3>
+<div class="h-[1px] flex-1 bg-surface-container mx-4"></div>
+</div>
+<div class="grid grid-cols-12 gap-4 items-end">
+<div class="col-span-5 flex flex-col gap-1.5">
+<label class="text-[11px] font-bold text-outline-variant ml-1">Obsidian 库路径 (Vault Path)</label>
+<div class="relative">
+<input class="w-full h-11 bg-surface-container-low border-none rounded-lg text-sm px-4 focus:ring-2 focus:ring-primary/20 text-on-surface-variant font-mono" type="text" value="/Users/admin/Documents/MyVault"/>
+<button class="absolute right-3 top-2.5 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">folder_open</span>
+</button>
+</div>
+</div>
+<div class="col-span-4 flex flex-col gap-1.5">
+<label class="text-[11px] font-bold text-outline-variant ml-1">文件名 (Filename)</label>
+<input class="w-full h-11 bg-surface-container-low border-none rounded-lg text-sm px-4 focus:ring-2 focus:ring-primary/20 text-on-surface-variant font-mono" type="text" value="FlowBox_Memo_20240510.md"/>
+</div>
+<div class="col-span-3">
+<button class="w-full h-11 bg-on-surface text-surface-container-lowest rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-primary transition-all active:scale-[0.98] shadow-lg shadow-on-surface/5">
+<span class="material-symbols-outlined text-xl">upload_file</span>
+                            确认导出
+                        </button>
+</div>
+</div>
+</div>
+</footer>
+</main>
+<!-- Background Decoration -->
+<div class="fixed top-0 right-0 -z-10 w-1/2 h-1/2 bg-gradient-to-bl from-primary/5 to-transparent blur-3xl opacity-50"></div>
+</body></html>

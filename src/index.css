@@ -1,0 +1,73 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-primary: #4648d4;
+  --color-primary-container: #6063ee;
+  
+  --color-surface: #faf8ff;
+  --color-surface-container-low: #f3f0f8;
+  --color-surface-container: #ece9f2;
+  --color-surface-container-highest: #e1dbec;
+  
+  --color-on-surface: #131b2e;
+  --color-on-surface-variant: #4d5462;
+  
+  --color-outline-variant: rgba(19, 27, 46, 0.15);
+
+  --font-display: 'Manrope', 'system-ui', sans-serif;
+  --font-body: 'Inter', 'system-ui', sans-serif;
+}
+
+@layer base {
+  .dark {
+    --color-primary: #818cf8;
+    --color-primary-container: #4f46e5;
+    
+    --color-surface: #0f172a;
+    --color-surface-container-low: #1e293b;
+    --color-surface-container: #334155;
+    --color-surface-container-highest: #475569;
+    
+    --color-on-surface: #f8fafc;
+    --color-on-surface-variant: #94a3b8;
+    
+    --color-outline-variant: rgba(255, 255, 255, 0.15);
+  }
+}
+
+@layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@500;600;700;800&display=swap');
+
+  html, body {
+    @apply bg-surface text-on-surface font-body antialiased;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  /* 基础选择禁忌：去掉实线焦点，使用幽灵光环 */
+  *:focus-visible {
+    outline: 2px solid var(--color-primary-container);
+    outline-offset: 2px;
+  }
+}
+
+/* 一些自定义玻璃态类和工具 */
+@layer utilities {
+  .glass-panel {
+    @apply bg-surface/80 backdrop-blur-2xl border border-white/20;
+    box-shadow: 0 16px 64px rgba(19, 27, 46, 0.06);
+  }
+  
+  .glass-sidebar {
+    @apply bg-surface-container-low/70 backdrop-blur-xl border-r border-white/10;
+  }
+
+  .primary-gradient-button {
+    @apply bg-gradient-to-br from-primary to-primary-container text-white shadow-sm transition-all;
+  }
+  .primary-gradient-button:hover {
+    @apply opacity-90 shadow-md;
+  }
+}

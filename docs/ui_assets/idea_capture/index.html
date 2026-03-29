@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FlowBox - 灵感控制台</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-low": "#f2f3f6",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-surface-variant": "#464555",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#d9dadd",
+                        "inverse-surface": "#2e3133",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-primary-fixed": "#0f0069",
+                        "primary-fixed": "#e2dfff",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "on-primary-container": "#dad7ff",
+                        "surface-container-highest": "#e1e2e5",
+                        "on-background": "#191c1e",
+                        "inverse-primary": "#c3c0ff",
+                        "secondary": "#58579b",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "surface-variant": "#e1e2e5",
+                        "surface": "#f8f9fc",
+                        "outline-variant": "#c7c4d8",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#edeef1",
+                        "primary-container": "#4f46e5",
+                        "surface-tint": "#4d44e3",
+                        "on-primary": "#ffffff",
+                        "background": "#f8f9fc",
+                        "inverse-on-surface": "#f0f1f4",
+                        "on-surface": "#191c1e",
+                        "outline": "#777587",
+                        "on-tertiary-container": "#ffd2be",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#e7e8eb",
+                        "tertiary-container": "#a44100",
+                        "error-container": "#ffdad6",
+                        "tertiary": "#7e3000",
+                        "secondary-fixed": "#e2dfff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "primary": "#3525cd",
+                        "on-secondary-fixed": "#140f54",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "on-secondary-container": "#454386",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "surface-bright": "#f8f9fc",
+                        "secondary-container": "#b6b4ff"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .masonry-grid {
+            column-count: 3;
+            column-gap: 1.5rem;
+        }
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1.5rem;
+        }
+        .glass-sidebar {
+            background: rgba(242, 243, 246, 0.7);
+            backdrop-filter: blur(20px);
+        }
+        .ai-glow {
+            box-shadow: 0 0 20px rgba(77, 68, 227, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased overflow-hidden">
+<!-- macOS Title Bar (Visual Only) -->
+<div class="fixed top-0 left-0 w-full h-10 flex items-center px-4 z-50 pointer-events-none">
+<div class="flex space-x-2 pointer-events-auto">
+<div class="w-3.5 h-3.5 rounded-full bg-[#ff5f57]"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-[#febc2e]"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-[#28c840]"></div>
+</div>
+</div>
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full z-40 w-16 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-xl flex flex-col items-center py-4 font-manrope antialiased">
+<div class="mb-8 mt-10">
+<div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-lg">智</div>
+</div>
+<nav class="flex-1 flex flex-col space-y-4">
+<button class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="check_box">check_box</span>
+</button>
+<button class="bg-indigo-600/10 text-indigo-600 dark:text-indigo-300 rounded-xl p-3 hover:bg-slate-200/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="lightbulb" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+</button>
+<button class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="timer">timer</span>
+</button>
+<button class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="content_paste">content_paste</span>
+</button>
+<button class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</button>
+<button class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+</button>
+</nav>
+<div class="mt-auto">
+<button class="text-slate-500 dark:text-slate-400 p-3 hover:bg-slate-200/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</aside>
+<!-- TopNavBar (Shared Component) -->
+<header class="h-12 w-full fixed top-0 left-0 z-30 flex items-center justify-between px-6 bg-slate-50 dark:bg-slate-900 font-manrope font-semibold tracking-tight">
+<div class="flex items-center ml-16">
+<span class="text-base font-black text-slate-900 dark:text-slate-100">FlowBox</span>
+<span class="ml-2 text-xs font-medium text-slate-400 uppercase tracking-widest">FlowBox</span>
+</div>
+<div class="flex items-center space-x-4">
+<button class="text-slate-500 hover:text-indigo-500 transition-colors">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+<button class="text-slate-500 hover:text-indigo-500 transition-colors">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+</button>
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-md active:scale-95 transition-all">
+                新建想法
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-16 mt-12 h-[calc(100vh-3rem)] overflow-y-auto p-8 lg:p-12">
+<div class="max-w-7xl mx-auto space-y-12">
+<!-- Quick Capture Zone -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+<div class="lg:col-span-2">
+<div class="bg-surface-container-low rounded-3xl p-6 transition-all focus-within:bg-surface-container-high">
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-xl font-medium placeholder-on-surface-variant/40 resize-none min-h-[120px] font-headline" placeholder="记录你的灵感..."></textarea>
+<div class="flex flex-wrap items-center justify-between mt-4 gap-4">
+<div class="flex flex-wrap gap-2">
+<span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-primary-fixed transition-colors">#工作</span>
+<span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-primary-fixed transition-colors">#创意</span>
+<span class="bg-surface-container-highest px-3 py-1 rounded-full text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-primary-fixed transition-colors">#技术</span>
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+</button>
+</div>
+<div class="flex items-center space-x-3">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="image">image</span>
+</button>
+<button class="bg-primary text-on-primary px-8 py-2.5 rounded-full font-bold text-sm tracking-wide shadow-lg hover:shadow-primary/20 active:scale-95 transition-all">
+                                    保存
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Weekly Insight Card -->
+<div class="bg-white rounded-3xl p-6 relative overflow-hidden group border-2 border-transparent hover:border-primary-container/20 transition-all ai-glow">
+<div class="absolute top-0 right-0 p-4">
+<span class="bg-secondary-container text-on-secondary-container text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm border border-white/20">AI Insight</span>
+</div>
+<h3 class="font-headline font-extrabold text-lg text-slate-900 mb-2">AI 灵感周报</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-6">
+                        本周你记录了 12 条关于 <span class="text-indigo-600 font-semibold">#代码重构</span> 的想法。AI 发现这些灵感可以整合为一个自动化工具集。
+                    </p>
+<a class="inline-flex items-center text-primary text-sm font-bold group" href="#">
+                        查看详情 
+                        <span class="material-symbols-outlined text-sm ml-1 group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</a>
+<!-- Decorative Background Element -->
+<div class="absolute -bottom-10 -right-10 w-32 h-32 bg-primary-fixed-dim rounded-full blur-3xl opacity-30 pointer-events-none"></div>
+</div>
+</section>
+<!-- Idea Grid (Masonry) -->
+<section class="masonry-grid">
+<!-- Card 1 -->
+<div class="masonry-item group bg-surface-container-lowest p-6 rounded-3xl hover:shadow-xl hover:shadow-indigo-500/5 transition-all cursor-default">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors" data-icon="content_paste">content_paste</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 transition-all">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-4">
+                        做一个 AI 代码审查工具，专门针对 Rust 的所有权模型提供图形化建议。集成到 VS Code 插件中。
+                    </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">#技术</span>
+<span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">#创意</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+<span>2小时前</span>
+<div class="flex items-center">
+<span class="w-1.5 h-1.5 rounded-full bg-error mr-2"></span>
+                            高优先级
+                        </div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="masonry-item group bg-surface-container-lowest p-6 rounded-3xl hover:shadow-xl hover:shadow-indigo-500/5 transition-all cursor-default">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors" data-icon="mic">mic</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 transition-all">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-4">
+                        公众号选题：为什么 2024 年我们依然需要一个本地优先的笔记应用？讨论隐私、速度与离线工作的必要性。
+                    </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="text-[10px] font-bold text-orange-500 uppercase tracking-widest">#写作</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+<span>昨天 14:20</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="masonry-item group bg-surface-container-lowest p-6 rounded-3xl hover:shadow-xl hover:shadow-indigo-500/5 transition-all cursor-default">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors" data-icon="lightbulb">lightbulb</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 transition-all">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-4">
+                        FlowBox 可以加一个 Obsidian 插件双向同步，这样我在手机上语音录入的灵感可以直接进到我的双链笔记库。
+                    </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">#产品</span>
+<span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">#工作</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+<span>昨天 10:05</span>
+<div class="flex items-center">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed mr-2"></span>
+                            低优先级
+                        </div>
+</div>
+</div>
+<!-- Card 4 (With Image) -->
+<div class="masonry-item group bg-surface-container-lowest rounded-3xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/5 transition-all cursor-default">
+<img class="w-full h-32 object-cover" data-alt="abstract flowing 3D shapes in shades of lavender and cobalt blue with soft studio lighting and smooth texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoi9lgAFrhjZS-zsKXAbxsj3T6sWV1R5uGvE3qXHjcKhKb77IyMuBnQcvzM0RuxH24k9WYC5KFxOx-P9mxhrrPZhNJ03Md6PPjDyjRua5Ax4FR-4pb2IKTvMJNhQxDZtec9QuZDEsEt7VqSE0YeQmUSM9JC-O7_-upg0fSXXnx_XGTJkd8P-B7snsOaMB7r9K1oE3Vg-2e8As4oJhpuxf24aD0Iobs_C5AsOJBCB_MnhqOWC3-U_UrCfsciHjnXSj9HxqPANp73Vg"/>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors" data-icon="image">image</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 transition-all">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-4">
+                            尝试用 Rust 重写现有的 Electron 渲染层，追求极致的启动速度和内存控制。
+                        </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">#技术</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+<span>3天前</span>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="masonry-item group bg-surface-container-lowest p-6 rounded-3xl hover:shadow-xl hover:shadow-indigo-500/5 transition-all cursor-default">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors" data-icon="lightbulb">lightbulb</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 transition-all">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-4">
+                        周末去静安公园写生，观察光影变化。可以拍一些视频作为下个项目的氛围图。
+                    </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="text-[10px] font-bold text-teal-500 uppercase tracking-widest">#生活</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+<span>4天前</span>
+</div>
+</div>
+<!-- Card 6 -->
+<div class="masonry-item group bg-surface-container-lowest p-6 rounded-3xl hover:shadow-xl hover:shadow-indigo-500/5 transition-all cursor-default">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors" data-icon="content_paste">content_paste</span>
+<button class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 transition-all">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-4">
+                        调研一下 GPT-4o 的 API 响应速度，对比 Claude 3.5 Sonnet 在代码补全上的表现。
+                    </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">#技术</span>
+<span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">#AI</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+<span>5天前</span>
+<div class="flex items-center">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container mr-2"></span>
+                            中优先级
+                        </div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Contextual FAB (Hidden on this screen as per rules, but showing for design completeness if allowed) -->
+<!-- Suppressed based on rule: "suppress the FAB on Settings, Profile, Details..." and keeping main UI clean -->
+</body></html>

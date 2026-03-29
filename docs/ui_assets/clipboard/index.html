@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@700;800&amp;family=Fira+Code&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-fixed": "#0f0069",
+              "on-surface": "#191c1e",
+              "on-error": "#ffffff",
+              "tertiary": "#7e3000",
+              "primary-fixed-dim": "#c3c0ff",
+              "on-tertiary-container": "#ffd2be",
+              "on-background": "#191c1e",
+              "on-primary": "#ffffff",
+              "error": "#ba1a1a",
+              "primary-fixed": "#e2dfff",
+              "surface-dim": "#d9dadd",
+              "inverse-surface": "#2e3133",
+              "on-secondary-fixed-variant": "#413f82",
+              "on-secondary-container": "#454386",
+              "on-primary-container": "#dad7ff",
+              "surface-bright": "#f8f9fc",
+              "primary-container": "#4f46e5",
+              "surface-container-highest": "#e1e2e5",
+              "on-secondary": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "tertiary-fixed": "#ffdbcc",
+              "on-tertiary-fixed": "#351000",
+              "tertiary-container": "#a44100",
+              "outline-variant": "#c7c4d8",
+              "primary": "#3525cd",
+              "background": "#f8f9fc",
+              "surface-container": "#edeef1",
+              "secondary-fixed": "#e2dfff",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f2f3f6",
+              "secondary-container": "#b6b4ff",
+              "error-container": "#ffdad6",
+              "surface-tint": "#4d44e3",
+              "on-error-container": "#93000a",
+              "on-surface-variant": "#464555",
+              "on-tertiary-fixed-variant": "#7b2f00",
+              "inverse-on-surface": "#f0f1f4",
+              "surface-variant": "#e1e2e5",
+              "secondary-fixed-dim": "#c3c0ff",
+              "surface": "#f8f9fc",
+              "tertiary-fixed-dim": "#ffb695",
+              "outline": "#777587",
+              "on-secondary-fixed": "#140f54",
+              "secondary": "#58579b",
+              "inverse-primary": "#c3c0ff",
+              "surface-container-high": "#e7e8eb",
+              "on-primary-fixed-variant": "#3323cc"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"],
+              "mono": ["Fira Code"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glassmorphism-tonal-shift {
+            background: rgba(242, 243, 246, 0.7);
+            backdrop-filter: blur(20px);
+        }
+        .no-border { border: none !important; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e1e2e5; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c7c4d8; }
+        .card-hover-actions { opacity: 0; transition: opacity 0.2s ease-in-out; }
+        .group:hover .card-hover-actions { opacity: 1; }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface select-none">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full w-[64px] z-50 flex flex-col items-center justify-between py-6 bg-slate-100/70 backdrop-blur-[20px] shadow-[0_12px_40px_rgba(79,70,229,0.06)] font-['Manrope'] antialiased tracking-tight">
+<div class="flex flex-col items-center gap-8">
+<div class="text-xs font-black text-indigo-700">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">blur_on</span>
+</div>
+<nav class="flex flex-col gap-4">
+<button class="bg-gradient-to-br from-[#3525cd] to-[#4f46e5] text-white rounded-xl p-3 scale-100 transition-transform active:scale-95 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">content_paste</span>
+</button>
+<button class="text-slate-400 p-3 hover:text-indigo-500 hover:bg-white/50 rounded-lg transition-all duration-300">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<button class="text-slate-400 p-3 hover:text-indigo-500 hover:bg-white/50 rounded-lg transition-all duration-300">
+<span class="material-symbols-outlined">star</span>
+</button>
+<button class="text-slate-400 p-3 hover:text-indigo-500 hover:bg-white/50 rounded-lg transition-all duration-300">
+<span class="material-symbols-outlined">history</span>
+</button>
+</nav>
+</div>
+<button class="text-slate-400 p-3 hover:text-indigo-500 hover:bg-white/50 rounded-lg transition-all duration-300">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</aside>
+<!-- Main Content Shell -->
+<main class="ml-[64px] min-h-screen flex flex-col">
+<!-- macOS Title Bar & TopNavBar (Shared Component) -->
+<header class="sticky top-0 z-40 bg-[#f8f9fc]/80 backdrop-blur-md flex justify-between items-center w-full pl-6 pr-6 h-14 max-w-[1920px] mx-auto">
+<!-- Traffic Lights (macOS Style) -->
+<div class="flex gap-2 items-center">
+<div class="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
+<div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+<div class="w-3 h-3 rounded-full bg-[#28c840]"></div>
+<h1 class="ml-4 text-lg font-black tracking-tighter text-indigo-700 font-headline">FlowBox (FlowBox)</h1>
+</div>
+<!-- Search Bar (on_left in JSON) -->
+<div class="flex-1 max-w-xl mx-8">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="w-full h-9 pl-10 pr-4 bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-outline/60" placeholder="搜索剪贴板内容..." type="text"/>
+</div>
+</div>
+<!-- Actions Cluster -->
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Listening
+                </div>
+<button class="text-slate-500 hover:text-indigo-500 text-xs font-medium px-3 py-1.5 hover:bg-slate-200/50 rounded-lg transition-colors">Clear History</button>
+<div class="flex items-center gap-1 border-l border-slate-200 pl-4">
+<button class="p-1.5 text-slate-500 hover:bg-slate-200/50 rounded-lg transition-colors"><span class="material-symbols-outlined text-xl">sync</span></button>
+<button class="p-1.5 text-slate-500 hover:bg-slate-200/50 rounded-lg transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</div>
+<div class="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center overflow-hidden">
+<img alt="User" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDjl9xicnTwUpuK24XM0vHWJqoB6CzS9Zki4D3cwZrC7r4u1zq8iRCYgel2ZTpLKDa0SRVRfuB65iLJfF63KIpJZCZZScIzRtrDnWYkTs6Ev7QTNjk2sG_LGYHs0SjxEFzkH9j5_bIdhu03E0fYaf1sa4j2KJ25-OifcgzwTQSivOvY_mkER3dAs5aY06FjyXGqOsCh77suaZwTSglCNj3cGH1OYrAuretIdDNsbjY7wf4GIzQONd5d7S2yY4p0Ue0bGC-om5Tm8g"/>
+</div>
+</div>
+</header>
+<!-- Sub-navigation Filter Bar -->
+<nav class="px-8 py-3 bg-surface flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-surface-container">
+<button class="px-4 py-1.5 bg-primary text-on-primary rounded-full text-sm font-bold shadow-sm shadow-primary/20">全部</button>
+<button class="px-4 py-1.5 bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high rounded-full text-sm font-medium transition-colors">文本</button>
+<button class="px-4 py-1.5 bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high rounded-full text-sm font-medium transition-colors">代码</button>
+<button class="px-4 py-1.5 bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high rounded-full text-sm font-medium transition-colors">图片</button>
+<button class="px-4 py-1.5 bg-surface-container-highest text-on-surface-variant hover:bg-surface-container-high rounded-full text-sm font-medium transition-colors">已置顶</button>
+</nav>
+<!-- Feed Canvas -->
+<section class="flex-1 p-8 max-w-5xl mx-auto w-full space-y-4">
+<!-- Item 1: Code Card (Newest) -->
+<div class="group relative bg-surface-container-lowest rounded-xl p-5 shadow-[0_12px_40px_rgba(77,68,227,0.03)] hover:shadow-[0_12px_40px_rgba(77,68,227,0.08)] transition-all">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<span class="px-2.5 py-1 bg-secondary-container text-on-secondary-container text-[11px] font-bold rounded-md flex items-center gap-1">
+                            💻 代码
+                        </span>
+<span class="text-xs text-outline font-medium">刚刚</span>
+<span class="material-symbols-outlined text-outline text-sm">terminal</span>
+</div>
+<div class="card-hover-actions flex gap-1">
+<button class="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">content_copy</span></button>
+<button class="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">push_pin</span></button>
+<button class="p-2 text-outline hover:text-error hover:bg-error/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<div class="bg-surface-container p-4 rounded-lg font-mono text-sm text-indigo-900 leading-relaxed overflow-x-auto">
+<code class="whitespace-pre">async function fetchTodos() {
+    const res = await fetch('/api/todos');
+    return res.json();
+}</code>
+</div>
+<!-- AI Dropdown Open State -->
+<div class="mt-4 pt-4 border-t border-surface-container flex flex-col gap-2">
+<div class="flex items-center gap-2 text-xs font-bold text-primary mb-1">
+<span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                        🤖 AI 操作建议
+                    </div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+<button class="flex items-center gap-2 px-3 py-2 bg-primary/5 text-primary text-xs font-semibold rounded-lg hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-base">construction</span> 🔧 AI 修复代码
+                        </button>
+<button class="flex items-center gap-2 px-3 py-2 bg-primary/5 text-primary text-xs font-semibold rounded-lg hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-base">forum</span> 💬 解释代码
+                        </button>
+<button class="flex items-center gap-2 px-3 py-2 bg-primary/5 text-primary text-xs font-semibold rounded-lg hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-base">sticky_note_2</span> 📝 添加注释
+                        </button>
+</div>
+</div>
+</div>
+<!-- Item 2: Pinned Text Card -->
+<div class="group relative bg-surface-container-lowest rounded-xl p-5 shadow-[0_12px_40px_rgba(77,68,227,0.03)] hover:shadow-[0_12px_40px_rgba(77,68,227,0.08)] transition-all border-l-4 border-primary">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<span class="px-2.5 py-1 bg-secondary-container text-on-secondary-container text-[11px] font-bold rounded-md">
+                            📝 文档
+                        </span>
+<span class="text-xs text-outline font-medium">5分钟前</span>
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">push_pin</span>
+<span class="material-symbols-outlined text-outline text-sm">language</span>
+</div>
+<div class="card-hover-actions flex gap-1">
+<button class="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">content_copy</span></button>
+<button class="p-2 text-outline hover:text-error hover:bg-error/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<p class="text-on-surface-variant leading-relaxed text-[15px]">
+                    Tauri 2.0 uses WKWebView on macOS, which means better performance, improved security, and better integration with system APIs compared to the previous version. It also introduces mobile support for iOS and Android.
+                </p>
+</div>
+<!-- Item 3: Image Card with OCR -->
+<div class="group relative bg-surface-container-lowest rounded-xl p-5 shadow-[0_12px_40px_rgba(77,68,227,0.03)] hover:shadow-[0_12px_40px_rgba(77,68,227,0.08)] transition-all">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<span class="px-2.5 py-1 bg-error-container text-on-error-container text-[11px] font-bold rounded-md">
+                            🐛 报错
+                        </span>
+<span class="text-xs text-outline font-medium">15分钟前</span>
+<span class="material-symbols-outlined text-outline text-sm">screenshot_monitor</span>
+</div>
+<div class="card-hover-actions flex gap-1">
+<button class="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">content_copy</span></button>
+<button class="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">push_pin</span></button>
+<button class="p-2 text-outline hover:text-error hover:bg-error/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-32 h-20 rounded-lg overflow-hidden bg-surface-container shrink-0 border border-outline-variant/30">
+<img class="w-full h-full object-cover grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all" data-alt="Close-up of a dark software developer console screen displaying multiple lines of red error text in a terminal environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcsPIWoV1UZpRMOtLwCEuofn89Gs-6RHKIyYJPTL498tLwWQJTa4lL6qb773PGD6Mw85uxO0whx0SLholq9n81BPZ0CElS1mD1g4TWgNap93RX1rslFk8LvvWeuHO9JXo22lBPhv1lFBI5jwiDiUEfFbdePRBYBAyWaxrms1TmMOzokfFKw8_s1lsF7c6VazCRg5LvYX2JM05t0A-FA4aYIEEe6ehsd-rS5yugHpcw8rl5_vdg9pRCji7ShB9gLPwgRjb1sWtL2qo"/>
+</div>
+<div class="flex-1">
+<div class="text-[11px] font-bold text-outline uppercase tracking-wider mb-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">odt</span> OCR 提取文本
+                        </div>
+<div class="bg-surface-container-low p-3 rounded-lg border-l-2 border-error">
+<code class="text-xs font-mono text-error font-semibold">Error: Cannot read property 'map' of undefined</code>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 4: Long Text Card -->
+<div class="group relative bg-surface-container-lowest rounded-xl p-5 shadow-[0_12px_40px_rgba(77,68,227,0.03)] hover:shadow-[0_12px_40px_rgba(77,68,227,0.08)] transition-all">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<span class="px-2.5 py-1 bg-secondary-container text-on-secondary-container text-[11px] font-bold rounded-md">
+                            📝 文档
+                        </span>
+<span class="text-xs text-outline font-medium">1小时前</span>
+<span class="material-symbols-outlined text-outline text-sm">description</span>
+</div>
+<div class="card-hover-actions flex gap-1">
+<button class="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">content_copy</span></button>
+<button class="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">push_pin</span></button>
+<button class="p-2 text-outline hover:text-error hover:bg-error/5 rounded-lg transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<p class="text-on-surface-variant leading-relaxed text-[15px] italic">
+                    "The architecture follows a clean separation of concerns between the Rust backend and the React frontend, ensuring that heavy computations are handled safely in the system layer while maintaining a fluid user interface."
+                </p>
+</div>
+</section>
+</main>
+<!-- FAB (Suppressed on Details as per instruction, but can exist on Dashboard/Home) -->
+<!-- Suppression logic: This is a task-focused search page, FAB suppressed to prioritize feed content. -->
+</body></html>

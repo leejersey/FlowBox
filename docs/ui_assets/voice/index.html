@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VoiceFlow AI - Digital Atelier</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "outline-variant": "#c7c4d8",
+              "primary": "#3525cd",
+              "on-secondary-container": "#454386",
+              "surface-dim": "#d9dadd",
+              "surface-container": "#edeef1",
+              "on-primary": "#ffffff",
+              "surface-tint": "#4d44e3",
+              "surface-container-high": "#e7e8eb",
+              "on-primary-fixed-variant": "#3323cc",
+              "inverse-on-surface": "#f0f1f4",
+              "on-secondary": "#ffffff",
+              "background": "#f8f9fc",
+              "tertiary-fixed": "#ffdbcc",
+              "primary-container": "#4f46e5",
+              "tertiary": "#7e3000",
+              "surface-variant": "#e1e2e5",
+              "on-error-container": "#93000a",
+              "on-tertiary": "#ffffff",
+              "error": "#ba1a1a",
+              "on-tertiary-fixed": "#351000",
+              "on-secondary-fixed": "#140f54",
+              "on-background": "#191c1e",
+              "secondary-container": "#b6b4ff",
+              "on-surface-variant": "#464555",
+              "inverse-primary": "#c3c0ff",
+              "on-primary-fixed": "#0f0069",
+              "surface-container-low": "#f2f3f6",
+              "on-tertiary-fixed-variant": "#7b2f00",
+              "primary-fixed": "#e2dfff",
+              "on-error": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "tertiary-fixed-dim": "#ffb695",
+              "surface-bright": "#f8f9fc",
+              "secondary": "#58579b",
+              "on-secondary-fixed-variant": "#413f82",
+              "surface-container-highest": "#e1e2e5",
+              "secondary-fixed-dim": "#c3c0ff",
+              "secondary-fixed": "#e2dfff",
+              "on-tertiary-container": "#ffd2be",
+              "inverse-surface": "#2e3133",
+              "outline": "#777587",
+              "error-container": "#ffdad6",
+              "on-surface": "#191c1e",
+              "tertiary-container": "#a44100",
+              "primary-fixed-dim": "#c3c0ff",
+              "surface": "#f8f9fc",
+              "on-primary-container": "#dad7ff"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .glass-sidebar {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .waveform-bar {
+            animation: pulse-height 1.2s ease-in-out infinite;
+        }
+        @keyframes pulse-height {
+            0%, 100% { height: 8px; }
+            50% { height: 32px; }
+        }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface flex h-screen overflow-hidden selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- SideNavBar (Shared Component Blueprint) -->
+<aside class="fixed left-0 top-0 h-full w-[64px] z-50 bg-slate-50/70 glass-sidebar flex flex-col items-center py-8 gap-y-6">
+<div class="mb-4">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-white text-xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+</div>
+<nav class="flex flex-col items-center gap-y-6">
+<!-- Active Tab: Record -->
+<button class="w-12 h-12 flex items-center justify-center text-white bg-gradient-to-br from-indigo-600 to-indigo-500 rounded-xl shadow-lg shadow-indigo-200/50 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">mic</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
+<span class="material-symbols-outlined">folder_open</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
+<span class="material-symbols-outlined">description</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
+<span class="material-symbols-outlined">auto_awesome</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
+<span class="material-symbols-outlined">inventory_2</span>
+</button>
+</nav>
+<div class="mt-auto flex flex-col items-center gap-y-4">
+<button class="w-10 h-10 rounded-full overflow-hidden hover:ring-2 ring-primary ring-offset-2 transition-all">
+<img class="w-full h-full object-cover" data-alt="portrait of a professional creative professional in a minimalist studio setting with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEJkCnaF1D6kYV4jGCXz3eLsqvPFlOhUo_i0661sEQNtC3iORyly_-sxhAlec2FFts8r9kYdChGC7ix-9XAGfHNrM33ffItJbfgCJ5zy16fIzs_gIX2xeeHu1lar7NFqmXuzS2cTNOJrgjxjghfLIF224WelIQXgdNGMLzIpzaoV402QnX12nNk38hNSn1Ctc-JgoYKLSNdLmxm-hGaL-Ne6c3d9H1tuCbN-IAK8v5b7YxlWuE1b6BNzVN0bMGcKtqoqbKkL7gxuk"/>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-[64px] flex flex-col relative">
+<!-- macOS Style Title Bar -->
+<header class="h-10 flex items-center px-4 bg-white/70 backdrop-blur-md sticky top-0 z-40 select-none">
+<div class="flex gap-2 mr-6">
+<div class="w-3.5 h-3.5 rounded-full bg-[#ff5f57] border border-black/5"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-[#febc2e] border border-black/5"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-[#28c840] border border-black/5"></div>
+</div>
+<div class="flex-1 flex justify-center">
+<span class="font-headline font-bold text-sm tracking-tight text-on-surface/80">FlowBox — Voice Recording &amp; AI Co-author</span>
+</div>
+<div class="w-20"></div> <!-- Balancing spacer -->
+</header>
+<div class="flex-1 overflow-y-auto px-10 pb-12 pt-6">
+<!-- Top Zone: Recording Control Panel -->
+<section class="max-w-4xl mx-auto mb-12">
+<div class="bg-surface-container-lowest rounded-3xl p-10 flex flex-col items-center shadow-sm relative overflow-hidden">
+<!-- Background Soft Glow -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+<div class="relative z-10 flex flex-col items-center w-full">
+<div class="font-headline text-5xl font-extrabold tracking-tighter text-on-surface mb-2">00:01:23</div>
+<div class="text-on-surface-variant font-medium text-sm mb-12 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+                            正在录制中...
+                        </div>
+<!-- Record Button & Waveform -->
+<div class="flex flex-col items-center gap-8 mb-12">
+<button class="group relative">
+<div class="absolute inset-0 bg-primary/20 rounded-full blur-xl scale-125 group-active:scale-100 transition-transform"></div>
+<div class="relative w-28 h-28 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shadow-2xl shadow-primary/40 border-4 border-white active:scale-95 transition-all">
+<span class="material-symbols-outlined text-white text-4xl" style="font-variation-settings: 'FILL' 1;">mic</span>
+</div>
+</button>
+<!-- Audio Waveform Visualization -->
+<div class="flex items-center justify-center gap-1.5 h-12 w-full max-w-sm">
+<div class="waveform-bar w-1.5 bg-primary/30 rounded-full" style="animation-delay: 0.1s"></div>
+<div class="waveform-bar w-1.5 bg-primary/40 rounded-full" style="animation-delay: 0.2s"></div>
+<div class="waveform-bar w-1.5 bg-primary/60 rounded-full" style="animation-delay: 0.3s"></div>
+<div class="waveform-bar w-1.5 bg-primary rounded-full" style="animation-delay: 0.4s"></div>
+<div class="waveform-bar w-1.5 bg-primary-container rounded-full" style="animation-delay: 0.5s"></div>
+<div class="waveform-bar w-1.5 bg-primary rounded-full" style="animation-delay: 0.6s"></div>
+<div class="waveform-bar w-1.5 bg-primary/60 rounded-full" style="animation-delay: 0.7s"></div>
+<div class="waveform-bar w-1.5 bg-primary/40 rounded-full" style="animation-delay: 0.8s"></div>
+<div class="waveform-bar w-1.5 bg-primary/30 rounded-full" style="animation-delay: 0.9s"></div>
+</div>
+</div>
+<!-- Controls -->
+<div class="flex items-center gap-6">
+<button class="flex items-center gap-2 px-6 py-3 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface font-semibold transition-colors active:scale-95">
+<span class="material-symbols-outlined text-xl">pause_circle</span>
+                                暂停
+                            </button>
+<button class="flex items-center gap-2 px-8 py-3 rounded-full bg-error text-white font-semibold shadow-lg shadow-error/20 hover:brightness-110 transition-all active:scale-95">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">stop_circle</span>
+                                停止
+                            </button>
+</div>
+</div>
+<!-- Tip Box -->
+<div class="mt-10 pt-8 border-t border-surface-container w-full">
+<div class="flex items-start gap-3 justify-center text-on-surface-variant">
+<span class="text-lg">💡</span>
+<p class="text-sm font-medium leading-relaxed">录音结束后，AI 将自动转写并提取待办事项和核心观点</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Zone: Voice Records List -->
+<section class="max-w-4xl mx-auto">
+<div class="flex items-center justify-between mb-6 px-2">
+<h2 class="font-headline text-xl font-bold text-on-surface">历史记录</h2>
+<div class="flex items-center gap-3">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Expanded Card -->
+<div class="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-sm transition-all">
+<div class="p-6 flex items-center gap-5">
+<button class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center text-primary active:scale-90 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-bold text-lg text-on-surface">关于 FlowBox 产品路线图的讨论...</h3>
+<span class="px-3 py-1 bg-secondary-container/30 text-on-secondary-container text-xs font-bold rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                        已转写
+                                    </span>
+</div>
+<div class="flex items-center gap-4 text-sm text-on-surface-variant">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                                        02:35
+                                    </span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">event</span>
+                                        今天 09:30
+                                    </span>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">
+<span class="material-symbols-outlined">keyboard_arrow_up</span>
+</button>
+</div>
+<!-- Expanded Section -->
+<div class="bg-surface-container-low mx-6 mb-6 rounded-2xl p-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Transcription -->
+<div>
+<div class="flex items-center gap-2 mb-4 text-on-surface font-bold text-sm tracking-wide">
+<span class="material-symbols-outlined text-lg">notes</span>
+                                        转写文本
+                                    </div>
+<div class="text-on-surface-variant text-sm leading-relaxed space-y-4 max-h-[400px] overflow-y-auto pr-2">
+<p>我们首先讨论了 2024 年第一季度的主要目标。核心是要加强 AI 的上下文理解能力。目前的 Whisper 集成虽然效果不错，但在长文本理解上还有提升空间。</p>
+<p>产品线方面，FlowBox 需要更深度的 macOS 原生集成，尤其是对于快捷指令的支持。此外，用户界面需要向“数字工作室”转型，减少边框的使用，强化色彩的层级感。</p>
+<p>最后，我们需要准备下周的技术评审，特别是关于 API 契约和架构文档的部分。调研 Whisper.cpp 在 macOS 上的 CPU 优化方案也是当务之急。</p>
+</div>
+</div>
+<!-- AI Extraction -->
+<div class="border-l-4 border-primary/20 pl-6">
+<div class="flex items-center gap-2 mb-4 text-primary font-bold text-sm tracking-wide">
+<span class="material-symbols-outlined text-lg">auto_awesome</span>
+                                        AI 智能提取
+                                    </div>
+<!-- Summary -->
+<div class="mb-6">
+<div class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">📝 摘要</div>
+<p class="text-sm text-on-surface leading-relaxed">本次讨论聚焦于 Q1 路线图，重点在于 AI 能力增强、macOS 系统集成优化及 UI 设计语言升级。</p>
+</div>
+<!-- Todo List -->
+<div class="mb-6">
+<div class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">✅ 提取的待办</div>
+<ul class="space-y-3">
+<li class="flex items-center gap-3 group">
+<div class="w-5 h-5 rounded border-2 border-primary/30 group-hover:border-primary transition-colors cursor-pointer"></div>
+<span class="text-sm text-on-surface">完成架构文档的 API 契约部分</span>
+</li>
+<li class="flex items-center gap-3 group">
+<div class="w-5 h-5 rounded border-2 border-primary/30 group-hover:border-primary transition-colors cursor-pointer"></div>
+<span class="text-sm text-on-surface">安排下周一的技术评审会议</span>
+</li>
+<li class="flex items-center gap-3 group">
+<div class="w-5 h-5 rounded border-2 border-primary/30 group-hover:border-primary transition-colors cursor-pointer"></div>
+<span class="text-sm text-on-surface">调研 Whisper.cpp 的 macOS 集成方案</span>
+</li>
+</ul>
+<button class="mt-4 text-xs font-bold text-primary hover:underline flex items-center gap-1">
+                                            一键添加到待办 →
+                                        </button>
+</div>
+<!-- Insights -->
+<div>
+<div class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">💡 核心观点</div>
+<ul class="space-y-2 list-disc list-inside text-sm text-on-surface-variant">
+<li>UI 应向“数字工作室”转型，强化层级</li>
+<li>macOS 原生集成是用户留存的关键</li>
+<li>需要更轻量的本地推理方案</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Card Footer Actions -->
+<div class="mt-10 pt-6 border-t border-surface-container flex items-center justify-between">
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 rounded-xl text-error bg-error/5 hover:bg-error/10 text-xs font-bold transition-colors">
+<span class="material-symbols-outlined text-sm">delete</span>
+                                        🗑️ 删除录音
+                                    </button>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface text-xs font-bold transition-colors">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                                        🔄 重新转写
+                                    </button>
+<button class="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-lg shadow-primary/20 hover:brightness-110 transition-all">
+<span class="material-symbols-outlined text-sm">ios_share</span>
+                                        📤 导出文本
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Collapsed Card 1 -->
+<div class="bg-surface-container-lowest rounded-3xl p-6 flex items-center gap-5 shadow-sm hover:bg-white transition-all cursor-pointer">
+<button class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-primary-fixed hover:text-primary transition-colors">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+<div class="flex-1">
+<h3 class="font-bold text-on-surface mb-1">每周同步会议: 营销策略...</h3>
+<div class="flex items-center gap-4 text-xs text-on-surface-variant">
+<span class="flex items-center gap-1">05:12</span>
+<span class="flex items-center gap-1">昨天 14:20</span>
+</div>
+</div>
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded-full uppercase tracking-wider">
+                            已存档
+                        </span>
+<span class="material-symbols-outlined text-on-surface-variant">keyboard_arrow_down</span>
+</div>
+<!-- Collapsed Card 2 -->
+<div class="bg-surface-container-lowest rounded-3xl p-6 flex items-center gap-5 shadow-sm hover:bg-white transition-all cursor-pointer">
+<button class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-primary-fixed hover:text-primary transition-colors">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+<div class="flex-1">
+<h3 class="font-bold text-on-surface mb-1">头脑风暴: 新图标设计灵感</h3>
+<div class="flex items-center gap-4 text-xs text-on-surface-variant">
+<span class="flex items-center gap-1">01:45</span>
+<span class="flex items-center gap-1">10月24日 18:05</span>
+</div>
+</div>
+<span class="px-3 py-1 bg-secondary-container/30 text-on-secondary-container text-[10px] font-bold rounded-full uppercase tracking-wider">
+                            已转写
+                        </span>
+<span class="material-symbols-outlined text-on-surface-variant">keyboard_arrow_down</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Floating Action Background Glows -->
+<div class="fixed bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+<div class="fixed top-[20%] left-[10%] w-[30vw] h-[30vw] bg-secondary-container/10 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+</body></html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "inverse-surface": "#2e3133",
+              "on-tertiary-fixed": "#351000",
+              "secondary-fixed": "#e2dfff",
+              "on-tertiary": "#ffffff",
+              "surface-container-low": "#f2f3f6",
+              "on-secondary-fixed": "#140f54",
+              "on-primary-fixed-variant": "#3323cc",
+              "on-surface": "#191c1e",
+              "surface-container": "#edeef1",
+              "inverse-on-surface": "#f0f1f4",
+              "tertiary-fixed-dim": "#ffb695",
+              "on-secondary": "#ffffff",
+              "error": "#ba1a1a",
+              "primary-container": "#4f46e5",
+              "secondary-container": "#b6b4ff",
+              "surface-dim": "#d9dadd",
+              "error-container": "#ffdad6",
+              "inverse-primary": "#c3c0ff",
+              "tertiary": "#7e3000",
+              "surface": "#f8f9fc",
+              "on-error-container": "#93000a",
+              "on-tertiary-container": "#ffd2be",
+              "primary-fixed": "#e2dfff",
+              "surface-bright": "#f8f9fc",
+              "outline": "#777587",
+              "on-background": "#191c1e",
+              "primary": "#3525cd",
+              "outline-variant": "#c7c4d8",
+              "tertiary-container": "#a44100",
+              "surface-tint": "#4d44e3",
+              "on-secondary-fixed-variant": "#413f82",
+              "on-secondary-container": "#454386",
+              "tertiary-fixed": "#ffdbcc",
+              "secondary-fixed-dim": "#c3c0ff",
+              "primary-fixed-dim": "#c3c0ff",
+              "surface-container-high": "#e7e8eb",
+              "on-error": "#ffffff",
+              "on-primary-fixed": "#0f0069",
+              "on-primary-container": "#dad7ff",
+              "surface-variant": "#e1e2e5",
+              "surface-container-lowest": "#ffffff",
+              "on-surface-variant": "#464555",
+              "on-primary": "#ffffff",
+              "secondary": "#58579b",
+              "background": "#f8f9fc",
+              "surface-container-highest": "#e1e2e5",
+              "on-tertiary-fixed-variant": "#7b2f00"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .tonal-shift { background-color: rgba(237, 238, 241, 0.5); }
+        .glass-sidebar { backdrop-filter: blur(20px); }
+        .timer-glow { filter: drop-shadow(0 0 20px rgba(53, 37, 205, 0.15)); }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-headline { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface select-none overflow-hidden">
+<!-- macOS Traffic Lights -->
+<div class="fixed top-4 left-6 z-[60] flex space-x-2">
+<div class="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
+<div class="w-3 h-3 rounded-full bg-[#febc2e]"></div>
+<div class="w-3 h-3 rounded-full bg-[#28c840]"></div>
+</div>
+<!-- SideNavBar (Shared Component JSON Mapping) -->
+<aside class="fixed left-0 top-0 h-full z-50 flex flex-col items-center w-20 py-8 bg-slate-50/70 backdrop-blur-xl border-r-0 glass-sidebar">
+<div class="mb-10 mt-6">
+<span class="text-xl font-bold tracking-tighter text-indigo-700">FB</span>
+</div>
+<nav class="flex flex-col gap-6 items-center flex-1">
+<!-- Active Tab: 计时器 -->
+<button class="bg-indigo-600/10 text-indigo-600 rounded-xl p-3 flex flex-col items-center group transition-all duration-150 ease-in-out active:scale-95">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">timer</span>
+<span class="font-manrope text-[10px] font-medium tracking-tight mt-1">计时器</span>
+</button>
+<!-- Inactive Tabs -->
+<button class="text-slate-400 hover:text-indigo-500 p-3 flex flex-col items-center transition-colors">
+<span class="material-symbols-outlined text-[24px]">check_circle</span>
+<span class="font-manrope text-[10px] font-medium tracking-tight mt-1">任务</span>
+</button>
+<button class="text-slate-400 hover:text-indigo-500 p-3 flex flex-col items-center transition-colors">
+<span class="material-symbols-outlined text-[24px]">bar_chart</span>
+<span class="font-manrope text-[10px] font-medium tracking-tight mt-1">统计</span>
+</button>
+<button class="text-slate-400 hover:text-indigo-500 p-3 flex flex-col items-center transition-colors">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+<span class="font-manrope text-[10px] font-medium tracking-tight mt-1">设置</span>
+</button>
+</nav>
+<div class="mt-auto">
+<img alt="用户头像" class="w-10 h-10 rounded-full border-2 border-surface-container-highest" data-alt="minimalist avatar of a person with stylish glasses and clean profile style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcY1Rzvdh8metFvJv4E2xs9BLMBzH_AP9JJBriWjO3-Xm-JLQBHb_ysDUapDPiSsZUj8rQPZubmN6-ksryOMMBRyA9gPcNeAdqbGb6XSaDroGvcNw9_cQQ-w607cyzIoSMqIX2sgKmG0ES2eADKiHmV6Yvz3my5CHsT2ZJAHZrTlguDT8oesRFkZm2dmIriQ_EL8SaRlXRXoqD8tMnDb6pzLZJ-jwTj57XlkAGkliuYiH9BMXK0G26ujSeyqirPoKoSWl7OeKfb1o"/>
+</div>
+</aside>
+<!-- TopNavBar (Shared Component JSON Mapping) -->
+<header class="fixed top-0 right-0 left-20 z-40 h-12 flex items-center px-8 bg-slate-50 justify-between">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-slate-700 tracking-tight">FlowBox</span>
+<span class="text-[10px] bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest">PRO</span>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-slate-500 hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-slate-500 hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</header>
+<main class="ml-20 mt-12 h-[calc(100vh-3rem)] flex overflow-hidden">
+<!-- Left Zone: Timer Core (60%) -->
+<section class="w-[60%] h-full flex flex-col items-center justify-center p-12 bg-surface">
+<!-- Session Chips -->
+<div class="flex gap-2 mb-12">
+<button class="px-6 py-2.5 rounded-full bg-primary text-on-primary text-sm font-semibold shadow-lg shadow-primary/20 transition-all">专注 25min</button>
+<button class="px-6 py-2.5 rounded-full bg-surface-container-highest text-on-surface-variant text-sm font-medium hover:bg-surface-container-high transition-colors">短休息 5min</button>
+<button class="px-6 py-2.5 rounded-full bg-surface-container-highest text-on-surface-variant text-sm font-medium hover:bg-surface-container-high transition-colors">长休息 15min</button>
+</div>
+<!-- Main Timer Visual -->
+<div class="relative w-[420px] h-[420px] flex items-center justify-center">
+<!-- Outer Ring Track -->
+<svg class="absolute inset-0 w-full h-full -rotate-90" viewbox="0 0 100 100">
+<circle class="text-surface-container-high" cx="50" cy="50" fill="transparent" r="46" stroke="currentColor" stroke-width="2.5"></circle>
+<!-- Progress Ring -->
+<circle class="timer-glow" cx="50" cy="50" fill="transparent" r="46" stroke="url(#timer-gradient)" stroke-dasharray="289" stroke-dashoffset="72.25" stroke-linecap="round" stroke-width="3"></circle>
+<defs>
+<lineargradient id="timer-gradient" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color: #3525cd; stop-opacity: 1"></stop>
+<stop offset="100%" style="stop-color: #4f46e5; stop-opacity: 1"></stop>
+</lineargradient>
+</defs>
+</svg>
+<!-- Inner Content -->
+<div class="text-center flex flex-col items-center">
+<span class="text-sm font-bold tracking-[0.2em] text-primary/60 uppercase mb-2">专注中</span>
+<h1 class="text-[100px] font-headline font-extrabold tracking-tighter leading-none text-on-surface">18:42</h1>
+<div class="flex items-center gap-2 mt-4 px-4 py-1.5 bg-surface-container-low rounded-lg">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-sm font-medium text-on-surface-variant">完成 FlowBox 架构文档</span>
+</div>
+</div>
+</div>
+<!-- Controls -->
+<div class="flex items-center gap-8 mt-16">
+<button class="w-14 h-14 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-3xl">skip_next</span>
+</button>
+<button class="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary flex items-center justify-center shadow-2xl shadow-primary/40 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<button class="w-14 h-14 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-3xl">stop_circle</span>
+</button>
+</div>
+</section>
+<!-- Right Zone: Today Summary (40%) -->
+<section class="w-[40%] h-full bg-surface-container-low/50 border-l-0 p-10 flex flex-col gap-8 overflow-y-auto">
+<div>
+<h2 class="text-2xl font-headline font-extrabold tracking-tight mb-6">今日专注</h2>
+<!-- Vertical Stats Cards -->
+<div class="space-y-3">
+<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between group hover:translate-y-[-2px] transition-transform duration-300">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<span class="font-medium text-on-surface">已完成番茄</span>
+</div>
+<span class="text-xl font-headline font-bold text-primary">6个</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between group hover:translate-y-[-2px] transition-transform duration-300">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-tertiary-container/10 flex items-center justify-center text-tertiary-container">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+<span class="font-medium text-on-surface">总专注时长</span>
+</div>
+<span class="text-xl font-headline font-bold text-tertiary-container">2小时30分</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex items-center justify-between group hover:translate-y-[-2px] transition-transform duration-300">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">trending_up</span>
+</div>
+<span class="font-medium text-on-surface">完成率</span>
+</div>
+<span class="text-xl font-headline font-bold text-secondary">85%</span>
+</div>
+</div>
+</div>
+<!-- Timeline -->
+<div class="mt-4 flex-1">
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-6">专注记录</h3>
+<div class="relative pl-6 border-l-2 border-surface-container-high space-y-10">
+<!-- Session Item 1 -->
+<div class="relative">
+<span class="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-primary border-4 border-surface"></span>
+<div class="flex items-center justify-between mb-1">
+<span class="text-xs font-bold text-primary">09:00 - 09:25</span>
+<span class="text-[10px] px-2 py-0.5 bg-secondary-container text-on-secondary-container rounded-full font-bold">AI 已总结</span>
+</div>
+<h4 class="font-semibold text-on-surface mb-2">项目排期方案评审</h4>
+<div class="p-3 bg-surface-container-lowest rounded-lg text-sm text-on-surface-variant leading-relaxed">
+<div class="flex items-center gap-1.5 mb-1.5 text-primary">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+<span class="text-[11px] font-bold uppercase tracking-tight">AI 小结</span>
+</div>
+                            专注度极高，成功梳理了核心里程碑节点，建议在下次会议中补充人力成本预估。
+                        </div>
+</div>
+<!-- Session Item 2 -->
+<div class="relative opacity-60">
+<span class="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-surface-container-high border-4 border-surface"></span>
+<div class="flex items-center justify-between mb-1">
+<span class="text-xs font-medium text-on-surface-variant">10:00 - 10:25</span>
+</div>
+<h4 class="font-semibold text-on-surface mb-2">邮件与即时通讯清理</h4>
+<div class="flex items-center gap-1 text-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-base">expand_more</span>
+<span>点击展开 AI 分析</span>
+</div>
+</div>
+<!-- Session Item 3 -->
+<div class="relative">
+<span class="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-primary border-4 border-surface"></span>
+<div class="flex items-center justify-between mb-1">
+<span class="text-xs font-bold text-primary">11:00 - 11:25</span>
+<span class="text-[10px] px-2 py-0.5 bg-secondary-container text-on-secondary-container rounded-full font-bold">AI 已总结</span>
+</div>
+<h4 class="font-semibold text-on-surface mb-2">FlowBox 视觉风格定义</h4>
+<div class="p-3 bg-surface-container-lowest rounded-lg text-sm text-on-surface-variant leading-relaxed">
+<div class="flex items-center gap-1.5 mb-1.5 text-primary">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+<span class="text-[11px] font-bold uppercase tracking-tight">AI 小结</span>
+</div>
+                            确认了以 Indigo 为主色调，强调了无边框设计的呼吸感。后续需关注可访问性对比度。
+                        </div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating AI Prompt (Bento Element) -->
+<div class="fixed bottom-8 right-12 w-80 p-5 bg-surface-container-lowest shadow-2xl shadow-primary/5 rounded-2xl flex items-start gap-4 border border-outline-variant/10">
+<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">temp_preferences_custom</span>
+</div>
+<div>
+<p class="text-[13px] font-medium text-on-surface leading-snug">保持专注！你已经连续工作了 112 分钟，建议当前阶段完成后进行一次长休息。</p>
+<div class="mt-3 flex gap-2">
+<button class="text-[11px] font-bold text-primary px-3 py-1.5 bg-primary/5 rounded-full">听从建议</button>
+<button class="text-[11px] font-bold text-on-surface-variant px-3 py-1.5">忽略</button>
+</div>
+</div>
+</div>
+</body></html>
