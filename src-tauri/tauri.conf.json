@@ -39,7 +39,8 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$APPDATA/clipboard_images/**"
+          "$APPDATA/clipboard_images/**",
+          "$APPDATA/screenshots/**"
         ]
       }
     }

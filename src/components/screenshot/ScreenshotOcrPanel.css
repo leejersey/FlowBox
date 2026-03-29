@@ -1,0 +1,53 @@
+/* ─── ScreenshotOcrPanel 浮窗动画 ─── */
+
+@keyframes ocr-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ocr-scan-line {
+  0% { top: 0%; }
+  50% { top: 95%; }
+  100% { top: 0%; }
+}
+
+@keyframes ocr-success-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ocr-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.ocr-panel-enter {
+  animation: ocr-panel-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ocr-scan-line {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.6), transparent);
+  animation: ocr-scan-line 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.ocr-success-icon {
+  animation: ocr-success-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ocr-dot-pulse {
+  animation: ocr-pulse 1.2s ease-in-out infinite;
+}
+.ocr-dot-pulse:nth-child(2) { animation-delay: 0.2s; }
+.ocr-dot-pulse:nth-child(3) { animation-delay: 0.4s; }

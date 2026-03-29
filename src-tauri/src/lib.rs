@@ -68,6 +68,7 @@ pub fn run() {
             commands::obsidian::obsidian_export_markdown,
             commands::voice::voice_start_recording,
             commands::voice::voice_stop_recording,
+            commands::screenshot::screenshot_from_clipboard,
         ])
         .setup(move |app| {
             services::butler_shortcut::register_initial_shortcut(

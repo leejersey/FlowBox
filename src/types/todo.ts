@@ -8,7 +8,7 @@ export interface Todo {
   content: string
   priority: 0 | 1 | 2 | 3
   status: 'pending' | 'in_progress' | 'done'
-  source: 'manual' | 'voice' | 'clipboard'
+  source: 'manual' | 'voice' | 'clipboard' | 'screenshot_ocr'
   source_id: number | null
   due_date: string | null
   tags: string  // JSON 数组字符串
@@ -23,7 +23,7 @@ export interface CreateTodoPayload {
   priority?: 0 | 1 | 2 | 3
   due_date?: string
   tags?: string[]
-  source?: 'manual' | 'voice' | 'clipboard'
+  source?: 'manual' | 'voice' | 'clipboard' | 'screenshot_ocr'
   source_id?: number
 }
 

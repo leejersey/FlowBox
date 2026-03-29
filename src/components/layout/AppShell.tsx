@@ -5,6 +5,10 @@ import { Sidebar } from './Sidebar'
 import { TitleBar } from './TitleBar'
 import { ButlerOverlay } from './ButlerOverlay'
 import { GlobalSearchBar } from './GlobalSearchBar'
+import { DailyReviewModal } from '@/components/review/DailyReviewModal'
+import { ScreenshotOcrPanel } from '@/components/screenshot/ScreenshotOcrPanel'
+import { useDailyReview } from '@/hooks/useDailyReview'
+import { useScreenshotOcr } from '@/hooks/useScreenshotOcr'
 import * as settingsService from '@/services/settingsService'
 import { showToast } from '@/store/useToastStore'
 
@@ -13,6 +17,8 @@ const isTauriApp = isTauri()
 
 export function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false)
+  const dailyReview = useDailyReview()
+  const screenshotOcr = useScreenshotOcr()
 
   const toggleSearch = useCallback(() => setSearchOpen(v => !v), [])
 
@@ -63,6 +69,27 @@ export function AppShell() {
       </main>
       <ButlerOverlay />
       <GlobalSearchBar isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      <DailyReviewModal
+        isOpen={dailyReview.isOpen}
+        onClose={dailyReview.close}
+        reviewData={dailyReview.reviewData}
+        aiSummary={dailyReview.aiSummary}
+        isLoadingData={dailyReview.isLoadingData}
+        isLoadingAi={dailyReview.isLoadingAi}
+        onSave={dailyReview.saveReview}
+        isSaved={dailyReview.isSaved}
+      />
+      <ScreenshotOcrPanel
+        isOpen={screenshotOcr.isOpen}
+        step={screenshotOcr.step}
+        ocrResult={screenshotOcr.ocrResult}
+        error={screenshotOcr.error}
+        onSaveAsIdea={screenshotOcr.saveAsIdea}
+        onSaveAsTodo={screenshotOcr.saveAsTodo}
+        onClose={screenshotOcr.close}
+        onUpdateText={screenshotOcr.updateText}
+        onUpdateTitle={screenshotOcr.updateTitle}
+      />
     </div>
   )
 }

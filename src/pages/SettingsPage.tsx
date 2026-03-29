@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus } from 'lucide-react'
+import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus, Moon, Play } from 'lucide-react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
 import { useThemeStore } from '@/store/useThemeStore'
 import { useSettings } from '@/hooks/useSettings'
 import { showToast } from '@/store/useToastStore'
+import { useDailyReview } from '@/hooks/useDailyReview'
 
 const menuItems = [
   { id: 'general', label: '通用设置', icon: SettingsIcon },
@@ -59,6 +60,8 @@ export function SettingsPage() {
   const [volcToken, setVolcToken] = useState('')
   const { mode: themeMode, setMode: setThemeMode } = useThemeStore()
   const { settings, saved, setSetting, toggleSetting } = useSettings()
+  const dailyReview = useDailyReview()
+  const [reviewTime, setReviewTime] = useState(settings['daily_review.time'] || '21:00')
 
   useEffect(() => {
     if (settings['ai.openai_api_key']) setLocalApiKey(settings['ai.openai_api_key'])
@@ -72,6 +75,10 @@ export function SettingsPage() {
   useEffect(() => {
     setButlerShortcut(settings['shortcuts.butler_hotkey'] || DEFAULT_BUTLER_SHORTCUT)
   }, [settings['shortcuts.butler_hotkey']])
+
+  useEffect(() => {
+    if (settings['daily_review.time']) setReviewTime(settings['daily_review.time'])
+  }, [settings['daily_review.time']])
 
   const saveApiKey = async () => {
     await setSetting('ai.openai_api_key', localApiKey)
@@ -377,6 +384,61 @@ export function SettingsPage() {
                         }}
                       />
                     </div>
+                  </div>
+                </section>
+
+                {/* 每日回顾设置 */}
+                <section className="mt-10">
+                  <h3 className="text-sm font-bold text-on-surface mb-4 uppercase tracking-wider flex items-center gap-2">
+                    <Moon className="w-4 h-4 text-primary" />
+                    每日回顾
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between p-4 bg-surface rounded-2xl">
+                      <div className="flex flex-col max-w-[80%]">
+                        <span className="font-bold text-on-surface text-[15px]">启用每日回顾</span>
+                        <span className="text-xs text-on-surface-variant leading-relaxed mt-0.5">到达设定时间后，AI 将自动生成今日回顾弹窗。</span>
+                      </div>
+                      <Toggle
+                        enabled={settings['daily_review.enabled'] !== 'false'}
+                        onChange={() => toggleSetting('daily_review.enabled')}
+                      />
+                    </div>
+
+                    <div className="p-4 bg-surface rounded-2xl">
+                      <div className="flex flex-col gap-2 mb-3">
+                        <span className="font-bold text-on-surface text-[15px]">回顾时间</span>
+                        <span className="text-xs text-on-surface-variant">每天到达此时间后自动弹出回顾</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="time"
+                          value={reviewTime}
+                          onChange={e => setReviewTime(e.target.value)}
+                          className="h-11 bg-surface-container px-4 rounded-xl text-sm text-on-surface border border-transparent focus:border-primary/50 focus:outline-none transition-all font-mono"
+                        />
+                        <button
+                          onClick={async () => {
+                            await setSetting('daily_review.time', reviewTime)
+                            showToast(`回顾时间已设为 ${reviewTime}`, 'success')
+                          }}
+                          className="h-11 px-6 rounded-xl bg-surface-container hover:bg-surface-container-highest transition-colors font-medium text-sm text-on-surface"
+                        >
+                          保存
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        showToast('正在生成今日回顾...', 'info')
+                        await dailyReview.triggerReview()
+                      }}
+                      className="flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 hover:from-indigo-500/20 hover:to-violet-500/20 border border-indigo-500/20 rounded-2xl transition-all text-sm font-bold text-primary"
+                    >
+                      <Play className="w-4 h-4" />
+                      立即生成今日回顾
+                    </button>
                   </div>
                 </section>
               </div>

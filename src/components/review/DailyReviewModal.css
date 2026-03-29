@@ -1,0 +1,85 @@
+/* ─── DailyReviewModal 弹窗动画与样式 ─── */
+
+/* 遮罩层入场 */
+@keyframes review-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 卡片入场 */
+@keyframes review-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 统计数字计数动画 */
+@keyframes review-count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* AI 内容流光底边 */
+@keyframes review-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* 打字光标闪烁 */
+@keyframes review-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+.review-overlay {
+  animation: review-overlay-in 0.3s ease-out both;
+}
+
+.review-card {
+  animation: review-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.05s;
+}
+
+.review-stat-value {
+  animation: review-count-up 0.5s ease-out both;
+}
+
+.review-stat-value:nth-child(1) { animation-delay: 0.15s; }
+.review-stat-value:nth-child(2) { animation-delay: 0.25s; }
+.review-stat-value:nth-child(3) { animation-delay: 0.35s; }
+.review-stat-value:nth-child(4) { animation-delay: 0.45s; }
+
+.review-ai-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(99, 102, 241, 0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: review-shimmer 2s ease-in-out infinite;
+}
+
+.review-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--color-primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: review-cursor-blink 0.8s step-end infinite;
+}
+
+/* 退场动画 (JS 控制 class) */
+.review-overlay-exit {
+  animation: review-overlay-in 0.2s ease-in reverse both;
+}
+
+.review-card-exit {
+  animation: review-card-in 0.2s ease-in reverse both;
+}
