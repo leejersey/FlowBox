@@ -53,9 +53,22 @@ function TodoCard({ todo, onToggle, onDelete, onClick }: {
               🏃 进行中
             </span>
           )}
-          {todo.source !== 'manual' && (
-            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center gap-1">
-              ✨ {todo.source === 'voice' ? 'AI 提取' : '剪贴板'}
+          {todo.source === 'voice' && (
+            <span
+              onClick={(e) => { e.stopPropagation(); window.location.href = `/voice?highlight=voice-${todo.source_id}` }}
+              className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 text-[11px] font-bold flex items-center gap-1 cursor-pointer hover:bg-rose-500/20 transition-colors"
+              title={`来自语音 #${todo.source_id}`}
+            >
+              <Mic className="w-3 h-3" /> 语音 #{todo.source_id}
+            </span>
+          )}
+          {todo.source === 'clipboard' && (
+            <span
+              onClick={(e) => { e.stopPropagation(); window.location.href = `/clipboard?highlight=clipboard-${todo.source_id}` }}
+              className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[11px] font-bold flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+              title={`来自剪贴板 #${todo.source_id}`}
+            >
+              <ClipboardIcon className="w-3 h-3" /> 剪贴板 #{todo.source_id}
             </span>
           )}
         </div>

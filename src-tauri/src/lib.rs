@@ -22,6 +22,18 @@ pub fn run() {
             sql: include_str!("../migrations/002_error_logs.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "create_butler_messages",
+            sql: include_str!("../migrations/003_butler_messages.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "cross_module_links",
+            sql: include_str!("../migrations/004_cross_link.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

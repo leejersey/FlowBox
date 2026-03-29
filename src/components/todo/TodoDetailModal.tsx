@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Calendar, Tag as TagIcon, Flag, Clock } from 'lucide-react'
+import { X, Calendar, Tag as TagIcon, Flag, Clock, Mic, Clipboard as ClipboardIcon, Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DatePicker } from '@/components/ui/DatePicker'
 import type { Todo, UpdateTodoPayload } from '@/types/todo'
@@ -199,6 +199,28 @@ export function TodoDetailModal({ todo, onClose, onSave }: TodoDetailModalProps)
               className="flex-1 w-full bg-surface-container-low border border-transparent focus:border-primary/20 rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none resize-none leading-relaxed"
             />
           </div>
+
+          {/* Source Tracing */}
+          {todo.source !== 'manual' && todo.source_id && (
+            <div className="bg-surface-container-low rounded-2xl p-3 border border-transparent">
+              <label className="text-xs font-bold text-on-surface-variant flex items-center gap-1.5 px-1 mb-2">
+                <Link2 className="w-3.5 h-3.5" /> 数据来源
+              </label>
+              <a
+                href={todo.source === 'voice' ? `/voice?highlight=voice-${todo.source_id}` : `/clipboard?highlight=clipboard-${todo.source_id}`}
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors",
+                  todo.source === 'voice'
+                    ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"
+                    : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                )}
+              >
+                {todo.source === 'voice' ? <Mic className="w-3.5 h-3.5" /> : <ClipboardIcon className="w-3.5 h-3.5" />}
+                {todo.source === 'voice' ? `语音备忘 #${todo.source_id}` : `剪贴板 #${todo.source_id}`}
+                <span className="text-[10px] opacity-60">点击跳转 →</span>
+              </a>
+            </div>
+          )}
           
         </div>
 

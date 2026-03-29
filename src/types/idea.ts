@@ -7,6 +7,7 @@ export interface Idea {
   content: string
   tags: string  // JSON 数组字符串
   source: 'manual' | 'voice' | 'clipboard'
+  source_id: number | null
   is_archived: number  // 0 | 1
   created_at: string
 }
