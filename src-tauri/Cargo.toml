@@ -1,6 +1,6 @@
 [package]
 name = "flowbox"
-version = "0.1.0"
+version = "0.3.0"
 description = "FlowBox桌面端 — AI 提效工具箱"
 authors = ["FlowBox Team"]
 license = ""
