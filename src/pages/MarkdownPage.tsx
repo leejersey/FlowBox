@@ -7,8 +7,9 @@ import { cn } from '@/lib/utils'
 import { useSettings } from '@/hooks/useSettings'
 import { showToast } from '@/store/useToastStore'
 import { exportMarkdownToObsidian } from '@/services/obsidianService'
+import { loadCodeThemePreference, saveCodeThemePreference } from '@/features/markdown/codeThemePreference'
 import { codeThemes } from '@/features/markdown/codeThemes'
-import type { CodeTheme, CodeTokenType } from '@/features/markdown/codeThemes'
+import type { CodeTheme, CodeThemeName, CodeTokenType } from '@/features/markdown/codeThemes'
 
 // Turndown 实例（配置 ATX 标题如 # 和 fenced 代码块 ```）
 const turndownService = new TurndownService({
@@ -271,10 +272,10 @@ function tokenizeCodeContent(content: string, language: string): Array<{ text: s
 
 export function MarkdownPage() {
   const { settings, setSetting } = useSettings()
-  const activeCodeTheme = codeThemes.dark
   
   // State
   const [mode, setMode] = useState<'html2md' | 'md2html'>('html2md')
+  const [codeThemeName, setCodeThemeName] = useState<CodeThemeName>(() => loadCodeThemePreference())
   const [markdownText, setMarkdownText] = useState('')
   const [vaultPath, setVaultPath] = useState('')
   const [fileName, setFileName] = useState('')
@@ -283,6 +284,7 @@ export function MarkdownPage() {
   const [isFileNameCustomized, setIsFileNameCustomized] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
+  const activeCodeTheme = codeThemes[codeThemeName]
   const markdownPreviewComponents = useMemo(
     () => createMarkdownPreviewComponents(activeCodeTheme),
     [activeCodeTheme]
@@ -416,6 +418,11 @@ export function MarkdownPage() {
     }
   }
 
+  const handleChangeCodeTheme = (nextTheme: CodeThemeName) => {
+    setCodeThemeName(nextTheme)
+    saveCodeThemePreference(nextTheme)
+  }
+
   return (
     <div className="flex flex-col h-full animate-fade-in w-full max-w-5xl mx-auto py-2 px-2 overflow-hidden">
       
@@ -493,13 +500,41 @@ export function MarkdownPage() {
             <label className="text-xs font-bold uppercase tracking-widest text-outline">
               {mode === 'html2md' ? 'Markdown Output' : 'Rich Text Preview'}
             </label>
-            <button 
-              onClick={mode === 'html2md' ? handleCopyMarkdown : handleCopyRichText}
-              className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-container transition-colors p-1 rounded-md hover:bg-primary/10"
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? '已复制' : (mode === 'html2md' ? '复制 Markdown' : '复制富文本')}
-            </button>
+            <div className="flex items-center gap-2">
+              {mode === 'md2html' && (
+                <div className="inline-flex rounded-full border border-surface-container-highest bg-surface-container-low p-1 text-xs font-bold">
+                  <button
+                    onClick={() => handleChangeCodeTheme('light')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-full transition-colors',
+                      codeThemeName === 'light'
+                        ? 'bg-primary text-on-primary'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    )}
+                  >
+                    亮色
+                  </button>
+                  <button
+                    onClick={() => handleChangeCodeTheme('dark')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-full transition-colors',
+                      codeThemeName === 'dark'
+                        ? 'bg-primary text-on-primary'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    )}
+                  >
+                    暗色
+                  </button>
+                </div>
+              )}
+              <button 
+                onClick={mode === 'html2md' ? handleCopyMarkdown : handleCopyRichText}
+                className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-container transition-colors p-1 rounded-md hover:bg-primary/10"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? '已复制' : (mode === 'html2md' ? '复制 Markdown' : '复制富文本')}
+              </button>
+            </div>
           </div>
           
           {mode === 'html2md' ? (
