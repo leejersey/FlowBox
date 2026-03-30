@@ -3,6 +3,7 @@ import { Sparkles, Diamond, UploadCloud, FolderOpen, Trash2, Copy, Check, FileTe
 import TurndownService from 'turndown'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/hooks/useSettings'
 import { showToast } from '@/store/useToastStore'
@@ -89,6 +90,51 @@ function convertSourceToMarkdown(html: string, text: string): string {
 function createMarkdownPreviewComponents(theme: CodeTheme): Components {
   return {
     pre: ({ children }) => <>{children}</>,
+    table: ({ children }) => (
+      <div style={{ overflowX: 'auto', margin: '1em 0' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: '14px',
+            lineHeight: '1.6',
+            border: '1px solid #e7e5df',
+            backgroundColor: '#fffdfa',
+          }}
+        >
+          {children}
+        </table>
+      </div>
+    ),
+    thead: ({ children }) => <thead style={{ backgroundColor: '#f7f3eb' }}>{children}</thead>,
+    tbody: ({ children }) => <tbody>{children}</tbody>,
+    tr: ({ children }) => <tr>{children}</tr>,
+    th: ({ children }) => (
+      <th
+        style={{
+          border: '1px solid #e7e5df',
+          padding: '10px 12px',
+          textAlign: 'left',
+          fontWeight: 700,
+          color: '#374151',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </th>
+    ),
+    td: ({ children }) => (
+      <td
+        style={{
+          border: '1px solid #e7e5df',
+          padding: '10px 12px',
+          color: '#4b5563',
+          verticalAlign: 'top',
+        }}
+      >
+        {children}
+      </td>
+    ),
     code: ({ children, className }) => {
       const content = String(children ?? '').replace(/\n$/, '')
       const isBlock = Boolean(className) || content.includes('\n')
@@ -148,7 +194,6 @@ function createMarkdownPreviewComponents(theme: CodeTheme): Components {
     },
   }
 }
-
 const languageKeywordMap: Record<string, string[]> = {
   javascript: ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'new', 'import', 'from', 'export', 'default', 'class', 'extends', 'try', 'catch', 'finally', 'async', 'await', 'throw', 'typeof', 'instanceof'],
   typescript: ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'new', 'import', 'from', 'export', 'default', 'class', 'extends', 'try', 'catch', 'finally', 'async', 'await', 'throw', 'interface', 'type', 'implements', 'public', 'private', 'protected', 'readonly'],
@@ -183,6 +228,55 @@ function inferCodeLanguage(code: string): string {
   return 'plaintext'
 }
 
+function preserveHighlightedWhitespace(text: string): string {
+  if (!text) return text
+
+  if (/^\s+$/.test(text)) {
+    return text
+      .replace(/\t/g, '\u00A0\u00A0\u00A0\u00A0')
+      .replace(/ /g, '\u00A0')
+  }
+
+  return text.replace(/\t/g, '    ')
+}
+
+function mergeStandaloneWhitespaceTokens(tokens: Array<{ text: string; type: CodeTokenType }>): Array<{ text: string; type: CodeTokenType }> {
+  const merged: Array<{ text: string; type: CodeTokenType }> = []
+  let pendingWhitespace = ''
+
+  for (const token of tokens) {
+    if (/^\s+$/.test(token.text)) {
+      pendingWhitespace += token.text
+      continue
+    }
+
+    if (pendingWhitespace) {
+      merged.push({
+        ...token,
+        text: pendingWhitespace + token.text,
+      })
+      pendingWhitespace = ''
+      continue
+    }
+
+    merged.push(token)
+  }
+
+  if (pendingWhitespace) {
+    if (merged.length > 0) {
+      const lastToken = merged[merged.length - 1]
+      merged[merged.length - 1] = {
+        ...lastToken,
+        text: lastToken.text + pendingWhitespace,
+      }
+    } else {
+      merged.push({ text: pendingWhitespace, type: 'plain' })
+    }
+  }
+
+  return merged
+}
+
 function renderHighlightedCode(code: string, language: string, theme: CodeTheme) {
   const lines = code.split('\n')
   return lines.map((line, lineIndex) => (
@@ -190,9 +284,12 @@ function renderHighlightedCode(code: string, language: string, theme: CodeTheme)
       {tokenizeCodeLine(line, language).map((token, tokenIndex) => (
         <span
           key={`${language}-${lineIndex}-${tokenIndex}`}
-          style={{ color: theme.tokens[token.type] }}
+          style={{
+            color: theme.tokens[token.type],
+            whiteSpace: 'break-spaces',
+          }}
         >
-          {token.text}
+          {preserveHighlightedWhitespace(token.text)}
         </span>
       ))}
       {lineIndex < lines.length - 1 ? '\n' : null}
@@ -267,7 +364,7 @@ function tokenizeCodeContent(content: string, language: string): Array<{ text: s
     result.push({ text: content.slice(lastIndex), type: 'plain' })
   }
 
-  return result
+  return mergeStandaloneWhitespaceTokens(result)
 }
 
 export function MarkdownPage() {
@@ -555,7 +652,7 @@ export function MarkdownPage() {
               <div className="h-full w-full overflow-y-auto custom-scrollbar">
                 {markdownText ? (
                   <div ref={previewRef} className="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:font-display prose-a:text-primary">
-                    <ReactMarkdown components={markdownPreviewComponents}>{markdownText}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownPreviewComponents}>{markdownText}</ReactMarkdown>
                   </div>
                 ) : (
                   <span className="text-on-surface-variant/50 flex flex-col items-center justify-center h-full opacity-50 select-none text-sm font-sans gap-2">

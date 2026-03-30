@@ -14,7 +14,7 @@ export function TitleBar() {
       
       {/* App Title */}
       <div className="flex-1 flex justify-center items-center h-full pointer-events-none">
-        <span className="text-sm font-medium text-on-surface-variant/70 tracking-wide font-display">FlowBox</span>
+        {/* Title removed per user request */}
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 # 🧊 FlowBox — AI 桌面效率工具
 
-![Version](https://img.shields.io/badge/version-v0.2.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-v0.3.0-blue?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 ![Tech](https://img.shields.io/badge/stack-Tauri%20v2%20%2B%20React%2019-purple?style=flat-square)
@@ -31,6 +31,8 @@
 - 后台自动监听系统剪贴板变化
 - 文本/图片分类存储，一键回填
 - 固定常用条目
+- **批量勾选 + 拼接复制**：多选剪贴板记录，一键合并为完整文本
+- **Diff 对比**：选中两条记录，并排高亮差异（类似 Git Diff）
 
 ### 🎙️ 语音备忘录
 - **一键录音**：浏览器 MediaRecorder API，实时计时 + 脉冲动画
@@ -45,12 +47,34 @@
 - 每日专注时段热力图
 - AI 周报生成（占位）
 
+### 🔍 全局搜索
+- `Cmd+/` 唤出毛玻璃浮层，跨待办 / 灵感 / 语音 / 剪贴板实时模糊搜索
+- 结果按模块分组高亮，键盘 `↑↓` 导航，`Enter` 一键跳转
+- 250ms 防抖，丝滑搜索体验
+
+### 🧲 跨模块智能关联
+- 通用 `item_links` 多对多关联表，任意模块间双向链接
+- 灵感可关联待办，语音转写可关联灵感，剪贴板可关联待办
+- 详情页展示关联条目列表，点击即跳转
+
+### 📸 截图 OCR → 灵感 / 待办
+- 使用系统截图后，从剪贴板自动捕获图片
+- **AI Vision 识别**：GPT-4o / DeepSeek 提取文字 + 推荐标题和标签
+- 一键选择存为灵感笔记或待办事项
+
+### 🌙 AI 每日回顾
+- 每晚自动弹窗（默认 21:00，可自定义），聚合全天数据
+- 待办完成率、番茄数、灵感数、语音数、剪贴板数一览
+- **滞留提醒**：高优先级待办超 3 天未处理，温和提醒
+- **AI 洞察**：流式生成个性化总结 + 明日行动建议
+- 回顾历史自动保存（最近 30 天）
+
 ### 🤖 AI Butler（全局智能管家）
 - `Shift + Space` 全局呼出（可在设置中自定义），`Cmd + K` 应用内唤起
 - **多轮对话**：基于 DeepSeek / OpenAI 的实时 AI 对话，上下文自动携带
 - **快捷指令**：一键润色文本、翻译、摘要、修复代码、分析截图
 - **Markdown 渲染**：AI 回复原生支持标题、列表、代码块、表格等富文本排版
-- **对话持久化**：基于 Zustand + localStorage，关闭窗口不丢失历史
+- **对话持久化**：基于 SQLite `butler_messages` 表，关闭窗口不丢失历史
 - 毛玻璃悬浮面板，ESC / 点击遮罩关闭
 
 ---
@@ -60,19 +84,22 @@
 ```
 ┌─────────────────────────────────────────┐
 │              Tauri v2 (Rust)            │
-│  ┌─────────┐ ┌──────────┐ ┌──────────┐ │
-│  │ Commands│ │ Services │ │ Plugins  │ │
-│  │ butler  │ │ clipboard│ │ sql      │ │
-│  │ app_use │ │ app_usage│ │ shortcut │ │
-│  │ clip    │ │ tracker  │ │ log      │ │
-│  │ obsidian│ │ voice    │ │          │ │
-│  └─────────┘ └──────────┘ └──────────┘ │
-│              SQLite (flowbox.db)        │
+│  ┌───────────┐ ┌────────────────────┐   │
+│  │  Commands  │ │     Services       │   │
+│  │ butler     │ │ clipboard_watcher  │   │
+│  │ app_usage  │ │ app_usage_tracker  │   │
+│  │ clipboard  │ │ butler_shortcut    │   │
+│  │ obsidian   │ │ obsidian_export    │   │
+│  │ voice      │ │ voice_recorder     │   │
+│  │ screenshot │ │ voice_transcribe   │   │
+│  └───────────┘ └────────────────────┘   │
+│  Plugins: sql · global-shortcut · log   │
+│              SQLite (flowbox.db)         │
 ├─────────────────────────────────────────┤
 │           React + TypeScript            │
 │  ┌─────────┐ ┌──────────┐ ┌──────────┐ │
 │  │  Pages  │ │  Hooks   │ │ Services │ │
-│  │ 9 pages │ │ 8 hooks  │ │ 12 svc   │ │
+│  │ 9 pages │ │ 10 hooks │ │ 17 svc   │ │
 │  └─────────┘ └──────────┘ └──────────┘ │
 │  Vite · TailwindCSS · Recharts · Zustand│
 └─────────────────────────────────────────┘
@@ -80,15 +107,15 @@
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| **桌面壳** | Tauri v2 + Rust | 窗口管理、全局快捷键、后台线程 |
-| **数据库** | SQLite (tauri-plugin-sql) | 9 张核心表，本地优先 |
+| **桌面壳** | Tauri v2 + Rust | 窗口管理、全局快捷键、原生录音/截图、后台线程 |
+| **数据库** | SQLite (tauri-plugin-sql) | 11 张核心表（含 `item_links`、`butler_messages`），本地优先 |
 | **前端框架** | React 19 + TypeScript | 页面组件 + Hooks 架构 |
 | **样式** | TailwindCSS v4 + @tailwindcss/typography | Material Design 3 色彩体系 |
 | **状态管理** | Zustand (persist) | 主题、Toast、Butler 对话历史 |
 | **图表** | Recharts | 折线图、饼图 |
-| **Markdown** | react-markdown + remark-gfm | AI 回复富文本渲染 |
-| **AI** | DeepSeek / OpenAI / Ollama | 对话、摘要提取、剪贴板分类 |
-| **语音 ASR** | 火山引擎 / OpenAI Whisper | 语音转文字 |
+| **Markdown** | react-markdown + remark-gfm + Turndown | AI 回复渲染 + HTML→MD 转换 |
+| **AI** | DeepSeek / OpenAI / Ollama | 对话、摘要、OCR、剪贴板分类、每日回顾 |
+| **语音 ASR** | 火山引擎 / OpenAI Whisper | 语音转文字（Rust 原生调用） |
 
 ---
 
@@ -135,7 +162,7 @@ FlowBox/
 │   │   ├── TodoPage.tsx          # 待办管理
 │   │   ├── IdeaPage.tsx          # 灵感速记（含详情弹窗）
 │   │   ├── PomodoroPage.tsx      # 番茄专注
-│   │   ├── ClipboardPage.tsx     # 智能剪贴板
+│   │   ├── ClipboardPage.tsx     # 智能剪贴板（批量选择 + Diff）
 │   │   ├── VoicePage.tsx         # 语音备忘录
 │   │   ├── StatsPage.tsx         # 效率分析
 │   │   ├── MarkdownPage.tsx      # Markdown 转换器
@@ -146,10 +173,25 @@ FlowBox/
 │   │   │   ├── ButlerWorkbench.tsx  # 主工作台（输入、消息列表、快捷指令）
 │   │   │   ├── ChatMessageItem.tsx  # 气泡渲染（Markdown / 纯文本）
 │   │   │   └── ButlerFooter.tsx     # 底部状态栏（模型、Prompt、清空）
-│   │   ├── layout/               # 布局组件（Sidebar、ButlerOverlay）
+│   │   ├── clipboard/            # 剪贴板增强组件
+│   │   │   └── ClipDiffModal.tsx    # 并排 Diff 对比弹窗
+│   │   ├── layout/               # 布局组件
+│   │   │   ├── AppShell.tsx         # 应用主壳
+│   │   │   ├── Sidebar.tsx          # 侧边栏导航
+│   │   │   ├── TitleBar.tsx         # 标题栏
+│   │   │   ├── ButlerOverlay.tsx    # Butler 浮层
+│   │   │   └── GlobalSearchBar.tsx  # 全局搜索浮层
+│   │   ├── review/               # 每日回顾组件
+│   │   │   └── DailyReviewModal.tsx # AI 每日回顾弹窗
+│   │   ├── screenshot/           # 截图 OCR 组件
+│   │   │   └── ScreenshotOcrPanel.tsx # 截图识别面板
 │   │   ├── todo/                 # 待办子组件
+│   │   │   └── TodoDetailModal.tsx   # 待办详情弹窗（含关联）
 │   │   └── ui/                   # 通用 UI 组件
-│   ├── hooks/                    # 自定义 Hooks（8 个）
+│   │       ├── DatePicker.tsx       # 日期选择器
+│   │       ├── Select.tsx           # 下拉选择
+│   │       └── ToastContainer.tsx   # Toast 通知
+│   ├── hooks/                    # 自定义 Hooks（10 个）
 │   │   ├── useDatabase.ts        # DB 初始化
 │   │   ├── useTodos.ts           # 待办 CRUD
 │   │   ├── useIdeas.ts           # 灵感 CRUD
@@ -157,10 +199,13 @@ FlowBox/
 │   │   ├── useVoiceRecorder.ts   # 录音控制
 │   │   ├── useVoiceTranscribe.ts # AI 转写 + 摘要
 │   │   ├── useClipboardWatcher.ts # 剪贴板监听
-│   │   └── useAppUsageTracker.ts # 应用追踪事件监听
-│   ├── services/                 # 数据服务层（12 个）
-│   │   ├── aiService.ts          # AI 引擎（对话 / 转写 / 摘要 / 分类）
+│   │   ├── useAppUsageTracker.ts # 应用追踪事件监听
+│   │   ├── useDailyReview.ts     # 每日回顾数据聚合
+│   │   └── useScreenshotOcr.ts   # 截图 OCR 流程
+│   ├── services/                 # 数据服务层（17 个）
+│   │   ├── aiService.ts          # AI 引擎（对话 / 转写 / 摘要 / Vision）
 │   │   ├── butlerService.ts      # Butler 指令编排
+│   │   ├── butlerDbService.ts    # Butler 对话 SQLite 持久化
 │   │   ├── todoService.ts        # 待办 CRUD
 │   │   ├── ideaService.ts        # 灵感 CRUD
 │   │   ├── pomodoroService.ts    # 番茄钟 CRUD
@@ -170,6 +215,10 @@ FlowBox/
 │   │   ├── appUsageService.ts    # 应用使用时长
 │   │   ├── settingsService.ts    # 设置读写
 │   │   ├── obsidianService.ts    # Obsidian 导出桥接
+│   │   ├── searchService.ts      # 全局跨模块搜索
+│   │   ├── linkService.ts        # 跨模块关联（item_links）
+│   │   ├── dailyReviewService.ts # AI 每日回顾
+│   │   ├── screenshotOcrService.ts # 截图 OCR
 │   │   └── database.ts           # SQLite 连接单例
 │   ├── stores/                   # Zustand 全局状态
 │   │   ├── useAppStore.ts        # 应用级状态（Butler 开关等）
@@ -179,18 +228,25 @@ FlowBox/
 ├── src-tauri/                    # Rust 后端
 │   ├── src/
 │   │   ├── lib.rs                # 主入口（插件注册、快捷键）
-│   │   ├── commands/             # IPC 命令
+│   │   ├── commands/             # IPC 命令（6 个）
 │   │   │   ├── butler.rs         # AI Butler 窗口控制
 │   │   │   ├── app_usage.rs      # 应用追踪开关
 │   │   │   ├── clipboard.rs      # 剪贴板监听
 │   │   │   ├── obsidian.rs       # Obsidian vault 路径检测
-│   │   │   └── voice.rs          # 录音文件管理
-│   │   └── services/             # 后台服务
-│   │       ├── clipboard_watcher.rs
-│   │       └── app_usage_tracker.rs
-│   ├── migrations/               # 数据库迁移
+│   │   │   ├── voice.rs          # 录音启停 + 转写
+│   │   │   └── screenshot.rs     # 截图捕获（剪贴板→BMP）
+│   │   └── services/             # 后台服务（6 个）
+│   │       ├── clipboard_watcher.rs   # 剪贴板轮询
+│   │       ├── app_usage_tracker.rs   # 应用使用追踪
+│   │       ├── butler_shortcut.rs     # 全局快捷键管理
+│   │       ├── obsidian_export.rs     # Obsidian 文件导出
+│   │       ├── voice_recorder.rs      # 原生录音
+│   │       └── voice_transcribe.rs    # 火山引擎 ASR 转写
+│   ├── migrations/               # 数据库迁移（4 个）
 │   │   ├── 001_init.sql          # 核心表结构
-│   │   └── 002_error_logs.sql    # 错误日志表
+│   │   ├── 002_error_logs.sql    # 错误日志表
+│   │   ├── 003_butler_messages.sql # Butler 对话持久化表
+│   │   └── 004_cross_link.sql    # 跨模块关联表
 │   ├── capabilities/             # Tauri 安全能力声明
 │   └── tauri.conf.json           # 窗口 / CSP / 权限配置
 └── package.json
@@ -239,14 +295,35 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 - [x] Markdown 双向转换 + 富文本复制
 - [x] 剪贴板复制反馈 + 待办"进行中"状态标识
 - [x] 暗色模式 UI 全面适配（Sidebar / 按钮 / 图标去底色）
+- [x] 跨模块智能关联 + 全局搜索（`Cmd+/`）
+- [x] 截图 OCR → 灵感 / 待办（AI Vision）
+- [x] AI 每日回顾（数据聚合 + 流式总结）
+- [x] 剪贴板批量拼接 + Diff 对比
+- [x] Rust 原生录音 + 火山引擎 ASR 转写
 - [ ] Obsidian Vault 自动导出集成
 - [ ] AI 周报自动生成（基于效率分析数据）
+- [ ] Flow 模式（沉浸式心流引擎 + 应用偏离提醒）
+- [ ] 情绪追踪 + AI 洞察
 - [ ] 多语言 i18n 支持
 - [ ] Windows / Linux 跨平台适配
 
 ---
 
 ## 📌 版本记录
+
+### v0.3.0 — 2026-03-30
+
+> 智能关联 · 截图 OCR · AI 每日回顾 · 剪贴板工作流
+
+- ✨ **全局搜索**：`Cmd+/` 唤出毛玻璃浮层，跨模块实时搜索 + 键盘导航跳转
+- ✨ **跨模块智能关联**：`item_links` 多对多关联表，灵感↔待办↔语音↔剪贴板任意链接
+- ✨ **截图 OCR → 灵感/待办**：系统截图 → AI Vision 识别 → 一键存储，Rust 原生 BMP 编码
+- ✨ **AI 每日回顾**：每晚自动弹窗，聚合全天数据 + 滞留提醒 + 流式 AI 洞察（保留 30 天历史）
+- ✨ **剪贴板 Diff 对比**：选中两条记录并排对比，新旧版本一目了然
+- ✨ **剪贴板批量拼接**：多选 + 一键合并复制
+- 🔧 **Butler SQLite 持久化**：对话历史从 localStorage 迁移至 `butler_messages` 表
+- 🔧 **Rust 原生录音**：`voice_recorder.rs` + `voice_transcribe.rs` 替代浏览器 API
+- 🔧 **数据库迁移**：新增 003（Butler 消息表）、004（跨模块关联表）
 
 ### v0.2.0 — 2026-03-29
 

@@ -287,7 +287,7 @@ export async function chatWithVision(params: {
   })
 }
 
-// ─── 语音转写：火山引擎 ASR ──────────────────────────
+// ─── 语音转写：浏览器兜底（仅非 Tauri 环境） ───────────
 
 /** 将 base64 Data URL 的 base64 部分提取出来 */
 export function dataUrlToBase64(dataUrl: string): { base64: string; mimeType: string } {
@@ -297,81 +297,17 @@ export function dataUrlToBase64(dataUrl: string): { base64: string; mimeType: st
 }
 
 /**
- * 使用火山引擎「大模型录音文件识别极速版」进行语音转文字
- * 接口文档: https://www.volcengine.com/docs/6561
- * 支持格式：wav, mp3, ogg, m4a, aac 等
- */
-async function transcribeWithVolcengine(audioDataUrl: string): Promise<string> {
-  const appId = await settingsService.settingsGet('asr.volc_app_id') ?? ''
-  const token = await settingsService.settingsGet('asr.volc_access_token') ?? ''
-
-  if (!appId || !token) {
-    throw new Error('请先在设置 → 语音识别中填写火山引擎 ASR AppID 和 Access Token。')
-  }
-
-  const { base64 } = dataUrlToBase64(audioDataUrl)
-
-  const resp = await fetch('https://openspeech.bytedance.com/api/v2/asr/bigmodel', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Api-App-Key': appId,
-      'X-Api-Access-Key': token,
-      'X-Api-Resource-Id': 'volc.bigasr.file.record',
-    },
-    body: JSON.stringify({
-      audio: {
-        format: 'wav',
-        data: base64,
-      },
-      request: {
-        model_name: 'bigmodel',
-        language: 'zh-CN',
-        show_utterances: false,
-      },
-    }),
-  })
-
-  if (!resp.ok) {
-    const errBody = await resp.text()
-    throw new Error(`火山引擎 ASR 错误 (${resp.status}): ${errBody}`)
-  }
-
-  const data = await resp.json()
-
-  // 检查业务层错误码
-  const code = data.code ?? data.resp_code
-  if (code && code !== 0 && code !== 1000) {
-    throw new Error(`火山引擎 ASR 识别失败 (code=${code}): ${data.message ?? data.resp_message ?? '未知错误'}`)
-  }
-
-  // 提取识别文本
-  const text = data.result?.text || data.audio_info?.text || data.text
-  if (!text) {
-    throw new Error('火山引擎 ASR 未返回识别文本，请检查音频格式是否为 WAV。')
-  }
-
-  return text.trim()
-}
-
-/**
- * 统一入口：优先使用火山引擎 ASR，兜底使用 Whisper（如果有 OpenAI Key）
+ * 浏览器环境的最小兜底：
+ * 仅在配置 OpenAI 且存在 API Key 时使用 Whisper。
+ * Tauri 桌面环境请走原生命令 `voice_transcribe_audio`。
  */
 export async function transcribeAudio(audioDataUrl: string): Promise<string> {
-  const volcAppId = await settingsService.settingsGet('asr.volc_app_id')
-  const volcToken = await settingsService.settingsGet('asr.volc_access_token')
-
-  if (volcAppId && volcToken) {
-    return transcribeWithVolcengine(audioDataUrl)
-  }
-
-  // 兜底：Whisper（OpenAI）
   const config = await getAiConfig()
-  if (config.apiKey && config.baseUrl.includes('openai')) {
+  if (config.provider === 'openai' && config.apiKey) {
     return transcribeWithWhisper(audioDataUrl, config.apiKey)
   }
 
-  throw new Error('请先在设置 → 语音识别中配置火山引擎 ASR AppID 和 Access Token。')
+  throw new Error('当前环境仅支持 OpenAI Whisper 浏览器兜底。桌面端请使用原生转写命令。')
 }
 
 /** Whisper API 兜底方案 */
