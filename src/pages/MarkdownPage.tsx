@@ -521,16 +521,16 @@ export function MarkdownPage() {
   }
 
   return (
-    <div className="flex flex-col h-full animate-fade-in w-full max-w-5xl mx-auto py-2 px-2 overflow-hidden">
+    <div className="flex flex-col h-full animate-fade-in w-full max-w-5xl mx-auto py-2 px-2 overflow-y-auto custom-scrollbar">
       
       {/* Top Toolbar */}
-      <section className="px-6 py-4 flex items-center justify-between shrink-0">
+      <section className="px-6 py-4 flex flex-wrap items-center justify-between gap-4 shrink-0">
         <h1 className="text-2xl font-extrabold font-display tracking-tight text-on-surface flex items-center gap-3">
           <FileText className="text-primary w-8 h-8 stroke-[2.5]" />
           Markdown 转换器
         </h1>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => setMode(m => m === 'html2md' ? 'md2html' : 'html2md')}
             className="px-4 py-2 text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-full transition-all flex items-center gap-2"
@@ -555,10 +555,10 @@ export function MarkdownPage() {
       </section>
 
       {/* Split Pane Area */}
-      <div className="flex-1 px-6 pb-4 flex gap-6 overflow-hidden max-h-[calc(100vh-280px)]">
+      <div className="flex-1 px-6 pb-4 flex flex-col 2xl:flex-row gap-6 min-h-[850px] 2xl:min-h-[500px] shrink-0">
         
         {/* Left Pane (Source) */}
-        <div className="w-1/2 flex flex-col gap-3 min-w-0 h-full">
+        <div className="flex-1 w-full 2xl:w-[calc(50%-12px)] flex flex-col gap-3 h-[400px] 2xl:h-full shrink-0">
           <div className="flex items-center justify-between px-2">
             <label className="text-xs font-bold uppercase tracking-widest text-outline">
               {mode === 'html2md' ? 'Rich Text / HTML Source' : 'Markdown Source'}
@@ -589,10 +589,10 @@ export function MarkdownPage() {
         </div>
 
         {/* Vertical Divider Decorative */}
-        <div className="w-[1px] h-full bg-surface-container-highest/50 self-center hidden md:block"></div>
+        <div className="w-[1px] auto bg-surface-container-highest/50 self-stretch hidden 2xl:block"></div>
 
         {/* Right Pane (Markdown Output) */}
-        <div className="w-1/2 flex flex-col gap-3 min-w-0 h-full">
+        <div className="flex-1 w-full 2xl:w-[calc(50%-12px)] flex flex-col gap-3 h-[400px] 2xl:h-full shrink-0">
           <div className="flex items-center justify-between px-2">
             <label className="text-xs font-bold uppercase tracking-widest text-outline">
               {mode === 'html2md' ? 'Markdown Output' : 'Rich Text Preview'}
@@ -678,8 +678,8 @@ export function MarkdownPage() {
             <div className="h-[1px] flex-1 bg-surface-container-highest mx-4"></div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-            <div className="md:col-span-5 flex flex-col gap-2">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+            <div className="lg:col-span-5 flex flex-col gap-2">
               <label className="text-xs font-bold text-outline-variant ml-1">Obsidian 库路径 (Vault Path)</label>
               <div className="relative">
                 <input 
@@ -699,7 +699,7 @@ export function MarkdownPage() {
               </div>
             </div>
             
-            <div className="md:col-span-4 flex flex-col gap-2">
+            <div className="lg:col-span-4 flex flex-col gap-2">
               <label className="text-xs font-bold text-outline-variant ml-1">文件名 (Filename)</label>
                     <input 
                       type="text" 
@@ -713,7 +713,7 @@ export function MarkdownPage() {
                     />
             </div>
             
-            <div className="md:col-span-3 pb-0.5">
+            <div className="lg:col-span-3 pb-0.5">
               <button 
                 onClick={handleExportToObsidian}
                 className="w-full h-11 bg-on-surface text-surface rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary hover:text-on-primary transition-all active:scale-[0.98] shadow-lg shadow-on-surface/5"
