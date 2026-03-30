@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Pin, Copy, Bot, Trash2, Clock, Code2, Type, Image as ImageIcon, ListChecks, CheckSquare, Square, ArrowRightLeft } from 'lucide-react'
+import { Search, Pin, Copy, Bot, Trash2, Clock, Code2, Type, Image as ImageIcon, ListChecks, CheckSquare, Square, ArrowRightLeft, X } from 'lucide-react'
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
 import * as clipboardService from '@/services/clipboardService'
@@ -235,7 +235,7 @@ export function ClipboardPage() {
     const selectedClips = clips.filter(c => selectedIds.has(c.id))
     const texts = selectedClips.map(c => c.text_content || c.ocr_text || '').filter(Boolean)
     if (texts.length === 0) {
-      showToast('选中的内容不包含有效文本', 'warning')
+      showToast('选中的内容不包含有效文本', 'info')
       return
     }
     const merged = texts.join('\n\n')
