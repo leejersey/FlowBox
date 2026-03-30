@@ -1,11 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { Fragment, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Sparkles, Diamond, UploadCloud, FolderOpen, Trash2, Copy, Check, FileText, ArrowRightLeft } from 'lucide-react'
 import TurndownService from 'turndown'
 import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/hooks/useSettings'
 import { showToast } from '@/store/useToastStore'
 import { exportMarkdownToObsidian } from '@/services/obsidianService'
+import { codeThemes } from '@/features/markdown/codeThemes'
+import type { CodeTheme, CodeTokenType } from '@/features/markdown/codeThemes'
 
 // Turndown 实例（配置 ATX 标题如 # 和 fenced 代码块 ```）
 const turndownService = new TurndownService({
@@ -82,8 +85,193 @@ function convertSourceToMarkdown(html: string, text: string): string {
   return cleanupMarkdown(normalizePlainTextToMarkdown(text))
 }
 
+function createMarkdownPreviewComponents(theme: CodeTheme): Components {
+  return {
+    pre: ({ children }) => <>{children}</>,
+    code: ({ children, className }) => {
+      const content = String(children ?? '').replace(/\n$/, '')
+      const isBlock = Boolean(className) || content.includes('\n')
+      const language = normalizeLanguage(className) ?? inferCodeLanguage(content)
+
+      if (isBlock) {
+        return (
+          <pre
+            style={{
+              backgroundColor: theme.block.backgroundColor,
+              color: theme.block.color,
+              borderRadius: '14px',
+              padding: '16px 18px',
+              margin: '1em 0',
+              overflowX: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              lineHeight: '1.7',
+              border: theme.block.border,
+              boxShadow: theme.block.boxShadow,
+            }}
+          >
+            <code
+              className={className}
+              style={{
+                fontFamily: "'SFMono-Regular', 'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                fontSize: '13px',
+                backgroundColor: 'transparent',
+                color: 'inherit',
+                padding: '0',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {renderHighlightedCode(content, language, theme)}
+            </code>
+          </pre>
+        )
+      }
+
+      return (
+        <code
+          className={className}
+          style={{
+            fontFamily: "'SFMono-Regular', 'JetBrains Mono', 'Fira Code', Consolas, monospace",
+            fontSize: '0.92em',
+            backgroundColor: theme.inlineCode.backgroundColor,
+            color: theme.inlineCode.color,
+            padding: '0.16em 0.42em',
+            borderRadius: '6px',
+            border: theme.inlineCode.border,
+          }}
+        >
+          {renderHighlightedCode(content, language, theme)}
+        </code>
+      )
+    },
+  }
+}
+
+const languageKeywordMap: Record<string, string[]> = {
+  javascript: ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'new', 'import', 'from', 'export', 'default', 'class', 'extends', 'try', 'catch', 'finally', 'async', 'await', 'throw', 'typeof', 'instanceof'],
+  typescript: ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'new', 'import', 'from', 'export', 'default', 'class', 'extends', 'try', 'catch', 'finally', 'async', 'await', 'throw', 'interface', 'type', 'implements', 'public', 'private', 'protected', 'readonly'],
+  python: ['def', 'class', 'return', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'import', 'from', 'as', 'pass', 'break', 'continue', 'lambda', 'yield', 'with', 'in', 'is', 'not', 'and', 'or'],
+  sql: ['select', 'from', 'where', 'and', 'or', 'insert', 'into', 'update', 'delete', 'join', 'left', 'right', 'inner', 'outer', 'on', 'group', 'by', 'order', 'limit', 'having', 'as', 'distinct', 'create', 'table', 'values'],
+  shell: ['if', 'then', 'else', 'fi', 'for', 'do', 'done', 'case', 'esac', 'export', 'local', 'function', 'in', 'echo', 'cd', 'pwd', 'cat', 'grep', 'find', 'sed', 'awk'],
+  json: ['true', 'false', 'null'],
+  markdown: [],
+}
+
+function normalizeLanguage(className?: string): string | null {
+  if (!className) return null
+  const matched = className.match(/language-([\w-]+)/)?.[1]?.toLowerCase()
+  if (!matched) return null
+  if (matched === 'js' || matched === 'jsx') return 'javascript'
+  if (matched === 'ts' || matched === 'tsx') return 'typescript'
+  if (matched === 'bash' || matched === 'sh' || matched === 'zsh') return 'shell'
+  if (matched === 'py') return 'python'
+  return matched
+}
+
+function inferCodeLanguage(code: string): string {
+  const trimmed = code.trim()
+  if (!trimmed) return 'plaintext'
+  if (/^#{1,6}\s/m.test(trimmed)) return 'markdown'
+  if (/<\/?[a-z][^>]*>/i.test(trimmed)) return 'html'
+  if (/\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b/i.test(trimmed)) return 'sql'
+  if (/\bdef\b|\bimport\b|\bfrom\b|\bclass\b/.test(trimmed)) return 'python'
+  if (/\b(const|let|function|=>|import|export)\b/.test(trimmed)) return 'typescript'
+  if (/^\s*[{[]/.test(trimmed)) return 'json'
+  if (/^\s*#/.test(trimmed) || /\becho\b|\bgrep\b|\bcat\b/.test(trimmed)) return 'shell'
+  return 'plaintext'
+}
+
+function renderHighlightedCode(code: string, language: string, theme: CodeTheme) {
+  const lines = code.split('\n')
+  return lines.map((line, lineIndex) => (
+    <Fragment key={`${language}-${lineIndex}`}>
+      {tokenizeCodeLine(line, language).map((token, tokenIndex) => (
+        <span
+          key={`${language}-${lineIndex}-${tokenIndex}`}
+          style={{ color: theme.tokens[token.type] }}
+        >
+          {token.text}
+        </span>
+      ))}
+      {lineIndex < lines.length - 1 ? '\n' : null}
+    </Fragment>
+  ))
+}
+
+function tokenizeCodeLine(line: string, language: string): Array<{ text: string; type: CodeTokenType }> {
+  if (!line) return [{ text: '', type: 'plain' }]
+
+  if (language === 'markdown' && /^#{1,6}\s/.test(line.trimStart())) {
+    return [{ text: line, type: 'heading' }]
+  }
+
+  const commentIndex = findCommentIndex(line, language)
+  const contentPart = commentIndex >= 0 ? line.slice(0, commentIndex) : line
+  const commentPart = commentIndex >= 0 ? line.slice(commentIndex) : ''
+
+  const tokens = tokenizeCodeContent(contentPart, language)
+  if (commentPart) {
+    tokens.push({ text: commentPart, type: 'comment' })
+  }
+  return tokens
+}
+
+function findCommentIndex(line: string, language: string): number {
+  if (language === 'sql') return line.indexOf('--')
+  if (language === 'javascript' || language === 'typescript' || language === 'java' || language === 'go' || language === 'rust') {
+    return line.indexOf('//')
+  }
+  if (language === 'html' && line.includes('<!--')) return line.indexOf('<!--')
+  if ((language === 'shell' || language === 'python' || language === 'markdown' || language === 'yaml') && line.includes('#')) {
+    return line.indexOf('#')
+  }
+  return -1
+}
+
+function tokenizeCodeContent(content: string, language: string): Array<{ text: string; type: CodeTokenType }> {
+  if (!content) return []
+
+  const keywords = languageKeywordMap[language] ?? []
+  const pattern = /(`[^`]*`|"[^"\n]*"|'[^'\n]*'|\b\d+(?:\.\d+)?\b|[A-Za-z_][A-Za-z0-9_]*|[{}()[\].,;:+\-*/=<>!|&]+)/g
+  const result: Array<{ text: string; type: CodeTokenType }> = []
+  let lastIndex = 0
+
+  for (const match of content.matchAll(pattern)) {
+    const token = match[0]
+    const start = match.index ?? 0
+
+    if (start > lastIndex) {
+      result.push({ text: content.slice(lastIndex, start), type: 'plain' })
+    }
+
+    let type: CodeTokenType = 'plain'
+    if (/^["'`]/.test(token)) {
+      type = 'string'
+    } else if (/^\d/.test(token)) {
+      type = 'number'
+    } else if (keywords.includes(token.toLowerCase())) {
+      type = 'keyword'
+    } else if (/^(true|false|null|undefined|None)$/.test(token)) {
+      type = 'builtin'
+    } else if (/^[{}()[\].,;:+\-*/=<>!|&]+$/.test(token)) {
+      type = 'operator'
+    }
+
+    result.push({ text: token, type })
+    lastIndex = start + token.length
+  }
+
+  if (lastIndex < content.length) {
+    result.push({ text: content.slice(lastIndex), type: 'plain' })
+  }
+
+  return result
+}
+
 export function MarkdownPage() {
   const { settings, setSetting } = useSettings()
+  const activeCodeTheme = codeThemes.dark
   
   // State
   const [mode, setMode] = useState<'html2md' | 'md2html'>('html2md')
@@ -95,6 +283,10 @@ export function MarkdownPage() {
   const [isFileNameCustomized, setIsFileNameCustomized] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
+  const markdownPreviewComponents = useMemo(
+    () => createMarkdownPreviewComponents(activeCodeTheme),
+    [activeCodeTheme]
+  )
 
   // Load settings on mount
   useEffect(() => {
@@ -328,7 +520,7 @@ export function MarkdownPage() {
               <div className="h-full w-full overflow-y-auto custom-scrollbar">
                 {markdownText ? (
                   <div ref={previewRef} className="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:font-display prose-a:text-primary">
-                    <ReactMarkdown>{markdownText}</ReactMarkdown>
+                    <ReactMarkdown components={markdownPreviewComponents}>{markdownText}</ReactMarkdown>
                   </div>
                 ) : (
                   <span className="text-on-surface-variant/50 flex flex-col items-center justify-center h-full opacity-50 select-none text-sm font-sans gap-2">
