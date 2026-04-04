@@ -1,16 +1,22 @@
-import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus, Moon, Play } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus, Moon, Play, Puzzle } from 'lucide-react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
+import { getLucideIcon } from '@/lib/icons'
 import { useThemeStore } from '@/store/useThemeStore'
 import { useSettings } from '@/hooks/useSettings'
 import { showToast } from '@/store/useToastStore'
 import { useDailyReview } from '@/hooks/useDailyReview'
+import * as skillService from '@/services/skillService'
+import type { ButlerSkill } from '@/types/skill'
+import { SKILL_CATEGORIES } from '@/types/skill'
+import { SkillEditPanel } from '@/components/skills/SkillEditPanel'
 
 const menuItems = [
   { id: 'general', label: '通用设置', icon: SettingsIcon },
   { id: 'account', label: '账号与云同步', icon: Cloud },
   { id: 'ai', label: 'AI 模型配置', icon: Cpu },
+  { id: 'skills', label: 'Butler 技能', icon: Puzzle },
   { id: 'shortcuts', label: '快捷键', icon: Keyboard },
   { id: 'privacy', label: '隐私与安全', icon: ShieldCheck },
   { id: 'about', label: '关于 FlowBox', icon: User },
@@ -62,6 +68,25 @@ export function SettingsPage() {
   const { settings, saved, setSetting, toggleSetting } = useSettings()
   const dailyReview = useDailyReview()
   const [reviewTime, setReviewTime] = useState(settings['daily_review.time'] || '21:00')
+
+  // ─── Skills 状态 ────────────────────────────
+  const [skills, setSkills] = useState<ButlerSkill[]>([])
+  const [editingSkill, setEditingSkill] = useState<ButlerSkill | null>(null)
+  const [isNewSkill, setIsNewSkill] = useState(false)
+  const [skillPanelOpen, setSkillPanelOpen] = useState(false)
+
+  const fetchSkills = useCallback(async () => {
+    try {
+      const data = await skillService.loadSkills()
+      setSkills(data)
+    } catch (err) {
+      showToast(`加载技能失败: ${String(err)}`, 'error')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'skills') fetchSkills()
+  }, [activeTab, fetchSkills])
 
   useEffect(() => {
     if (settings['ai.openai_api_key']) setLocalApiKey(settings['ai.openai_api_key'])
@@ -599,6 +624,92 @@ export function SettingsPage() {
                     <AlertTriangle className="absolute -right-6 -bottom-6 w-32 h-32 text-red-500/5 rotate-12 pointer-events-none" />
                   </div>
                 </section>
+              </div>
+            )}
+
+            {activeTab === 'skills' && (
+              <div className="animate-fade-in">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-2xl font-display font-bold text-on-surface">Butler 技能</h2>
+                  <button
+                    onClick={() => { setEditingSkill(null); setIsNewSkill(true); setSkillPanelOpen(true) }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white font-medium text-sm hover:bg-primary/90 transition-all shadow-sm hover:shadow-md"
+                  >
+                    <Plus className="w-4 h-4" />
+                    新建
+                  </button>
+                </div>
+                <p className="text-sm text-on-surface-variant mb-8">自定义 Butler 快捷指令和 Prompt 模板，在 Butler 对话中一键调用。</p>
+
+                {SKILL_CATEGORIES.map((cat) => {
+                  const items = skills.filter((s) => s.category === cat)
+                  return (
+                    <section key={cat} className="mb-8">
+                      <h3 className="text-sm font-bold text-on-surface mb-3 uppercase tracking-wider flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        {cat}
+                        <span className="text-on-surface-variant/50 font-normal normal-case">({items.length})</span>
+                      </h3>
+                      {items.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {items.map((skill) => {
+                            const Icon = getLucideIcon(skill.icon)
+                            const isBuiltin = Boolean(skill.is_builtin)
+                            return (
+                              <button
+                                key={skill.id}
+                                onClick={() => { setEditingSkill(skill); setIsNewSkill(false); setSkillPanelOpen(true) }}
+                                className="flex items-center gap-4 p-4 bg-surface hover:bg-surface-container-highest rounded-2xl transition-all text-left group"
+                              >
+                                <div
+                                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+                                  style={{ backgroundColor: `${skill.color}15` }}
+                                >
+                                  <Icon className="w-5 h-5" style={{ color: skill.color }} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-on-surface text-[15px]">{skill.name}</span>
+                                    {isBuiltin && (
+                                      <span className="text-[10px] font-medium text-primary/60 bg-primary/8 px-1.5 py-0.5 rounded-md">内置</span>
+                                    )}
+                                  </div>
+                                  {skill.prompt_prefix && (
+                                    <span className="text-xs text-on-surface-variant mt-0.5 block truncate">{skill.prompt_prefix.trim().slice(0, 50)}</span>
+                                  )}
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-on-surface-variant/40 group-hover:text-on-surface-variant transition-colors" />
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-on-surface-variant/50 py-6 text-center border border-dashed border-surface-container-highest rounded-2xl">
+                          暂无「{cat}」技能
+                        </div>
+                      )}
+                    </section>
+                  )
+                })}
+
+                {/* 新建技能占位 */}
+                <button
+                  onClick={() => { setEditingSkill(null); setIsNewSkill(true); setSkillPanelOpen(true) }}
+                  className="w-full py-6 rounded-2xl border-2 border-dashed border-surface-container-highest hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center justify-center gap-2 text-on-surface-variant/50 hover:text-primary group"
+                >
+                  <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">创建自定义技能</span>
+                </button>
+
+                {/* 编辑面板 */}
+                {skillPanelOpen && (
+                  <SkillEditPanel
+                    skill={editingSkill}
+                    isNew={isNewSkill}
+                    onClose={() => { setSkillPanelOpen(false); setEditingSkill(null) }}
+                    onSaved={() => { setSkillPanelOpen(false); setEditingSkill(null); fetchSkills() }}
+                  />
+                )}
               </div>
             )}
 

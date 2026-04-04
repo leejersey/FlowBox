@@ -1,14 +1,7 @@
 import * as aiService from './aiService'
 import * as clipboardService from './clipboardService'
-import type { ButlerActionId, ButlerHistoryMessage, ButlerRequestContext } from '@/types/butler'
-
-export const BUTLER_ACTION_PREFIXES: Record<ButlerActionId, string> = {
-  polish: '帮我润色这段文字：\n\n',
-  translate: '帮我把这段话翻译成中文或英文：\n\n',
-  summarize: '提取这段文本的摘要：\n\n',
-  fix_code: '分析并修复这段代码的问题：\n\n',
-  analyze_img: '请分析最近一张截图，说明关键内容、可能问题和下一步建议：\n\n',
-}
+import type { ButlerHistoryMessage, ButlerRequestContext } from '@/types/butler'
+import type { ButlerSkill } from '@/types/skill'
 
 const DEFAULT_SYSTEM_PROMPT = `你是 FlowBox 的 AI Butler。
 
@@ -19,21 +12,36 @@ const DEFAULT_SYSTEM_PROMPT = `你是 FlowBox 的 AI Butler。
 4. 如果信息不足，明确说明缺什么，不要编造。
 5. 输出保持简洁、可执行。`
 
-function buildSystemPrompt(promptTemplate: string): string {
-  if (promptTemplate && promptTemplate !== '默认助手') {
-    return `${DEFAULT_SYSTEM_PROMPT}\n\n当前 Prompt 模板：${promptTemplate}`
+function buildSystemPrompt(promptTemplate: string, skillSystemPrompt?: string): string {
+  let base = DEFAULT_SYSTEM_PROMPT
+
+  // 技能专属 system prompt 优先
+  if (skillSystemPrompt?.trim()) {
+    base = `${base}\n\n${skillSystemPrompt.trim()}`
   }
-  return DEFAULT_SYSTEM_PROMPT
+
+  if (promptTemplate && promptTemplate !== '默认助手') {
+    base = `${base}\n\n当前 Prompt 模板：${promptTemplate}`
+  }
+
+  return base
 }
 
-export function composeButlerPrompt(input: string, actionId: ButlerActionId | null): string {
+/** 根据 skill 组合用户输入 */
+export function composeButlerPrompt(input: string, skill: ButlerSkill | null): string {
   const trimmed = input.trim()
-  if (!actionId) return trimmed
+  if (!skill) return trimmed
 
-  const prefix = BUTLER_ACTION_PREFIXES[actionId]
+  const prefix = skill.prompt_prefix
+  if (!prefix) return trimmed
   if (!trimmed) return prefix.trim()
   if (trimmed.startsWith(prefix.trim())) return trimmed
   return `${prefix}${trimmed}`
+}
+
+/** 根据 skill ID 判断是否为截图分析技能 */
+function isImageAnalysisSkill(skillId: string | null): boolean {
+  return skillId === 'builtin-analyze-img'
 }
 
 function toChatHistory(history: ButlerHistoryMessage[]): aiService.ChatInputMessage[] {
@@ -44,13 +52,19 @@ function toChatHistory(history: ButlerHistoryMessage[]): aiService.ChatInputMess
 }
 
 export async function sendButlerMessage(request: ButlerRequestContext): Promise<string> {
-  if (request.actionId === 'analyze_img') {
+  if (isImageAnalysisSkill(request.skillId)) {
     return analyzeLatestClipboardImage(request)
   }
 
+  const composedInput = request.promptPrefix
+    ? (request.input.trim().startsWith(request.promptPrefix.trim())
+      ? request.input.trim()
+      : `${request.promptPrefix}${request.input.trim()}`)
+    : request.input.trim()
+
   return aiService.chatWithAssistant({
-    input: composeButlerPrompt(request.input, request.actionId),
-    systemPrompt: buildSystemPrompt(request.promptTemplate),
+    input: composedInput,
+    systemPrompt: buildSystemPrompt(request.promptTemplate, request.skillSystemPrompt),
     history: toChatHistory(request.history),
     temperature: 0.4,
   })
@@ -65,16 +79,21 @@ export async function sendButlerMessageStream(
   onToken: (token: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
-  if (request.actionId === 'analyze_img') {
-    // Vision API 不支持流式，回退
+  if (isImageAnalysisSkill(request.skillId)) {
     const result = await analyzeLatestClipboardImage(request)
     onToken(result)
     return result
   }
 
+  const composedInput = request.promptPrefix
+    ? (request.input.trim().startsWith(request.promptPrefix.trim())
+      ? request.input.trim()
+      : `${request.promptPrefix}${request.input.trim()}`)
+    : request.input.trim()
+
   return aiService.chatWithAssistantStream({
-    input: composeButlerPrompt(request.input, request.actionId),
-    systemPrompt: buildSystemPrompt(request.promptTemplate),
+    input: composedInput,
+    systemPrompt: buildSystemPrompt(request.promptTemplate, request.skillSystemPrompt),
     history: toChatHistory(request.history),
     temperature: 0.4,
     onToken,
@@ -89,10 +108,14 @@ export async function analyzeLatestClipboardImage(request: ButlerRequestContext)
     throw new Error('没有最近截图可分析。请先复制一张图片到剪贴板。')
   }
 
+  const composedInput = request.promptPrefix
+    ? `${request.promptPrefix}${request.input.trim()}`
+    : request.input.trim()
+
   return aiService.chatWithVision({
-    prompt: composeButlerPrompt(request.input, 'analyze_img'),
+    prompt: composedInput || '请分析最近一张截图，说明关键内容、可能问题和下一步建议。',
     imagePath: latestImage.image_path,
-    systemPrompt: buildSystemPrompt(request.promptTemplate),
+    systemPrompt: buildSystemPrompt(request.promptTemplate, request.skillSystemPrompt),
     temperature: 0.3,
   })
 }
@@ -107,8 +130,10 @@ export async function regenerateButlerMessage(request: ButlerRequestContext | nu
 export async function optimizeButlerReply(content: string, promptTemplate: string): Promise<string> {
   return sendButlerMessage({
     input: content,
-    actionId: 'polish',
+    skillId: 'builtin-polish',
+    promptPrefix: '帮我润色这段文字：\n\n',
     promptTemplate,
+    skillSystemPrompt: '',
     history: [],
   })
 }

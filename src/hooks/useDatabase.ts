@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { showToast } from '@/store/useToastStore'
+import { seedBuiltinSkills } from '@/services/skillService'
 
 /**
  * 数据库初始化 hook
@@ -23,6 +24,10 @@ export function useDatabase() {
           "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_sqlx%' AND name != 'sqlite_sequence' ORDER BY name"
         )
         console.log('✅ FlowBox DB ready, tables:', tables.map(t => t.name).join(', '))
+
+        // 初始化预设技能种子数据（幂等）
+        await seedBuiltinSkills()
+
         setReady(true)
       } catch (err) {
         const msg = String(err)
@@ -49,3 +54,4 @@ export function useDatabase() {
 
   return { ready, error }
 }
+

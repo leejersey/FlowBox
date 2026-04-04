@@ -34,6 +34,12 @@ pub fn run() {
             sql: include_str!("../migrations/004_cross_link.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "butler_skills",
+            sql: include_str!("../migrations/005_butler_skills.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

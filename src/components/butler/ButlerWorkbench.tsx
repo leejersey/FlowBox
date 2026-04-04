@@ -1,34 +1,27 @@
-import { Bot, Sparkles, Globe, FileText, Code2, ImageIcon } from 'lucide-react'
+import { Bot, ChevronDown } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ButlerFooter } from './ButlerFooter'
 import { ChatMessageItem } from './ChatMessageItem'
 import { cn } from '@/lib/utils'
+import { getLucideIcon } from '@/lib/icons'
 import { showToast } from '@/store/useToastStore'
 import { useButlerStore } from '@/stores/butlerStore'
 import {
-  BUTLER_ACTION_PREFIXES,
   composeButlerPrompt,
   getButlerModelLabel,
   sendButlerMessageStream,
 } from '@/services/butlerService'
-import type { ButlerActionId, ButlerHistoryMessage, ButlerRequestContext, ChatMessage } from '@/types/butler'
+import * as skillService from '@/services/skillService'
+import type { ButlerHistoryMessage, ButlerRequestContext, ChatMessage } from '@/types/butler'
+import type { ButlerSkill } from '@/types/skill'
 
 interface ButlerWorkbenchProps {
   className?: string
 }
 
-const QUICK_ACTIONS: Array<{
-  id: ButlerActionId
-  icon: typeof Sparkles
-  label: string
-}> = [
-  { id: 'polish', icon: Sparkles, label: '润色文本' },
-  { id: 'translate', icon: Globe, label: '翻译' },
-  { id: 'summarize', icon: FileText, label: '摘要' },
-  { id: 'fix_code', icon: Code2, label: '修复代码' },
-  { id: 'analyze_img', icon: ImageIcon, label: '分析截图' },
-]
+/** Butler 工作台展示的快捷技能最大数量 */
+const MAX_QUICK_SKILLS = 5
 
 function buildHistory(messages: ChatMessage[]): ButlerHistoryMessage[] {
   return messages
@@ -52,19 +45,30 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
     clearMessages,
     currentModel,
     promptTemplate,
+    activeSkillId,
     isLoading,
     lastRequest,
     setLoading,
     setLastRequest,
     setModel,
+    setActiveSkillId,
     initFromDb,
   } = useButlerStore()
   const abortRef = useRef<AbortController | null>(null)
   const [inputValue, setInputValue] = useState('')
-  const [selectedActionId, setSelectedActionId] = useState<ButlerActionId | null>(null)
+  const [selectedSkill, setSelectedSkill] = useState<ButlerSkill | null>(null)
+  const [skills, setSkills] = useState<ButlerSkill[]>([])
+  const [showAllSkills, setShowAllSkills] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // 加载技能列表
+  useEffect(() => {
+    skillService.loadSkills()
+      .then(setSkills)
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     initFromDb()
@@ -83,6 +87,8 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
+
+  const quickSkills = useMemo(() => skills.slice(0, MAX_QUICK_SKILLS), [skills])
 
   const submitRequest = useCallback(async (
     request: ButlerRequestContext,
@@ -128,22 +134,28 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
 
     const request: ButlerRequestContext = {
       input: rawInput,
-      actionId: selectedActionId,
+      skillId: selectedSkill?.id ?? null,
+      promptPrefix: selectedSkill?.prompt_prefix ?? '',
       promptTemplate,
+      skillSystemPrompt: selectedSkill?.system_prompt ?? '',
       history: buildHistory(messages),
     }
 
-    const userBubbleContent = composeButlerPrompt(rawInput, selectedActionId)
+    const userBubbleContent = composeButlerPrompt(rawInput, selectedSkill)
     setInputValue('')
-    setSelectedActionId(null)
+    setSelectedSkill(null)
     await submitRequest(request, { userBubbleContent })
-  }, [inputValue, isLoading, messages, promptTemplate, selectedActionId, submitRequest])
+  }, [inputValue, isLoading, messages, promptTemplate, selectedSkill, submitRequest])
 
-  const handleQuickAction = useCallback((actionId: ButlerActionId) => {
-    setSelectedActionId(actionId)
-    setInputValue(BUTLER_ACTION_PREFIXES[actionId])
+  const handleQuickSkill = useCallback((skill: ButlerSkill) => {
+    setSelectedSkill(skill)
+    setInputValue(skill.prompt_prefix)
+    // 如果技能有自定义 system prompt，自动切换
+    if (skill.system_prompt?.trim()) {
+      setActiveSkillId(skill.id)
+    }
     inputRef.current?.focus()
-  }, [])
+  }, [setActiveSkillId])
 
   const handleCopy = useCallback(async (message: ChatMessage) => {
     try {
@@ -157,16 +169,19 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
   const handleOptimize = useCallback(async (message: ChatMessage) => {
     if (isLoading) return
 
+    const polishSkill = skills.find(s => s.id === 'builtin-polish')
     const request: ButlerRequestContext = {
       input: message.content,
-      actionId: 'polish',
+      skillId: 'builtin-polish',
+      promptPrefix: polishSkill?.prompt_prefix ?? '帮我润色这段文字：\n\n',
       promptTemplate,
+      skillSystemPrompt: polishSkill?.system_prompt ?? '',
       history: [],
     }
 
     addMessage({ role: 'user', content: '请优化上一条回复' })
     await submitRequest(request)
-  }, [addMessage, isLoading, promptTemplate, submitRequest])
+  }, [addMessage, isLoading, promptTemplate, skills, submitRequest])
 
   const handleRegenerate = useCallback(async () => {
     if (isLoading || !lastRequest) return
@@ -217,17 +232,75 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
           </button>
         </div>
 
-        <div className="flex flex-row gap-2 mt-5 overflow-x-auto pb-1 scrollbar-none mask-fade-edges">
-          {QUICK_ACTIONS.map((action) => (
-            <button
-              key={action.id}
-              onClick={() => handleQuickAction(action.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low border border-surface-container-highest text-[13px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container hover:border-surface-container transition-all whitespace-nowrap shrink-0 group"
-            >
-              <action.icon className="w-3.5 h-3.5 group-hover:text-primary transition-colors" />
-              {action.label}
-            </button>
-          ))}
+        {/* 快捷技能栏 — 动态加载 */}
+        <div className="relative mt-5">
+          <div className="flex flex-row gap-2 overflow-x-auto pb-1 scrollbar-none mask-fade-edges">
+            {quickSkills.map((skill) => {
+              const Icon = getLucideIcon(skill.icon)
+              return (
+                <button
+                  key={skill.id}
+                  onClick={() => handleQuickSkill(skill)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[13px] font-medium transition-all whitespace-nowrap shrink-0 group',
+                    selectedSkill?.id === skill.id
+                      ? 'bg-primary/15 border-primary/30 text-primary'
+                      : 'bg-surface-container-low border-surface-container-highest text-on-surface-variant hover:text-on-surface hover:bg-surface-container hover:border-surface-container'
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5 group-hover:text-primary transition-colors" style={selectedSkill?.id === skill.id ? { color: skill.color } : undefined} />
+                  {skill.name}
+                </button>
+              )
+            })}
+            {skills.length > MAX_QUICK_SKILLS && (
+              <button
+                onClick={() => setShowAllSkills(!showAllSkills)}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-1.5 rounded-lg border text-[13px] font-medium transition-all whitespace-nowrap shrink-0',
+                  showAllSkills
+                    ? 'bg-primary/10 border-primary/20 text-primary'
+                    : 'bg-surface-container-low border-surface-container-highest text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                )}
+              >
+                +{skills.length - MAX_QUICK_SKILLS} 更多
+                <ChevronDown className={cn('w-3 h-3 transition-transform', showAllSkills && 'rotate-180')} />
+              </button>
+            )}
+          </div>
+
+          {/* 展开的完整技能面板 */}
+          {showAllSkills && skills.length > MAX_QUICK_SKILLS && (
+            <div className="absolute left-0 right-0 top-full mt-2 bg-surface-container-low/95 backdrop-blur-xl border border-surface-container-highest rounded-2xl shadow-xl p-4 z-30 animate-fade-in">
+              <div className="grid grid-cols-4 gap-2">
+                {skills.slice(MAX_QUICK_SKILLS).map((skill) => {
+                  const Icon = getLucideIcon(skill.icon)
+                  return (
+                    <button
+                      key={skill.id}
+                      onClick={() => { handleQuickSkill(skill); setShowAllSkills(false) }}
+                      className={cn(
+                        'flex flex-col items-center gap-2 p-3 rounded-xl border transition-all group',
+                        selectedSkill?.id === skill.id
+                          ? 'bg-primary/15 border-primary/30'
+                          : 'border-transparent hover:bg-surface-container hover:border-surface-container-highest'
+                      )}
+                    >
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
+                        style={{ backgroundColor: `${skill.color}15` }}
+                      >
+                        <Icon className="w-4 h-4" style={{ color: skill.color }} />
+                      </div>
+                      <span className="text-[12px] font-medium text-on-surface-variant group-hover:text-on-surface text-center leading-tight">
+                        {skill.name}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -259,7 +332,13 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
         )}
       </div>
 
-      <ButlerFooter onClear={clearMessages} currentModel={currentModel} />
+      <ButlerFooter
+        onClear={clearMessages}
+        currentModel={currentModel}
+        skills={skills}
+        activeSkillId={activeSkillId}
+        onSkillSelect={(id) => setActiveSkillId(id)}
+      />
     </div>
   )
 }

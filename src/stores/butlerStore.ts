@@ -28,6 +28,7 @@ interface ButlerStore extends ButlerState {
   clearMessages: () => void;
   setModel: (model: string) => void;
   setPromptTemplate: (template: string) => void;
+  setActiveSkillId: (skillId: string | null) => void;
   setLoading: (loading: boolean) => void;
   setLastRequest: (request: ButlerRequestContext | null) => void;
 }
@@ -39,6 +40,7 @@ export const useButlerStore = create<ButlerStore>()((set, get) => ({
   messages: [],
   currentModel: 'DeepSeek - deepseek-chat',
   promptTemplate: '默认助手',
+  activeSkillId: null,
   isLoading: false,
   lastRequest: null,
   initialized: false,
@@ -115,6 +117,10 @@ export const useButlerStore = create<ButlerStore>()((set, get) => ({
   setPromptTemplate: (template) => {
     set({ promptTemplate: template });
     butlerDb.saveStateValue('promptTemplate', template).catch(console.error);
+  },
+
+  setActiveSkillId: (skillId) => {
+    set({ activeSkillId: skillId });
   },
 
   setLoading: (loading) => set({ isLoading: loading }),

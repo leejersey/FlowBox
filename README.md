@@ -1,6 +1,6 @@
 # 🧊 FlowBox — AI 桌面效率工具
 
-![Version](https://img.shields.io/badge/version-v0.3.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-v0.4.0-blue?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 ![Tech](https://img.shields.io/badge/stack-Tauri%20v2%20%2B%20React%2019-purple?style=flat-square)
@@ -72,7 +72,9 @@
 ### 🤖 AI Butler（全局智能管家）
 - `Shift + Space` 全局呼出（可在设置中自定义），`Cmd + K` 应用内唤起
 - **多轮对话**：基于 DeepSeek / OpenAI 的实时 AI 对话，上下文自动携带
-- **快捷指令**：一键润色文本、翻译、摘要、修复代码、分析截图
+- **技能系统**：8 个内置技能（润色、翻译、摘要、修复代码、分析截图、解释代码、写周报、头脑风暴）
+- **自定义技能**：在设置→Butler 技能中创建/编辑自定义 Prompt 模板，支持专属 System Prompt
+- **Prompt 选择器联动**：Butler 底栏可切换技能的 System Prompt 作为全局上下文
 - **Markdown 渲染**：AI 回复原生支持标题、列表、代码块、表格等富文本排版
 - **对话持久化**：基于 SQLite `butler_messages` 表，关闭窗口不丢失历史
 - 毛玻璃悬浮面板，ESC / 点击遮罩关闭
@@ -99,7 +101,7 @@
 │           React + TypeScript            │
 │  ┌─────────┐ ┌──────────┐ ┌──────────┐ │
 │  │  Pages  │ │  Hooks   │ │ Services │ │
-│  │ 9 pages │ │ 10 hooks │ │ 17 svc   │ │
+│  │ 9 pages │ │ 10 hooks │ │ 18 svc   │ │
 │  └─────────┘ └──────────┘ └──────────┘ │
 │  Vite · TailwindCSS · Recharts · Zustand│
 └─────────────────────────────────────────┘
@@ -108,7 +110,7 @@
 | 层级 | 技术 | 说明 |
 |------|------|------|
 | **桌面壳** | Tauri v2 + Rust | 窗口管理、全局快捷键、原生录音/截图、后台线程 |
-| **数据库** | SQLite (tauri-plugin-sql) | 11 张核心表（含 `item_links`、`butler_messages`），本地优先 |
+| **数据库** | SQLite (tauri-plugin-sql) | 12 张核心表（含 `butler_skills`、`item_links`、`butler_messages`），本地优先 |
 | **前端框架** | React 19 + TypeScript | 页面组件 + Hooks 架构 |
 | **样式** | TailwindCSS v4 + @tailwindcss/typography | Material Design 3 色彩体系 |
 | **状态管理** | Zustand (persist) | 主题、Toast、Butler 对话历史 |
@@ -170,9 +172,11 @@ FlowBox/
 │   │   └── ButlerPage.tsx        # AI Butler 独立窗口入口
 │   ├── components/               # UI 组件
 │   │   ├── butler/               # Butler 对话组件
-│   │   │   ├── ButlerWorkbench.tsx  # 主工作台（输入、消息列表、快捷指令）
+│   │   │   ├── ButlerWorkbench.tsx  # 主工作台（输入、消息列表、技能栏）
 │   │   │   ├── ChatMessageItem.tsx  # 气泡渲染（Markdown / 纯文本）
-│   │   │   └── ButlerFooter.tsx     # 底部状态栏（模型、Prompt、清空）
+│   │   │   └── ButlerFooter.tsx     # 底部状态栏（模型、Prompt 选择器、清空）
+│   │   ├── skills/               # 技能管理组件
+│   │   │   └── SkillEditPanel.tsx   # 技能编辑侧滑面板
 │   │   ├── clipboard/            # 剪贴板增强组件
 │   │   │   └── ClipDiffModal.tsx    # 并排 Diff 对比弹窗
 │   │   ├── layout/               # 布局组件
@@ -192,7 +196,7 @@ FlowBox/
 │   │       ├── Select.tsx           # 下拉选择
 │   │       └── ToastContainer.tsx   # Toast 通知
 │   ├── hooks/                    # 自定义 Hooks（10 个）
-│   │   ├── useDatabase.ts        # DB 初始化
+│   │   ├── useDatabase.ts        # DB 初始化（含 Skills 种子）
 │   │   ├── useTodos.ts           # 待办 CRUD
 │   │   ├── useIdeas.ts           # 灵感 CRUD
 │   │   ├── useSettings.ts        # 设置管理
@@ -202,10 +206,11 @@ FlowBox/
 │   │   ├── useAppUsageTracker.ts # 应用追踪事件监听
 │   │   ├── useDailyReview.ts     # 每日回顾数据聚合
 │   │   └── useScreenshotOcr.ts   # 截图 OCR 流程
-│   ├── services/                 # 数据服务层（17 个）
+│   ├── services/                 # 数据服务层（18 个）
 │   │   ├── aiService.ts          # AI 引擎（对话 / 转写 / 摘要 / Vision）
-│   │   ├── butlerService.ts      # Butler 指令编排
+│   │   ├── butlerService.ts      # Butler 指令编排（Skill 驱动）
 │   │   ├── butlerDbService.ts    # Butler 对话 SQLite 持久化
+│   │   ├── skillService.ts       # Butler 技能 CRUD + 预设种子
 │   │   ├── todoService.ts        # 待办 CRUD
 │   │   ├── ideaService.ts        # 灵感 CRUD
 │   │   ├── pomodoroService.ts    # 番茄钟 CRUD
@@ -220,11 +225,14 @@ FlowBox/
 │   │   ├── dailyReviewService.ts # AI 每日回顾
 │   │   ├── screenshotOcrService.ts # 截图 OCR
 │   │   └── database.ts           # SQLite 连接单例
+│   ├── lib/                      # 工具库
+│   │   ├── utils.ts              # 通用工具（cn 等）
+│   │   └── icons.ts              # Lucide 图标动态映射
 │   ├── stores/                   # Zustand 全局状态
 │   │   ├── useAppStore.ts        # 应用级状态（Butler 开关等）
-│   │   └── butlerStore.ts        # Butler 对话持久化
+│   │   └── butlerStore.ts        # Butler 对话持久化（含 activeSkillId）
 │   ├── store/                    # 轻量状态（主题、Toast）
-│   └── types/                    # TypeScript 类型定义（7 个）
+│   └── types/                    # TypeScript 类型定义（8 个）
 ├── src-tauri/                    # Rust 后端
 │   ├── src/
 │   │   ├── lib.rs                # 主入口（插件注册、快捷键）
@@ -242,11 +250,12 @@ FlowBox/
 │   │       ├── obsidian_export.rs     # Obsidian 文件导出
 │   │       ├── voice_recorder.rs      # 原生录音
 │   │       └── voice_transcribe.rs    # 火山引擎 ASR 转写
-│   ├── migrations/               # 数据库迁移（4 个）
+│   ├── migrations/               # 数据库迁移（5 个）
 │   │   ├── 001_init.sql          # 核心表结构
 │   │   ├── 002_error_logs.sql    # 错误日志表
 │   │   ├── 003_butler_messages.sql # Butler 对话持久化表
-│   │   └── 004_cross_link.sql    # 跨模块关联表
+│   │   ├── 004_cross_link.sql    # 跨模块关联表
+│   │   └── 005_butler_skills.sql # Butler 技能管理表
 │   ├── capabilities/             # Tauri 安全能力声明
 │   └── tauri.conf.json           # 窗口 / CSP / 权限配置
 └── package.json
@@ -300,6 +309,7 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 - [x] AI 每日回顾（数据聚合 + 流式总结）
 - [x] 剪贴板批量拼接 + Diff 对比
 - [x] Rust 原生录音 + 火山引擎 ASR 转写
+- [x] Butler Skills 技能管理系统（8 预设 + 自定义 Prompt 模板）
 - [ ] Obsidian Vault 自动导出集成
 - [ ] AI 周报自动生成（基于效率分析数据）
 - [ ] Flow 模式（沉浸式心流引擎 + 应用偏离提醒）
@@ -310,6 +320,17 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 ---
 
 ## 📌 版本记录
+
+### v0.4.0 — 2026-04-04
+
+> Butler Skills 技能管理系统
+
+- ✨ **Butler 技能系统**：将硬编码的 5 个快捷指令升级为可管理的 Skills 系统，8 个内置技能 + 无限自定义
+- ✨ **自定义 Prompt 模板**：在设置→Butler 技能中创建/编辑技能，支持专属 System Prompt + 颜色/图标/分类
+- ✨ **Prompt 选择器**：Butler 底栏“Prompt 默认助手”变为可交互下拉菜单，选择技能后其 System Prompt 自动生效
+- ✨ **技能快捷栏升级**：动态加载 + 「更多」弹出网格面板，轻松访问所有技能
+- 🔧 **数据库迁移**：新增 005（`butler_skills` 表）
+- 🔧 **图标动态映射**：新增 `icons.ts` 支持 30 个 Lucide 图标名到组件的映射
 
 ### v0.3.0 — 2026-03-30
 
