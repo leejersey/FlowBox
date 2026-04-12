@@ -7,6 +7,7 @@ import { ClipboardPage } from './pages/ClipboardPage'
 import { VoicePage } from './pages/VoicePage'
 import { MarkdownPage } from './pages/MarkdownPage'
 import { StatsPage } from './pages/StatsPage'
+import { TrendingPage } from './pages/TrendingPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ButlerPage } from './pages/ButlerPage'
 import { useDatabase } from './hooks/useDatabase'
@@ -43,6 +44,7 @@ function App() {
           <Route path="voice" element={<VoicePage />} />
           <Route path="markdown" element={<MarkdownPage />} />
           <Route path="stats" element={<StatsPage />} />
+          <Route path="trending" element={<TrendingPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
         {/* Butler 独立窗口路由 — 不包裹 AppShell */}

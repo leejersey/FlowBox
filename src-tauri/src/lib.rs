@@ -40,6 +40,12 @@ pub fn run() {
             sql: include_str!("../migrations/005_butler_skills.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "trending_repos",
+            sql: include_str!("../migrations/006_trending.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

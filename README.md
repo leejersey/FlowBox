@@ -1,13 +1,13 @@
 # 🧊 FlowBox — AI 桌面效率工具
 
-![Version](https://img.shields.io/badge/version-v0.4.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-v0.5.0-blue?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 ![Tech](https://img.shields.io/badge/stack-Tauri%20v2%20%2B%20React%2019-purple?style=flat-square)
 
 > **Local-First · AI-Powered · Privacy-Centric**
 >
-> FlowBox 是一款面向个人开发者和知识工作者的 macOS 桌面 AI 效率工具，集成待办管理、灵感速记、番茄专注、智能剪贴板、语音备忘录、效率分析六大核心模块，所有数据本地存储，AI 能力按需接入。
+> FlowBox 是一款面向个人开发者和知识工作者的 macOS 桌面 AI 效率工具，集成待办管理、灵感速记、番茄专注、智能剪贴板、语音备忘录、效率分析、Dev Trending 七大核心模块，所有数据本地存储，AI 能力按需接入。
 
 ---
 
@@ -39,6 +39,13 @@
 - **AI 转写**：火山引擎 ASR（推荐） / OpenAI Whisper（兜底）
 - **智能摘要**：DeepSeek / OpenAI 自动提取摘要和待办事项
 - 原声回放，导出文本
+
+### 🔥 Dev Trending
+- **每日自动获取** GitHub 一周热门开源仓库（数据源：OSS Insight API）
+- **AI 中文摘要**：一键生成 batch 摘要（DeepSeek / OpenAI），节省 ~95% token 开销
+- **语言筛选 + 关键词搜索**：实时过滤，快速定位感兴趣的项目
+- **一键收藏到灵感**：仓库名 + 描述 + AI 摘要 + GitHub 链接自动归档
+- 本地 SQLite 缓存，支持离线浏览，7 天自动清理
 
 ### 📊 效率分析看板
 - 今日专注时长、本周番茄数、待办完成率、灵感总数
@@ -101,7 +108,7 @@
 │           React + TypeScript            │
 │  ┌─────────┐ ┌──────────┐ ┌──────────┐ │
 │  │  Pages  │ │  Hooks   │ │ Services │ │
-│  │ 9 pages │ │ 10 hooks │ │ 18 svc   │ │
+│  │10 pages │ │ 11 hooks │ │ 19 svc   │ │
 │  └─────────┘ └──────────┘ └──────────┘ │
 │  Vite · TailwindCSS · Recharts · Zustand│
 └─────────────────────────────────────────┘
@@ -110,7 +117,7 @@
 | 层级 | 技术 | 说明 |
 |------|------|------|
 | **桌面壳** | Tauri v2 + Rust | 窗口管理、全局快捷键、原生录音/截图、后台线程 |
-| **数据库** | SQLite (tauri-plugin-sql) | 12 张核心表（含 `butler_skills`、`item_links`、`butler_messages`），本地优先 |
+| **数据库** | SQLite (tauri-plugin-sql) | 13 张核心表（含 `trending_repos`、`butler_skills`、`item_links`），本地优先 |
 | **前端框架** | React 19 + TypeScript | 页面组件 + Hooks 架构 |
 | **样式** | TailwindCSS v4 + @tailwindcss/typography | Material Design 3 色彩体系 |
 | **状态管理** | Zustand (persist) | 主题、Toast、Butler 对话历史 |
@@ -160,13 +167,14 @@ npm run tauri build
 ```
 FlowBox/
 ├── src/                          # 前端源码
-│   ├── pages/                    # 页面组件（9 个）
+│   ├── pages/                    # 页面组件（10 个）
 │   │   ├── TodoPage.tsx          # 待办管理
 │   │   ├── IdeaPage.tsx          # 灵感速记（含详情弹窗）
 │   │   ├── PomodoroPage.tsx      # 番茄专注
 │   │   ├── ClipboardPage.tsx     # 智能剪贴板（批量选择 + Diff）
 │   │   ├── VoicePage.tsx         # 语音备忘录
 │   │   ├── StatsPage.tsx         # 效率分析
+│   │   ├── TrendingPage.tsx      # Dev Trending（GitHub 热门仓库）
 │   │   ├── MarkdownPage.tsx      # Markdown 转换器
 │   │   ├── SettingsPage.tsx      # 偏好设置
 │   │   └── ButlerPage.tsx        # AI Butler 独立窗口入口
@@ -195,22 +203,24 @@ FlowBox/
 │   │       ├── DatePicker.tsx       # 日期选择器
 │   │       ├── Select.tsx           # 下拉选择
 │   │       └── ToastContainer.tsx   # Toast 通知
-│   ├── hooks/                    # 自定义 Hooks（10 个）
+│   ├── hooks/                    # 自定义 Hooks（11 个）
 │   │   ├── useDatabase.ts        # DB 初始化（含 Skills 种子）
 │   │   ├── useTodos.ts           # 待办 CRUD
 │   │   ├── useIdeas.ts           # 灵感 CRUD
 │   │   ├── useSettings.ts        # 设置管理
+│   │   ├── useTrending.ts        # Dev Trending 数据 + 筛选
 │   │   ├── useVoiceRecorder.ts   # 录音控制
 │   │   ├── useVoiceTranscribe.ts # AI 转写 + 摘要
 │   │   ├── useClipboardWatcher.ts # 剪贴板监听
 │   │   ├── useAppUsageTracker.ts # 应用追踪事件监听
 │   │   ├── useDailyReview.ts     # 每日回顾数据聚合
 │   │   └── useScreenshotOcr.ts   # 截图 OCR 流程
-│   ├── services/                 # 数据服务层（18 个）
+│   ├── services/                 # 数据服务层（19 个）
 │   │   ├── aiService.ts          # AI 引擎（对话 / 转写 / 摘要 / Vision）
 │   │   ├── butlerService.ts      # Butler 指令编排（Skill 驱动）
 │   │   ├── butlerDbService.ts    # Butler 对话 SQLite 持久化
 │   │   ├── skillService.ts       # Butler 技能 CRUD + 预设种子
+│   │   ├── trendingService.ts    # Dev Trending（API + 缓存 + AI 摘要）
 │   │   ├── todoService.ts        # 待办 CRUD
 │   │   ├── ideaService.ts        # 灵感 CRUD
 │   │   ├── pomodoroService.ts    # 番茄钟 CRUD
@@ -232,7 +242,7 @@ FlowBox/
 │   │   ├── useAppStore.ts        # 应用级状态（Butler 开关等）
 │   │   └── butlerStore.ts        # Butler 对话持久化（含 activeSkillId）
 │   ├── store/                    # 轻量状态（主题、Toast）
-│   └── types/                    # TypeScript 类型定义（8 个）
+│   └── types/                    # TypeScript 类型定义（9 个）
 ├── src-tauri/                    # Rust 后端
 │   ├── src/
 │   │   ├── lib.rs                # 主入口（插件注册、快捷键）
@@ -250,12 +260,13 @@ FlowBox/
 │   │       ├── obsidian_export.rs     # Obsidian 文件导出
 │   │       ├── voice_recorder.rs      # 原生录音
 │   │       └── voice_transcribe.rs    # 火山引擎 ASR 转写
-│   ├── migrations/               # 数据库迁移（5 个）
+│   ├── migrations/               # 数据库迁移（6 个）
 │   │   ├── 001_init.sql          # 核心表结构
 │   │   ├── 002_error_logs.sql    # 错误日志表
 │   │   ├── 003_butler_messages.sql # Butler 对话持久化表
 │   │   ├── 004_cross_link.sql    # 跨模块关联表
-│   │   └── 005_butler_skills.sql # Butler 技能管理表
+│   │   ├── 005_butler_skills.sql # Butler 技能管理表
+│   │   └── 006_trending.sql      # Dev Trending 热门仓库缓存表
 │   ├── capabilities/             # Tauri 安全能力声明
 │   └── tauri.conf.json           # 窗口 / CSP / 权限配置
 └── package.json
@@ -310,6 +321,7 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 - [x] 剪贴板批量拼接 + Diff 对比
 - [x] Rust 原生录音 + 火山引擎 ASR 转写
 - [x] Butler Skills 技能管理系统（8 预设 + 自定义 Prompt 模板）
+- [x] Dev Trending — GitHub 热门仓库 + AI 中文摘要 + 一键收藏
 - [ ] Obsidian Vault 自动导出集成
 - [ ] AI 周报自动生成（基于效率分析数据）
 - [ ] Flow 模式（沉浸式心流引擎 + 应用偏离提醒）
@@ -320,6 +332,17 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 ---
 
 ## 📌 版本记录
+
+### v0.5.0 — 2026-04-12
+
+> Dev Trending — GitHub 热门仓库新闻板块
+
+- ✨ **Dev Trending**：每日自动获取 GitHub 一周热门仓库（OSS Insight API），卡片列表展示
+- ✨ **AI 中文摘要**：batch prompt 一次性生成 20 条仓库中文摘要，节省 ~95% token
+- ✨ **语言筛选 + 搜索**：按编程语言过滤 + 关键词实时模糊搜索
+- ✨ **一键收藏到灵感**：仓库信息 + AI 摘要自动归档为灵感笔记
+- 🔧 **数据库迁移**：新增 006（`trending_repos` 表 + 3 索引）
+- 🔧 **CSP 更新**：白名单新增 `api.ossinsight.io`
 
 ### v0.4.0 — 2026-04-04
 

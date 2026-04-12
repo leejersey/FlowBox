@@ -35,7 +35,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' https://api.deepseek.com https://api.openai.com https://openspeech.bytedance.com http://127.0.0.1:11434 http://localhost:11434 ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' asset: https://asset.localhost blob: data:; script-src 'self' 'unsafe-inline'",
+      "csp": "default-src 'self'; connect-src 'self' https://api.deepseek.com https://api.openai.com https://api.ossinsight.io https://openspeech.bytedance.com http://127.0.0.1:11434 http://localhost:11434 ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' asset: https://asset.localhost blob: data:; script-src 'self' 'unsafe-inline'",
       "assetProtocol": {
         "enable": true,
         "scope": [

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { CheckSquare, Lightbulb, Timer, Clipboard, Mic, BarChart3, Settings, FileType2, Search } from 'lucide-react'
+import { CheckSquare, Lightbulb, Timer, Clipboard, Mic, BarChart3, Settings, FileType2, Search, Flame } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { path: '/clipboard', icon: Clipboard, label: 'Clipboard' },
   { path: '/voice', icon: Mic, label: 'Voice' },
   { path: '/markdown', icon: FileType2, label: 'Markdown Converter' },
+  { path: '/trending', icon: Flame, label: 'Trending' },
   { path: '/stats', icon: BarChart3, label: 'Stats' },
 ]
 
