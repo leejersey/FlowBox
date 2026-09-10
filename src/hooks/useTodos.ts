@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import type { Todo, CreateTodoPayload, UpdateTodoPayload, TodoListQuery } from '../types/todo'
 import * as todoService from '../services/todoService'
+import { applyTodoOptimisticUpdate, rollbackTodoOptimisticUpdate } from '../lib/todoOptimisticUpdate'
 import { showToast } from '@/store/useToastStore'
 
 // 检测是否在 Tauri 环境中（兼容 Tauri v2）
@@ -49,12 +50,12 @@ export function useTodos(query: TodoListQuery = {}) {
 
   const update = useCallback(async (payload: UpdateTodoPayload) => {
     let previousTodos: Todo[] = []
+    let optimisticTodo: Todo | undefined
     setTodos(prev => {
       previousTodos = prev
-      const { tags, ...patch } = payload
-      return prev.map(t => (t.id === payload.id
-        ? { ...t, ...patch, ...(tags === undefined ? {} : { tags: JSON.stringify(tags) }) }
-        : t))
+      const next = applyTodoOptimisticUpdate(prev, payload)
+      optimisticTodo = next.find(todo => todo.id === payload.id)
+      return next
     })
 
     try {
@@ -62,7 +63,7 @@ export function useTodos(query: TodoListQuery = {}) {
       showToast('待办已更新', 'success')
       return todo
     } catch (err) {
-      setTodos(previousTodos)
+      setTodos(todos => rollbackTodoOptimisticUpdate(todos, previousTodos, payload.id, optimisticTodo))
       showToast(`更新待办失败: ${String(err)}`, 'error')
       throw err
     }
