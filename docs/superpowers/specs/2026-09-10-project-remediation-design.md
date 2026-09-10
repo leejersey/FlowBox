@@ -28,7 +28,7 @@ ESLint 仅扫描产品源码与配置，忽略 `.worktrees/**`、`src-tauri/targ
 
 ### 测试策略
 
-现有源码字符串断言可以保留少量架构守卫，但关键路径改为行为测试：
+现有源码字符串断言可以保留少量架构守卫，但关键路径改为行为测试。日期、番茄状态、回顾判定和 OCR provider 分流提取为纯函数，直接由 `node --test` 执行；数据库与 Tauri IPC 边界使用小型显式 mock，不引入新测试框架：
 
 - 本地日期边界。
 - 番茄钟状态转换。
@@ -44,7 +44,7 @@ Rust 为纯逻辑提取小函数并写模块内单元测试，不引入额外测
 
 ### 番茄钟
 
-新会话写入 `running`，停止后才写入 `completed` 或 `interrupted`。新增迁移把 `ended_at IS NULL AND actual_minutes IS NULL` 的历史伪 completed 记录修正为 `interrupted`，避免继续污染完成数。
+新会话写入 `running`，停止后才写入 `completed` 或 `interrupted`；同步扩展 `PomodoroSession.status` 类型。新增迁移并在 `lib.rs` 注册：把 `ended_at IS NULL AND actual_minutes IS NULL` 的历史伪 completed 记录修正为 `interrupted`，避免继续污染完成数。统计中的 session count 仅计算已结束会话；不足一分钟的实际时长仍允许记录为 0 分钟，不额外改变产品计时规则。
 
 计时状态仍由现有前端服务维护；本轮不新增跨进程持久化状态机。应用退出后，遗留的 `running` 会话在下次初始化时结算为 `interrupted`。
 
@@ -71,9 +71,9 @@ Rust 为纯逻辑提取小函数并写模块内单元测试，不引入额外测
 
 ### 应用使用追踪
 
-Rust tracker 改为固定周期上报增量，而不是只在应用切换时上报整段时间。每个 tick 最多记录一个轮询周期，避免退出、停用或长时间不切换造成整段丢失。切换应用时自然开始记录新应用；关闭追踪时不再产生增量。
+Rust tracker 改为固定周期上报增量，而不是只在应用切换时上报整段时间。每个 tick 最多记录一个轮询周期，避免退出、停用或长时间不切换造成整段丢失。切换应用时自然开始记录新应用；关闭追踪时不再产生增量。Rust 事件载荷携带 tick 发生时的本地 `recorded_date` 与 `hour`，前端不再用接收时间推断归属。
 
-数据库按 `(app_name, recorded_date, hour)` 原子 upsert，并增加唯一索引，删除“先查再更新”的竞态窗口。日期和小时由事件发生时的本地时间生成。
+数据库按 `(app_name, recorded_date, hour)` 原子 upsert，并增加唯一索引，删除“先查再更新”的竞态窗口。
 
 ### 事件监听
 
@@ -89,13 +89,13 @@ Rust tracker 改为固定周期上报增量，而不是只在应用切换时上�
 - 火山引擎 AppID。
 - 火山引擎 Access Token。
 
-前端设置服务为敏感键提供专用 get/set，不把新值写入 SQLite。首次读取时若 Keychain 无值但 SQLite 有旧值，则写入 Keychain，确认成功后删除旧设置。UI 只显示掩码，不把已保存密钥重新放入普通文本状态。
+前端设置服务为 `ai.openai_api_key`、`asr.volc_app_id`、`asr.volc_access_token` 提供专用 get/set，不把新值写入 SQLite。`aiService` 与 `useVoiceTranscribe` 改走专用读取；`voice_transcribe_audio` 仍接收调用参数，但参数来源变为 Keychain。首次读取时若 Keychain 无值但 SQLite 有旧值，则写入 Keychain，确认成功后删除旧设置。UI 只显示掩码，不把已保存密钥重新放入普通文本状态。
 
 当前产品仅声明支持 macOS，因此本轮不设计 Windows/Linux 凭据后端；未来跨平台发布时再扩展同一 Rust command 接口。
 
 ### CSP
 
-移除没有运行需要的 `script-src 'unsafe-inline'`。保留 Tailwind/React 当前确需的内联样式权限。Google Fonts 加载失败时使用系统字体回退。
+移除没有运行需要的 `script-src 'unsafe-inline'`，并删除运行时未使用的 `fonts.googleapis.com`、`fonts.gstatic.com` CSP 白名单。保留 Tailwind/React 当前确需的内联样式权限；应用继续使用现有系统字体栈。
 
 ## 五、补齐承诺功能
 
@@ -115,7 +115,7 @@ Rust tracker 改为固定周期上报增量，而不是只在应用切换时上�
 
 ### 开机自启动
 
-使用官方 Tauri autostart 插件。应用初始化读取插件真实状态回写 UI；切换成功后持久化设置。数据库值仅作用户偏好记录，插件真实状态为最终依据。
+使用官方 Tauri autostart 插件，在 Rust builder 注册插件，并在 capability 中授予 enable、disable、is-enabled 权限。应用初始化读取插件真实状态回写 UI；切换成功后持久化设置。数据库值仅作用户偏好记录，插件真实状态为最终依据。
 
 ### DeepSeek 截图 OCR
 
@@ -125,9 +125,10 @@ Rust 暴露 `ocr_recognize_text(image_path)`，仅允许读取应用截图/剪�
 
 ## 六、前端质量和性能
 
+- 先修复当前 `tsc -b` 阻塞：`CodeBlock.tsx`、`ImageLightbox.tsx` 的未使用导入，`ClipboardPage.tsx` 的未使用占位组件，以及 `useTodos.ts` 的 tags 类型错误。
 - 修复全部 ESLint error/warning：Hook 依赖、render 期间 ref 写入、动态组件创建、无效 catch 参数和 `any`。
 - 页面通过 `React.lazy` 路由级加载；公共壳、Toast 和 Butler 必需共享组件保持同步加载。
-- 把 Google Fonts `@import` 移到样式文件顶部，消除构建警告。
+- 生产构建后根据实际输出消除残余 CSS/font 与 chunk 警告，不假设不存在于运行时源码的 Google Fonts `@import`。
 - 不为消除 React lint 而创建额外状态管理层；能计算的状态直接计算。
 
 目标：`npm run lint` 为 0 error / 0 warning，构建不再产生单个主 chunk 超限警告。
@@ -140,7 +141,7 @@ Rust 暴露 `ocr_recognize_text(image_path)`，仅允许读取应用截图/剪�
 - 未导入的 `src/App.css`。
 - Vite/React 示例资产和未使用的 hero 图。
 - `src-tauri/src/services/mod_placeholder.rs`。
-- 未使用的 Rust models 与 errors 模块。
+- 未使用的 Rust models 与 errors 模块，并同步移除 `lib.rs` 中对应 `pub mod` 声明。
 - 无调用且无依赖声明的 `remove_bg.py`。
 
 `docs/ui_assets` 是设计参考，不属于运行时代码，本轮保留；后续若仓库体积成为问题再单独归档。
@@ -174,5 +175,5 @@ Rust 暴露 `ocr_recognize_text(image_path)`，仅允许读取应用截图/剪�
 9. SQLite 中不存在 AI/ASR 明文密钥。
 10. 四类实体可建立、反向查看、跳转和删除关联。
 11. OpenAI 与 DeepSeek 均能完成截图 OCR 流程。
-12. 生产构建无字体规则和主 chunk 超限警告。
+12. `tsc -b` 无错误，生产构建无 CSS/font 规则和主 chunk 超限警告。
 13. 所有版本号与 README 一致。
