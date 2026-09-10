@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react'
-import { X, Copy, Download } from 'lucide-react'
+import { useEffect } from 'react'
+import { X, Copy } from 'lucide-react'
 import { showToast } from '@/store/useToastStore'
 
 export interface ImageLightboxProps {

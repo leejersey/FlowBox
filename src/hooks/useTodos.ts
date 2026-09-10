@@ -51,7 +51,10 @@ export function useTodos(query: TodoListQuery = {}) {
     let previousTodos: Todo[] = []
     setTodos(prev => {
       previousTodos = prev
-      return prev.map(t => (t.id === payload.id ? { ...t, ...payload } : t))
+      const { tags, ...patch } = payload
+      return prev.map(t => (t.id === payload.id
+        ? { ...t, ...patch, ...(tags === undefined ? {} : { tags: JSON.stringify(tags) }) }
+        : t))
     })
 
     try {
