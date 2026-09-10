@@ -38,20 +38,30 @@ export function Sidebar({ onSearchClick }: SidebarProps) {
         </span>
       </button>
 
-      <nav className="flex-1 flex flex-col gap-4 w-full items-center">
+      <nav className="flex-1 flex flex-col gap-3 w-full items-center">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
               cn(
-                "p-3 rounded-2xl transition-all duration-200 relative group text-on-surface-variant hover:text-on-surface hover:bg-on-surface/10",
-                isActive && "text-primary bg-primary/15 shadow-sm"
+                "p-3 rounded-2xl transition-all duration-200 relative group text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/60",
+                isActive && "text-primary bg-primary/15 shadow-sm font-semibold"
               )
             }
-            title={item.label}
           >
-            <item.icon className="w-5 h-5 stroke-[2.5]" />
+            {({ isActive }) => (
+              <>
+                <item.icon className="w-5 h-5 stroke-[2.2]" />
+                {isActive && (
+                  <div className="absolute -left-0.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full shadow-sm" />
+                )}
+                {/* 桌面精致悬浮气泡 */}
+                <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-surface-container-highest text-on-surface text-xs font-semibold px-2.5 py-1 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none shadow-xl border border-outline-variant/30 z-50">
+                  {item.label}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -61,13 +71,22 @@ export function Sidebar({ onSearchClick }: SidebarProps) {
           to="/settings"
           className={({ isActive }) =>
             cn(
-              "p-3 rounded-2xl transition-all duration-200 text-on-surface-variant hover:text-on-surface hover:bg-on-surface/10",
+              "p-3 rounded-2xl transition-all duration-200 relative group text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/60",
               isActive && "text-primary bg-primary/15 shadow-sm"
             )
           }
-          title="Settings"
         >
-          <Settings className="w-5 h-5 stroke-[2.5]" />
+          {({ isActive }) => (
+            <>
+              <Settings className="w-5 h-5 stroke-[2.2]" />
+              {isActive && (
+                <div className="absolute -left-0.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full shadow-sm" />
+              )}
+              <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-surface-container-highest text-on-surface text-xs font-semibold px-2.5 py-1 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none shadow-xl border border-outline-variant/30 z-50">
+                设置
+              </span>
+            </>
+          )}
         </NavLink>
       </div>
     </aside>

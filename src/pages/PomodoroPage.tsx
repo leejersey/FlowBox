@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Play, Pause, Square, SkipForward, ChevronRight, ListChecks } from 'lucide-react'
+import { isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
 import { Select } from '@/components/ui/Select'
 import * as pomodoroService from '@/services/pomodoroService'
 import { useTodos } from '@/hooks/useTodos'
 import type { PomodoroType, PomodoroState, PomodoroSession } from '@/types/pomodoro'
 
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
+const isTauriApp = isTauri()
 
 const typeConfigs: { type: PomodoroType; label: string; minutes: number }[] = [
   { type: 'focus', label: '专注', minutes: 25 },
@@ -20,7 +22,67 @@ function formatTime(totalSeconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
 
+/** 隔离高频 1Hz Tick 的独立表盘组件 */
+const PomodoroDial = memo(function PomodoroDial({
+  configMinutes,
+  onSessionComplete,
+}: {
+  configMinutes: number
+  onSessionComplete: () => void
+}) {
+  const [state, setState] = useState<PomodoroState>(pomodoroService.pomodoroGetState())
+
+  useEffect(() => {
+    pomodoroService.pomodoroOnTick((s) => setState({ ...s }))
+    pomodoroService.pomodoroOnComplete(() => {
+      setState(pomodoroService.pomodoroGetState())
+      onSessionComplete()
+    })
+  }, [onSessionComplete])
+
+  const remaining = Math.max(0, state.total_seconds - state.elapsed_seconds)
+  const progress = state.total_seconds > 0 ? state.elapsed_seconds / state.total_seconds : 0
+  const circumference = 2 * Math.PI * 150
+  const dashoffset = circumference * (1 - progress)
+  const isActive = state.is_running || state.elapsed_seconds > 0
+
+  return (
+    <div className="relative w-64 h-64 lg:w-80 lg:h-80 flex flex-col items-center justify-center shrink-0">
+      <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
+
+      <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 320 320">
+        <circle cx="160" cy="160" r="150" stroke="currentColor" strokeWidth="8" fill="none" className="text-surface-container-highest" />
+        <circle
+          cx="160" cy="160" r="150"
+          stroke="url(#indigo-grad)" strokeWidth="8" fill="none"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashoffset}
+          className="transition-all duration-1000 ease-linear"
+        />
+        <defs>
+          <linearGradient id="indigo-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="var(--color-primary)" />
+            <stop offset="100%" stopColor="var(--color-primary-container)" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div className="relative flex flex-col items-center z-10">
+        <span className="text-6xl lg:text-[5rem] font-display font-bold text-on-surface tabular-nums tracking-tight leading-none mb-4">
+          {isActive ? formatTime(remaining) : formatTime(configMinutes * 60)}
+        </span>
+        <span className="px-3 py-1 bg-surface-container-highest text-on-surface-variant font-medium text-sm rounded-full">
+          {state.is_running ? (state.type === 'focus' ? '专注中 🍅' : '休息中 ☕') :
+           state.elapsed_seconds > 0 ? '已暂停 ⏸' : '准备开始'}
+        </span>
+      </div>
+    </div>
+  )
+})
+
 export function PomodoroPage() {
+  const navigate = useNavigate()
   const [state, setState] = useState<PomodoroState>(pomodoroService.pomodoroGetState())
   const [selectedType, setSelectedType] = useState<PomodoroType>('focus')
   const [sessions, setSessions] = useState<PomodoroSession[]>([])
@@ -29,26 +91,11 @@ export function PomodoroPage() {
 
   const { todos } = useTodos({ limit: 100 })
   const activeTodos = todos.filter(t => t.status !== 'done')
-
-  const remaining = Math.max(0, state.total_seconds - state.elapsed_seconds)
-  const progress = state.total_seconds > 0 ? state.elapsed_seconds / state.total_seconds : 0
-  const circumference = 2 * Math.PI * 150
-  const dashoffset = circumference * (1 - progress)
   const config = typeConfigs.find(c => c.type === selectedType)!
-
   const isActive = state.is_running || state.elapsed_seconds > 0
 
-  // 注册 tick 回调
-  useEffect(() => {
-    pomodoroService.pomodoroOnTick(s => setState({ ...s }))
-    pomodoroService.pomodoroOnComplete(() => {
-      setState(pomodoroService.pomodoroGetState())
-      loadData()
-    })
-  }, [])
-
   const loadData = useCallback(async () => {
-    if (!isTauri) return
+    if (!isTauriApp) return
     try {
       const today = new Date().toISOString().slice(0, 10)
       const list = await pomodoroService.pomodoroListSessions({ date_from: today + 'T00:00:00', limit: 20 })
@@ -93,7 +140,7 @@ export function PomodoroPage() {
   }
 
   return (
-    <div className="flex flex-col xl:flex-row h-full animate-fade-in w-full max-w-6xl mx-auto gap-4 lg:gap-8 overflow-y-auto lg:overflow-hidden pb-4 lg:pb-0">
+    <div className="flex flex-col xl:flex-row h-full animate-fade-in w-full max-w-6xl mx-auto gap-4 lg:gap-8 overflow-y-auto lg:overflow-hidden pb-4 lg:pb-0 custom-scrollbar">
 
       {/* Left: Timer */}
       <div className="flex-none xl:flex-[3] flex flex-col items-center justify-center w-full gap-6 lg:gap-10 py-6 xl:p-8">
@@ -112,37 +159,11 @@ export function PomodoroPage() {
           />
         </div>
 
-        <div className="relative w-64 h-64 lg:w-80 lg:h-80 flex flex-col items-center justify-center shrink-0">
-          <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
-
-          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 320 320">
-            <circle cx="160" cy="160" r="150" stroke="currentColor" strokeWidth="8" fill="none" className="text-surface-container-highest" />
-            <circle
-              cx="160" cy="160" r="150"
-              stroke="url(#indigo-grad)" strokeWidth="8" fill="none"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashoffset}
-              className="transition-all duration-1000 ease-linear"
-            />
-            <defs>
-              <linearGradient id="indigo-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="var(--color-primary)" />
-                <stop offset="100%" stopColor="var(--color-primary-container)" />
-              </linearGradient>
-            </defs>
-          </svg>
-
-          <div className="relative flex flex-col items-center z-10">
-            <span className="text-6xl lg:text-[5rem] font-display font-bold text-on-surface tabular-nums tracking-tight leading-none mb-4">
-              {isActive ? formatTime(remaining) : formatTime(config.minutes * 60)}
-            </span>
-            <span className="px-3 py-1 bg-surface-container-highest text-on-surface-variant font-medium text-sm rounded-full">
-              {state.is_running ? (state.type === 'focus' ? '专注中 🍅' : '休息中 ☕') :
-               state.elapsed_seconds > 0 ? '已暂停 ⏸' : '准备开始'}
-            </span>
-          </div>
-        </div>
+        {/* 独立表盘组件，内部处理 tick，不触发外层重新渲染 */}
+        <PomodoroDial
+          configMinutes={config.minutes}
+          onSessionComplete={loadData}
+        />
 
         {/* Controls */}
         <div className="flex items-center gap-6 shrink-0">
@@ -258,7 +279,10 @@ export function PomodoroPage() {
         </div>
 
         <div className="mt-6 pt-4 border-t border-surface-container flex justify-center">
-          <button className="text-sm font-bold text-primary hover:underline underline-offset-4 flex items-center gap-1">
+          <button
+            onClick={() => navigate('/stats')}
+            className="text-sm font-bold text-primary hover:underline underline-offset-4 flex items-center gap-1 cursor-pointer"
+          >
             查看完整专注趋势 <ChevronRight className="w-4 h-4" />
           </button>
         </div>

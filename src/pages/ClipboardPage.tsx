@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Pin, Copy, Bot, Trash2, Clock, Code2, Type, Image as ImageIcon, ListChecks, CheckSquare, Square, ArrowRightLeft, X } from 'lucide-react'
+import { Search, Pin, Copy, Bot, Trash2, Clock, Code2, Type, Image as ImageIcon, ListChecks, CheckSquare, Square, ArrowRightLeft, X, Maximize2 } from 'lucide-react'
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
 import * as clipboardService from '@/services/clipboardService'
 import { showToast } from '@/store/useToastStore'
 import type { ClipboardItem } from '@/types/clipboard'
 import { useClipboardWatcher } from '@/hooks/useClipboardWatcher'
+import { useDebounce } from '@/hooks/useDebounce'
 import { ClipDiffModal } from '@/components/clipboard/ClipDiffModal'
+import { SkeletonCard } from '@/components/ui/Skeleton'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { ImageLightbox } from '@/components/ui/ImageLightbox'
 
 const isTauriApp = isTauri()
 
@@ -28,7 +32,7 @@ function timeAgo(dateStr: string): string {
 
 type FilterKey = 'all' | 'text' | 'code' | 'image' | 'pinned'
 
-function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelectToggle }: {
+function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelectToggle, onImageClick }: {
   clip: ClipboardItem
   onPin: (id: number) => void
   onCopy: (clip: ClipboardItem) => void
@@ -36,6 +40,7 @@ function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelec
   selectable?: boolean
   selected?: boolean
   onSelectToggle?: (id: number) => void
+  onImageClick?: (src: string) => void
 }) {
   const [imageSrc, setImageSrc] = useState<string | null>(resolveImageSrc(clip.image_path))
 
@@ -55,7 +60,7 @@ function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelec
       className={cn(
         "group relative bg-surface-container hover:bg-surface-container-highest transition-all duration-300 rounded-[24px] p-6 flex flex-col shadow-sm border",
         selectable ? "cursor-pointer" : "",
-        selected ? "border-primary/50 bg-primary/5" : "border-transparent hover:border-white/20"
+        selected ? "border-primary/50 bg-primary/5 shadow-md" : "border-outline-variant/30 hover:border-outline-variant/70"
       )}
     >
       {selectable && (
@@ -64,36 +69,48 @@ function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelec
         </div>
       )}
       {clip.is_pinned === 1 && !selectable && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-primary rounded-r-md" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-primary rounded-r-md shadow-sm" />
       )}
 
       <div className={cn("mb-4 transition-all duration-300", selectable ? "ml-8" : "ml-0")}>
         {clip.content_type === 'text' && (
-          <p className="text-[15px] leading-relaxed text-on-surface line-clamp-3">{clip.text_content}</p>
+          <p className="text-[15px] leading-relaxed text-on-surface line-clamp-4 select-text">{clip.text_content}</p>
         )}
         {clip.content_type === 'code' && (
-          <pre className="bg-surface-container-highest p-4 rounded-xl text-sm font-mono text-on-surface overflow-x-auto shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
+          <pre className="bg-surface-container-highest/80 p-4 rounded-xl text-sm font-mono text-on-surface overflow-x-auto border border-outline-variant/20 shadow-inner">
             <code>{clip.text_content}</code>
           </pre>
         )}
         {clip.content_type === 'image' && (
           <div className="flex flex-col gap-3">
             {imageSrc ? (
-              <img
-                src={imageSrc}
-                alt="clipboard"
-                className="max-h-48 w-full object-contain bg-surface-container-highest rounded-xl border border-white/20"
-                loading="lazy"
-                onError={() => {
-                  if (!clip.image_path) return
-                  const fileFallback = `file://${encodeURI(clip.image_path)}`
-                  if (imageSrc !== fileFallback) {
-                    setImageSrc(fileFallback)
-                  }
+              <div 
+                className="relative group/img overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-highest cursor-zoom-in max-h-56 flex items-center justify-center"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (onImageClick && imageSrc) onImageClick(imageSrc)
                 }}
-              />
+              >
+                <img
+                  src={imageSrc}
+                  alt="clipboard"
+                  className="max-h-56 w-full object-contain transition-transform duration-200 group-hover/img:scale-[1.02]"
+                  loading="lazy"
+                  onError={() => {
+                    if (!clip.image_path) return
+                    const fileFallback = `file://${encodeURI(clip.image_path)}`
+                    if (imageSrc !== fileFallback) {
+                      setImageSrc(fileFallback)
+                    }
+                  }}
+                />
+                <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 backdrop-blur-sm text-white text-xs opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center gap-1">
+                  <Maximize2 className="w-3 h-3" />
+                  <span>放大预览</span>
+                </div>
+              </div>
             ) : (
-              <div className="h-32 bg-surface-container-highest rounded-xl border border-white/20 flex items-center justify-center">
+              <div className="h-32 bg-surface-container-highest rounded-xl border border-outline-variant/30 flex items-center justify-center">
                 <ImageIcon className="w-8 h-8 text-on-surface-variant/30" />
               </div>
             )}
@@ -103,7 +120,7 @@ function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelec
                   <Bot className="w-4 h-4 text-primary" />
                   <span className="text-xs font-bold text-primary">AI 识别文本 (OCR)</span>
                 </div>
-                <p className="text-sm font-mono text-on-surface-variant break-words whitespace-pre-wrap">{clip.ocr_text}</p>
+                <p className="text-sm font-mono text-on-surface-variant break-words whitespace-pre-wrap select-text">{clip.ocr_text}</p>
               </div>
             )}
           </div>
@@ -161,6 +178,10 @@ export function ClipboardPage() {
   const [loading, setLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
   const [keyword, setKeyword] = useState('')
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+
+  // 接入搜索防抖
+  const debouncedKeyword = useDebounce(keyword, 250)
 
   // 多选与重构模式相关状态
   const [isSelectionMode, setIsSelectionMode] = useState(false)
@@ -174,13 +195,13 @@ export function ClipboardPage() {
       const params: Parameters<typeof clipboardService.clipList>[0] = {}
       if (activeFilter === 'text' || activeFilter === 'code' || activeFilter === 'image') params.content_type = activeFilter
       if (activeFilter === 'pinned') params.is_pinned = true
-      if (keyword.trim()) params.keyword = keyword.trim()
+      if (debouncedKeyword.trim()) params.keyword = debouncedKeyword.trim()
       const list = await clipboardService.clipList(params)
       setClips(list)
     } finally {
       setLoading(false)
     }
-  }, [activeFilter, keyword])
+  }, [activeFilter, debouncedKeyword])
 
   useEffect(() => { refresh() }, [refresh])
 
@@ -192,7 +213,7 @@ export function ClipboardPage() {
       try {
         await navigator.clipboard.writeText(clip.text_content)
         showToast('已复制到剪贴板', 'success')
-      } catch (err) {
+      } catch {
         showToast('复制失败', 'error')
       }
     }
@@ -231,7 +252,6 @@ export function ClipboardPage() {
   // 批量合并复制
   const handleBatchCopy = async () => {
     if (selectedIds.size === 0) return
-    // 按在当前列表中显示的顺序拼接（这也就是它们在视图中的顺序）
     const selectedClips = clips.filter(c => selectedIds.has(c.id))
     const texts = selectedClips.map(c => c.text_content || c.ocr_text || '').filter(Boolean)
     if (texts.length === 0) {
@@ -244,7 +264,7 @@ export function ClipboardPage() {
       showToast(`已合并且复制了 ${selectedClips.length} 项记录`, 'success')
       setIsSelectionMode(false)
       setSelectedIds(new Set())
-    } catch (err) {
+    } catch {
       showToast('合并复制失败', 'error')
     }
   }
@@ -263,7 +283,6 @@ export function ClipboardPage() {
   }
 
   const selectedItems = useMemo(() => clips.filter(c => selectedIds.has(c.id)), [clips, selectedIds])
-  // Diff 要求正好选了2项，并且这两项都是纯文本或代码
   const canDiff = selectedItems.length === 2 && selectedItems.every(c => c.content_type === 'text' || c.content_type === 'code')
 
   const filters: { key: FilterKey; label: string }[] = [
@@ -275,8 +294,9 @@ export function ClipboardPage() {
   ]
 
   return (
-    <div className="flex flex-col h-full animate-fade-in w-full max-w-4xl mx-auto overflow-y-auto overflow-x-hidden pb-10 relative">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 mb-8 mt-2 sticky top-0 z-10 bg-surface/80 backdrop-blur-xl py-4 -mx-2 px-2 border-b border-surface-container-highest">
+    <div className="flex flex-col h-full animate-fade-in w-full max-w-4xl mx-auto overflow-y-auto overflow-x-hidden pb-10 relative custom-scrollbar">
+      {/* 顶部固定工具栏 */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 mb-8 mt-2 sticky top-0 z-10 bg-surface/80 backdrop-blur-xl py-4 -mx-2 px-2 border-b border-outline-variant/20">
         
         {/* 顶部搜索 */}
         <div className="w-full md:flex-1 md:max-w-md relative group">
@@ -286,7 +306,7 @@ export function ClipboardPage() {
             placeholder="搜索剪贴板内容..."
             value={keyword}
             onChange={e => setKeyword(e.target.value)}
-            className="w-full h-11 bg-surface-container-low pl-10 pr-4 rounded-full text-sm placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+            className="w-full h-11 bg-surface-container-low pl-10 pr-4 rounded-full text-sm placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium border border-outline-variant/30"
           />
         </div>
 
@@ -297,9 +317,9 @@ export function ClipboardPage() {
               key={f.key}
               onClick={() => setActiveFilter(f.key)}
               className={cn(
-                "px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                "px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer",
                 activeFilter === f.key
-                  ? "bg-surface-container-highest text-on-surface"
+                  ? "bg-surface-container-highest text-on-surface shadow-sm font-semibold"
                   : "text-on-surface-variant hover:bg-surface-container-low"
               )}
             >
@@ -309,12 +329,12 @@ export function ClipboardPage() {
         </div>
 
         {/* 全局操作 */}
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={toggleSelectionMode}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors",
-              isSelectionMode ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant hover:text-on-surface"
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors cursor-pointer",
+              isSelectionMode ? "bg-primary text-white shadow-sm" : "bg-surface-container text-on-surface-variant hover:text-on-surface"
             )}
           >
             <ListChecks className="w-4 h-4" />
@@ -324,52 +344,62 @@ export function ClipboardPage() {
           <button
             onClick={() => toggleWatch(!watching)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors",
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors cursor-pointer",
               watching
-                ? "bg-green-500/10 text-green-600"
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                 : "bg-surface-container-highest text-on-surface-variant hover:text-on-surface"
             )}
             title={watching ? "点击关闭监听" : "点击开启监听"}
           >
-            {watching && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+            {watching && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
             {watching ? '监听中' : '未监听'}
           </button>
           
-          <button onClick={handleClear} className="text-sm font-medium text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 px-4 py-2 rounded-full transition-colors">
+          <button onClick={handleClear} className="text-sm font-medium text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 px-3 py-2 rounded-full transition-colors cursor-pointer">
             清空未置顶
           </button>
         </div>
       </div>
 
-      {loading && <div className="text-center text-on-surface-variant py-12">加载中...</div>}
+      {loading && (
+        <div className="flex flex-col gap-4 py-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      )}
 
-      <div className={cn("flex-1 overflow-y-auto flex flex-col gap-6", isSelectionMode ? "pb-32" : "pb-20")}>
-        {clips.map(clip => (
-          <ClipCard 
-            key={clip.id} 
-            clip={clip} 
-            onPin={handlePin} 
-            onCopy={handleCopy} 
-            onDelete={handleDelete}
-            selectable={isSelectionMode}
-            selected={selectedIds.has(clip.id)}
-            onSelectToggle={handleSelectToggle}
-          />
-        ))}
+      {/* 卡片列表：单层滚动，消除双层 overflow 冲突 */}
+      {!loading && (
+        <div className={cn("flex flex-col gap-4", isSelectionMode ? "pb-32" : "pb-16")}>
+          {clips.map(clip => (
+            <ClipCard 
+              key={clip.id} 
+              clip={clip} 
+              onPin={handlePin} 
+              onCopy={handleCopy} 
+              onDelete={handleDelete}
+              selectable={isSelectionMode}
+              selected={selectedIds.has(clip.id)}
+              onSelectToggle={handleSelectToggle}
+              onImageClick={(src) => setLightboxSrc(src)}
+            />
+          ))}
 
-        {!loading && clips.length === 0 && (
-          <div className="text-center text-on-surface-variant py-20 flex flex-col items-center gap-2 mt-10">
-            <ClipboardItemPlaceholder />
-            <p className="text-lg font-bold mt-4 text-on-surface">剪贴板为空</p>
-            <p className="text-sm font-medium text-on-surface-variant/70">复制的内容会自动记录在这里</p>
-          </div>
-        )}
-      </div>
+          {clips.length === 0 && (
+            <EmptyState
+              icon={<Search className="w-8 h-8 text-primary" />}
+              title="剪贴板为空"
+              description="复制的任何文本、代码或图片都会自动安全地保存并展示在此处"
+            />
+          )}
+        </div>
+      )}
 
       {/* 悬浮操作台 (Floating Action Bar) */}
       {isSelectionMode && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-40 animate-slide-up">
-          <div className="bg-surface/90 backdrop-blur-md border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl px-6 py-4 flex items-center gap-6">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 animate-slide-up">
+          <div className="bg-surface/95 backdrop-blur-xl border border-outline-variant/50 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-6">
             <div className="flex items-center gap-2 text-sm font-bold text-on-surface shrink-0">
               <span className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs">
                 {selectedIds.size}
@@ -377,13 +407,13 @@ export function ClipboardPage() {
               已选
             </div>
 
-            <div className="w-[1px] h-6 bg-white/10" />
+            <div className="w-[1px] h-6 bg-outline-variant/30" />
 
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={handleBatchCopy}
                 disabled={selectedIds.size === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-colors shadow-sm cursor-pointer"
               >
                 <Copy className="w-4 h-4" />
                 合并复制
@@ -392,8 +422,8 @@ export function ClipboardPage() {
               <button
                 onClick={() => setShowDiff(true)}
                 disabled={!canDiff}
-                title={canDiff ? "对比两天记录差异" : "仅支持对比刚好2条文本/代码记录"}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={canDiff ? "对比两条记录差异" : "仅支持对比刚好2条文本/代码记录"}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 <ArrowRightLeft className="w-4 h-4" />
                 差异对比
@@ -402,7 +432,7 @@ export function ClipboardPage() {
               <button
                 onClick={handleBatchDelete}
                 disabled={selectedIds.size === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 批量删除
@@ -411,7 +441,7 @@ export function ClipboardPage() {
             
             <button
               onClick={toggleSelectionMode}
-              className="ml-2 p-2 hover:bg-surface-container rounded-lg text-on-surface-variant transition-colors group relative"
+              className="ml-2 p-2 hover:bg-surface-container rounded-lg text-on-surface-variant transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -427,6 +457,12 @@ export function ClipboardPage() {
           onClose={() => setShowDiff(false)}
         />
       )}
+
+      {/* 图片大图预览灯箱 */}
+      <ImageLightbox
+        src={lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+      />
     </div>
   )
 }

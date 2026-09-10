@@ -48,27 +48,39 @@ export function useTodos(query: TodoListQuery = {}) {
   }, [refresh])
 
   const update = useCallback(async (payload: UpdateTodoPayload) => {
+    let previousTodos: Todo[] = []
+    setTodos(prev => {
+      previousTodos = prev
+      return prev.map(t => (t.id === payload.id ? { ...t, ...payload } : t))
+    })
+
     try {
       const todo = await todoService.todoUpdate(payload)
-      await refresh()
       showToast('待办已更新', 'success')
       return todo
     } catch (err) {
+      setTodos(previousTodos)
       showToast(`更新待办失败: ${String(err)}`, 'error')
       throw err
     }
-  }, [refresh])
+  }, [])
 
   const remove = useCallback(async (id: number) => {
+    let previousTodos: Todo[] = []
+    setTodos(prev => {
+      previousTodos = prev
+      return prev.filter(t => t.id !== id)
+    })
+
     try {
       await todoService.todoDelete(id)
-      await refresh()
       showToast('待办已删除', 'success')
     } catch (err) {
+      setTodos(previousTodos)
       showToast(`删除待办失败: ${String(err)}`, 'error')
       throw err
     }
-  }, [refresh])
+  }, [])
 
   const batchUpdateStatus = useCallback(async (
     ids: number[],
