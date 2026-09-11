@@ -50,3 +50,9 @@ test('回顾使用聚合得到的业务日期标记已展示', async () => {
   assert.match(service, /settingsSet\(LAST_SHOWN_KEY,\s*date\)/)
   assert.match(hook, /markShown\(data\.date\)/)
 })
+
+test('聚合日期键与查询边界共享同一个当前时刻', async () => {
+  const service = await readSource('services/dailyReviewService.ts')
+
+  assert.match(service, /const now = new Date\(\)\s*const today = localDateKey\(now\)\s*const \{ startIso, endIso \} = localDayBounds\(now\)/)
+})

@@ -58,31 +58,37 @@ export function useDailyReview(): UseDailyReviewReturn {
     if (!mountedRef.current) return
     if (inFlightRef.current) return
     inFlightRef.current = true
+    const controller = new AbortController()
+    abortRef.current = controller
     setIsLoadingData(true)
     setAiSummary('')
     setIsSaved(false)
 
     try {
       const data = await dailyReviewService.gatherTodayData()
-      if (!mountedRef.current) return
+      if (!mountedRef.current || controller.signal.aborted) return
       setReviewData(data)
       setIsLoadingData(false)
       setIsOpen(true)
 
       // 标记今日已弹窗
-      await dailyReviewService.markShown(data.date)
-      if (!mountedRef.current) return
+      try {
+        await dailyReviewService.markShown(data.date)
+      } catch (err) {
+        console.warn('[DailyReview] 标记已展示失败:', err)
+      }
+      if (!mountedRef.current || controller.signal.aborted) return
 
       // 流式生成 AI 总结
       setIsLoadingAi(true)
-      const controller = new AbortController()
-      abortRef.current = controller
 
       try {
         await dailyReviewService.generateAiSummaryStream(
           data,
           (token) => {
-            if (mountedRef.current) setAiSummary(prev => prev + token)
+            if (mountedRef.current && !controller.signal.aborted) {
+              setAiSummary(prev => prev + token)
+            }
           },
           controller.signal,
         )
@@ -92,14 +98,14 @@ export function useDailyReview(): UseDailyReviewReturn {
           console.warn('[DailyReview] AI 总结生成失败:', err.message)
         }
       } finally {
-        if (mountedRef.current) setIsLoadingAi(false)
-        if (abortRef.current === controller) abortRef.current = null
+        if (mountedRef.current && !controller.signal.aborted) setIsLoadingAi(false)
       }
     } catch (err) {
       console.error('[DailyReview] 数据聚合失败:', err)
-      if (mountedRef.current) setIsLoadingData(false)
+      if (mountedRef.current && !controller.signal.aborted) setIsLoadingData(false)
     } finally {
       inFlightRef.current = false
+      if (abortRef.current === controller) abortRef.current = null
     }
   }, [])
 
@@ -116,6 +122,8 @@ export function useDailyReview(): UseDailyReviewReturn {
       abortRef.current.abort()
       abortRef.current = null
     }
+    setIsLoadingData(false)
+    setIsLoadingAi(false)
   }, [])
 
   // 保存回顾

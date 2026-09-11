@@ -42,8 +42,9 @@ export interface DailyReviewReport {
 /** 聚合今日各模块数据 */
 export async function gatherTodayData(): Promise<DailyReviewData> {
   const db = await getDb()
-  const today = localDateKey()
-  const { startIso, endIso } = localDayBounds()
+  const now = new Date()
+  const today = localDateKey(now)
+  const { startIso, endIso } = localDayBounds(now)
 
   // 今日完成的待办（包含之前创建、今天完成的）
   const completedRows = await db.select<{ cnt: number }[]>(
