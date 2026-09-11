@@ -1,58 +1,70 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  applyTodoOptimisticUpdate,
-  rollbackTodoOptimisticUpdate,
-} from '../src/lib/todoOptimisticUpdate.ts'
+import { updateTodoAndRefresh } from '../src/lib/todoOptimisticUpdate.ts'
 
-const todo = (id, title) => ({
-  id,
-  title,
-  content: 'content',
-  priority: 0,
-  status: 'pending',
-  source: 'manual',
-  source_id: null,
-  due_date: null,
-  tags: '["old"]',
-  created_at: '2026-01-01T00:00:00.000Z',
-  updated_at: '2026-01-01T00:00:00.000Z',
-  completed_at: null,
-})
-
-test('乐观更新忽略 undefined，并序列化已定义的 tags', () => {
-  const original = todo(1, 'old')
-  const unchanged = applyTodoOptimisticUpdate([original], {
-    id: 1,
-    title: undefined,
-    content: undefined,
-    tags: undefined,
+function deferred() {
+  let resolve
+  let reject
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
   })
-  const tagged = applyTodoOptimisticUpdate(unchanged, { id: 1, tags: ['new'] })
+  return { promise, resolve, reject }
+}
 
-  assert.equal(unchanged[0].title, 'old')
-  assert.equal(unchanged[0].content, 'content')
-  assert.equal(unchanged[0].tags, '["old"]')
-  assert.equal(tagged[0].tags, '["new"]')
+function updateHarness() {
+  let stored = 'old'
+  let visible = 'old'
+  const start = title => {
+    const request = deferred()
+    const operation = updateTodoAndRefresh(
+      async () => {
+        await request.promise
+        stored = title
+        return title
+      },
+      async () => { visible = stored },
+    )
+    return { request, operation }
+  }
+  return { start, visible: () => visible }
+}
+
+test('同一 id 的两次更新依次失败后保留原值', async () => {
+  const state = updateHarness()
+  const first = state.start('first')
+  const second = state.start('second')
+
+  first.request.reject(new Error('first failed'))
+  await assert.rejects(first.operation)
+  second.request.reject(new Error('second failed'))
+  await assert.rejects(second.operation)
+
+  assert.equal(state.visible(), 'old')
 })
 
-test('较早失败只回滚目标 id，不覆盖其他 id 的较晚更新', () => {
-  const original = [todo(1, 'one'), todo(2, 'two')]
-  const first = applyTodoOptimisticUpdate(original, { id: 1, title: 'one updated' })
-  const second = applyTodoOptimisticUpdate(first, { id: 2, title: 'two updated' })
+test('同一 id 第一次成功、第二次失败后显示第一次的服务端结果', async () => {
+  const state = updateHarness()
+  const first = state.start('first')
+  const second = state.start('second')
 
-  const rolledBack = rollbackTodoOptimisticUpdate(second, original, 1, first[0])
+  first.request.resolve()
+  await first.operation
+  second.request.reject(new Error('second failed'))
+  await assert.rejects(second.operation)
 
-  assert.equal(rolledBack[0].title, 'one')
-  assert.equal(rolledBack[1].title, 'two updated')
+  assert.equal(state.visible(), 'first')
 })
 
-test('同一 id 已再次更新时忽略陈旧失败', () => {
-  const original = [todo(1, 'old')]
-  const first = applyTodoOptimisticUpdate(original, { id: 1, title: 'first' })
-  const second = applyTodoOptimisticUpdate(first, { id: 1, title: 'second' })
+test('同一 id 第一次失败、第二次成功后显示第二次的服务端结果', async () => {
+  const state = updateHarness()
+  const first = state.start('first')
+  const second = state.start('second')
 
-  const rolledBack = rollbackTodoOptimisticUpdate(second, original, 1, first[0])
+  first.request.reject(new Error('first failed'))
+  await assert.rejects(first.operation)
+  second.request.resolve()
+  await second.operation
 
-  assert.equal(rolledBack[0].title, 'second')
+  assert.equal(state.visible(), 'second')
 })
