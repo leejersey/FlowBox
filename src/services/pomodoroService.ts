@@ -14,7 +14,7 @@ import type {
   StartPomodoroPayload,
 } from '../types/pomodoro'
 import { localDateKey } from '../lib/localDate'
-import { finishPomodoro } from '../lib/pomodoroSession'
+import { finishPomodoroFromElapsed, RECOVER_RUNNING_SESSIONS_SQL } from '../lib/pomodoroSession'
 
 // ============ 前端内存状态机 ============
 
@@ -30,6 +30,8 @@ let currentSessionId: number | null = null
 let timerInterval: ReturnType<typeof setInterval> | null = null
 let pausedAt: number | null = null
 let startedAtMs: number | null = null
+let currentStartedAt: string | null = null
+let stopPromise: Promise<PomodoroSession> | null = null
 
 type TickCallback = (state: PomodoroState) => void
 type CompleteCallback = (session: PomodoroSession) => void
@@ -60,6 +62,7 @@ export async function pomodoroStart(payload: StartPomodoroPayload): Promise<Pomo
 
   currentSessionId = result.lastInsertId!
   startedAtMs = Date.now()
+  currentStartedAt = now
   pausedAt = null
 
   timerState = {
@@ -73,10 +76,17 @@ export async function pomodoroStart(payload: StartPomodoroPayload): Promise<Pomo
   // 启动每秒 tick
   timerInterval = setInterval(() => tick(), 1000)
 
-  const rows = await db.select<PomodoroSession[]>(
-    'SELECT * FROM pomodoro_sessions WHERE id = $1', [currentSessionId]
-  )
-  return rows[0]
+  return {
+    id: currentSessionId,
+    type: payload.type,
+    duration_minutes: payload.duration_minutes,
+    actual_minutes: null,
+    status: 'running',
+    related_todo_id: payload.related_todo_id ?? null,
+    ai_summary: null,
+    started_at: now,
+    ended_at: null,
+  }
 }
 
 /** pomodoro_pause — 暂停 */
@@ -84,6 +94,7 @@ export function pomodoroPause(): PomodoroState {
   if (!timerState.is_running) {
     throw new Error('POMODORO_NOT_RUNNING: 没有进行中的计时')
   }
+  refreshElapsed()
   if (timerInterval) {
     clearInterval(timerInterval)
     timerInterval = null
@@ -108,36 +119,58 @@ export function pomodoroResume(): PomodoroState {
 }
 
 /** pomodoro_stop — 结束番茄钟 */
-export async function pomodoroStop(interrupted: boolean): Promise<PomodoroSession> {
+export function pomodoroStop(interrupted: boolean): Promise<PomodoroSession> {
+  if (stopPromise) return stopPromise
   if (currentSessionId === null) {
-    throw new Error('POMODORO_NOT_RUNNING: 没有进行中的计时')
+    return Promise.reject(new Error('POMODORO_NOT_RUNNING: 没有进行中的计时'))
   }
+
+  stopPromise = stopCurrentPomodoro(interrupted).finally(() => { stopPromise = null })
+  return stopPromise
+}
+
+async function stopCurrentPomodoro(interrupted: boolean): Promise<PomodoroSession> {
+  const wasRunning = timerState.is_running
+  if (wasRunning) refreshElapsed()
 
   if (timerInterval) {
     clearInterval(timerInterval)
     timerInterval = null
   }
 
-  const db = await getDb()
   const endedAt = new Date()
-  const { status, actualMinutes } = finishPomodoro(new Date(startedAtMs!), endedAt, interrupted)
+  const { status, actualMinutes } = finishPomodoroFromElapsed(timerState.elapsed_seconds, timerState.total_seconds, interrupted)
   const now = endedAt.toISOString()
+  const sessionId = currentSessionId!
 
-  await db.execute(
-    `UPDATE pomodoro_sessions
-     SET status = $1, actual_minutes = $2, ended_at = $3
-     WHERE id = $4`,
-    [status, actualMinutes, now, currentSessionId]
-  )
-
-  const rows = await db.select<PomodoroSession[]>(
-    'SELECT * FROM pomodoro_sessions WHERE id = $1', [currentSessionId]
-  )
+  try {
+    const db = await getDb()
+    await db.execute(
+      `UPDATE pomodoro_sessions
+       SET status = $1, actual_minutes = $2, ended_at = $3
+       WHERE id = $4`,
+      [status, actualMinutes, now, sessionId]
+    )
+  } catch (error) {
+    if (wasRunning) timerInterval = setInterval(() => tick(), 1000)
+    throw error
+  }
 
   // 重置状态
-  const session = rows[0]
+  const session: PomodoroSession = {
+    id: sessionId,
+    type: timerState.type,
+    duration_minutes: timerState.total_seconds / 60,
+    actual_minutes: actualMinutes,
+    status,
+    related_todo_id: timerState.related_todo_id,
+    ai_summary: null,
+    started_at: currentStartedAt!,
+    ended_at: now,
+  }
   currentSessionId = null
   startedAtMs = null
+  currentStartedAt = null
   pausedAt = null
   timerState = {
     is_running: false,
@@ -160,10 +193,7 @@ export async function recoverRunningSessions(): Promise<void> {
   const db = await getDb()
   const endedAt = new Date().toISOString()
   await db.execute(
-    `UPDATE pomodoro_sessions
-     SET status = 'interrupted', ended_at = $1,
-         actual_minutes = MIN(duration_minutes, ROUND(MAX(0, (julianday($1) - julianday(started_at)) * 1440)))
-     WHERE status = 'running'`,
+    RECOVER_RUNNING_SESSIONS_SQL,
     [endedAt]
   )
 }
@@ -246,7 +276,7 @@ export async function pomodoroStats(dateFrom: string, dateTo: string): Promise<P
 function tick() {
   if (!timerState.is_running || !startedAtMs) return
 
-  timerState.elapsed_seconds = Math.floor((Date.now() - startedAtMs) / 1000)
+  refreshElapsed()
 
   onTick?.({ ...timerState })
 
@@ -256,4 +286,12 @@ function tick() {
       onComplete?.(session)
     })
   }
+}
+
+function refreshElapsed() {
+  if (!startedAtMs) return
+  timerState.elapsed_seconds = Math.min(
+    timerState.total_seconds,
+    Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000)),
+  )
 }
