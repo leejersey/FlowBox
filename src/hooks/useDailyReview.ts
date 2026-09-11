@@ -41,31 +41,50 @@ export function useDailyReview(): UseDailyReviewReturn {
   const [isLoadingAi, setIsLoadingAi] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const inFlightRef = useRef(false)
+  const mountedRef = useRef(false)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      abortRef.current?.abort()
+      abortRef.current = null
+    }
+  }, [])
 
   // 执行回顾生成
   const doReview = useCallback(async () => {
+    if (!mountedRef.current) return
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     setIsLoadingData(true)
     setAiSummary('')
     setIsSaved(false)
 
     try {
       const data = await dailyReviewService.gatherTodayData()
+      if (!mountedRef.current) return
       setReviewData(data)
       setIsLoadingData(false)
       setIsOpen(true)
 
       // 标记今日已弹窗
-      await dailyReviewService.markShown()
+      await dailyReviewService.markShown(data.date)
+      if (!mountedRef.current) return
 
       // 流式生成 AI 总结
       setIsLoadingAi(true)
-      abortRef.current = new AbortController()
+      const controller = new AbortController()
+      abortRef.current = controller
 
       try {
         await dailyReviewService.generateAiSummaryStream(
           data,
-          (token) => setAiSummary(prev => prev + token),
-          abortRef.current.signal,
+          (token) => {
+            if (mountedRef.current) setAiSummary(prev => prev + token)
+          },
+          controller.signal,
         )
       } catch (err) {
         // 如果是用户取消或 API Key 未配置，静默处理
@@ -73,11 +92,14 @@ export function useDailyReview(): UseDailyReviewReturn {
           console.warn('[DailyReview] AI 总结生成失败:', err.message)
         }
       } finally {
-        setIsLoadingAi(false)
+        if (mountedRef.current) setIsLoadingAi(false)
+        if (abortRef.current === controller) abortRef.current = null
       }
     } catch (err) {
       console.error('[DailyReview] 数据聚合失败:', err)
-      setIsLoadingData(false)
+      if (mountedRef.current) setIsLoadingData(false)
+    } finally {
+      inFlightRef.current = false
     }
   }, [])
 
@@ -105,7 +127,7 @@ export function useDailyReview(): UseDailyReviewReturn {
       generatedAt: new Date().toISOString(),
     }
     await dailyReviewService.saveReviewReport(report)
-    setIsSaved(true)
+    if (mountedRef.current) setIsSaved(true)
   }, [reviewData, aiSummary])
 
   // 定时检测

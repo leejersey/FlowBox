@@ -39,3 +39,14 @@ test('每日自动检查依赖持久化日期，不依赖一次性午夜 reset t
   assert.doesNotMatch(hook, /hasAutoTriggeredRef/)
   assert.doesNotMatch(hook, /resetAtMidnight|msUntilMidnight/)
 })
+
+test('回顾使用聚合得到的业务日期标记已展示', async () => {
+  const [hook, service] = await Promise.all([
+    readSource('hooks/useDailyReview.ts'),
+    readSource('services/dailyReviewService.ts'),
+  ])
+
+  assert.match(service, /markShown\(date\s*=\s*localDateKey\(\)\)/)
+  assert.match(service, /settingsSet\(LAST_SHOWN_KEY,\s*date\)/)
+  assert.match(hook, /markShown\(data\.date\)/)
+})

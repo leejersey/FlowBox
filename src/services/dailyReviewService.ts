@@ -207,9 +207,8 @@ export async function saveReviewReport(report: DailyReviewReport): Promise<void>
 }
 
 /** 标记今日已弹窗 */
-export async function markShown(): Promise<void> {
-  const today = localDateKey()
-  await settingsService.settingsSet(LAST_SHOWN_KEY, today)
+export async function markShown(date = localDateKey()): Promise<void> {
+  await settingsService.settingsSet(LAST_SHOWN_KEY, date)
 }
 
 /** 检查今日是否已弹窗 */
