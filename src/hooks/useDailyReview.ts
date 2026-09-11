@@ -66,7 +66,7 @@ export function useDailyReview(): UseDailyReviewReturn {
 
     try {
       const data = await dailyReviewService.gatherTodayData()
-      if (!mountedRef.current || controller.signal.aborted) return
+      if (!mountedRef.current || controller.signal.aborted || abortRef.current !== controller) return
       setReviewData(data)
       setIsLoadingData(false)
       setIsOpen(true)
@@ -77,7 +77,7 @@ export function useDailyReview(): UseDailyReviewReturn {
       } catch (err) {
         console.warn('[DailyReview] 标记已展示失败:', err)
       }
-      if (!mountedRef.current || controller.signal.aborted) return
+      if (!mountedRef.current || controller.signal.aborted || abortRef.current !== controller) return
 
       // 流式生成 AI 总结
       setIsLoadingAi(true)

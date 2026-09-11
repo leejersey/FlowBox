@@ -1,6 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { localDateKey, localDayBounds, localMondayStart } from '../src/lib/localDate.ts'
+
+const serviceUrl = new URL('../src/services/dailyReviewService.ts', import.meta.url)
 
 test('业务日期始终取本地日历而不是 UTC 切片', () => {
   const midnight = new Date(2026, 8, 10, 0, 5)
@@ -9,4 +12,11 @@ test('业务日期始终取本地日历而不是 UTC 切片', () => {
   assert.equal(start.getHours(), 0)
   assert.equal(end.getDate(), 11)
   assert.equal(localMondayStart(new Date(2026, 8, 13)).getDay(), 1)
+})
+
+test('gatherTodayData 共享一次取得的当前时间', async () => {
+  const service = await readFile(serviceUrl, 'utf8')
+
+  assert.match(service, /gatherTodayData[\s\S]*?const now = new Date\(\)[\s\S]*?localDateKey\(now\)[\s\S]*?localDayBounds\(now\)/)
+  assert.equal((service.match(/const now = new Date\(\)/g) ?? []).length, 1)
 })

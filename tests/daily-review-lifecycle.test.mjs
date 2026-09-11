@@ -19,8 +19,8 @@ test('卸载会 abort，且 await 恢复后不更新状态或启动 AI', async (
 
   assert.match(hook, /const mountedRef = useRef\(false\)/)
   assert.match(hook, /useEffect\(\(\) => \{\s*mountedRef\.current = true[\s\S]*?return \(\) => \{\s*mountedRef\.current = false\s*abortRef\.current\?\.abort\(\)/)
-  assert.match(hook, /await dailyReviewService\.gatherTodayData\(\)\s*if \(!mountedRef\.current \|\| controller\.signal\.aborted\) return/)
-  assert.match(hook, /await dailyReviewService\.markShown\(data\.date\)[\s\S]*?if \(!mountedRef\.current \|\| controller\.signal\.aborted\) return/)
+  assert.match(hook, /await dailyReviewService\.gatherTodayData\(\)\s*if \(!mountedRef\.current \|\| controller\.signal\.aborted \|\| abortRef\.current !== controller\) return/)
+  assert.match(hook, /await dailyReviewService\.markShown\(data\.date\)[\s\S]*?if \(!mountedRef\.current \|\| controller\.signal\.aborted \|\| abortRef\.current !== controller\) return/)
   assert.match(hook, /\(token\) => \{\s*if \(mountedRef\.current && !controller\.signal\.aborted\) \{\s*setAiSummary\(prev => prev \+ token\)/)
   assert.match(hook, /finally \{\s*if \(mountedRef\.current && !controller\.signal\.aborted\) setIsLoadingAi\(false\)/)
 })
@@ -29,7 +29,8 @@ test('AI controller 仅由所属调用清理，close 仍可 abort', async () => 
   const hook = await readFile(hookUrl, 'utf8')
 
   assert.match(hook, /inFlightRef\.current = true[\s\S]*?const controller = new AbortController\(\)\s*abortRef\.current = controller[\s\S]*?await dailyReviewService\.gatherTodayData\(\)/)
-  assert.match(hook, /gatherTodayData\(\)[\s\S]*?controller\.signal\.aborted[\s\S]*?markShown\(data\.date\)[\s\S]*?controller\.signal\.aborted/)
+  assert.match(hook, /await dailyReviewService\.gatherTodayData\(\)\s*if \(!mountedRef\.current \|\| controller\.signal\.aborted \|\| abortRef\.current !== controller\) return/)
+  assert.match(hook, /await dailyReviewService\.markShown\(data\.date\)[\s\S]*?if \(!mountedRef\.current \|\| controller\.signal\.aborted \|\| abortRef\.current !== controller\) return/)
   assert.match(hook, /if \(abortRef\.current === controller\) abortRef\.current = null/)
   assert.match(hook, /const close[\s\S]*?abortRef\.current\.abort\(\)[\s\S]*?abortRef\.current = null[\s\S]*?setIsLoadingData\(false\)[\s\S]*?setIsLoadingAi\(false\)/)
 })
