@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import * as clipboardService from '@/services/clipboardService'
 import { showToast } from '@/store/useToastStore'
 import type { ClipboardItem } from '@/types/clipboard'
-import { useClipboardWatcher } from '@/hooks/useClipboardWatcher'
+import { useClipboardControls } from '@/hooks/useClipboardWatcher'
 import { useDebounce } from '@/hooks/useDebounce'
 import { ClipDiffModal } from '@/components/clipboard/ClipDiffModal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
@@ -206,7 +206,7 @@ export function ClipboardPage() {
   useEffect(() => { refresh() }, [refresh])
 
   // 接入剪贴板监听
-  const { watching, toggleWatch } = useClipboardWatcher(refresh)
+  const { watching, toggleWatch } = useClipboardControls(refresh)
 
   const handleCopy = async (clip: ClipboardItem) => {
     if (clip.text_content) {

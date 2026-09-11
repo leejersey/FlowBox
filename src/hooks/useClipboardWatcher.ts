@@ -9,12 +9,15 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import * as clipboardService from '@/services/clipboardService'
 import * as settingsService from '@/services/settingsService'
 import * as aiService from '@/services/aiService'
 import { showToast } from '@/store/useToastStore'
+import { registerMainWindowListener } from '@/services/appInitializationService'
+import { applyBackgroundSetting } from '@/services/backgroundSettingsService'
 
 const isTauriApp = isTauri()
 
@@ -43,7 +46,40 @@ async function classifyInBackground(clipId: number, text: string) {
 /**
  * @param onNewClip 当有新剪贴板内容入库后的回调（通常是 refresh 列表）
  */
-export function useClipboardWatcher(onNewClip?: () => void) {
+const CLIPBOARD_SAVED_EVENT = 'flowbox:clipboard-saved'
+// 默认值由后台同步服务按 saved !== 'false' 语义开启。
+
+export function useClipboardPersistence() {
+  useEffect(() => {
+    if (!isTauriApp) return
+
+    return registerMainWindowListener(
+      getCurrentWindow().label,
+      () => listen<ClipboardPayload>('clipboard://new', async (event) => {
+        const { content_type, text_content, image_path, content_hash } = event.payload
+        try {
+          const normalizedText = text_content?.trim()
+          const item = await clipboardService.clipCreate({
+            content_type: content_type as 'text' | 'code' | 'image',
+            text_content: normalizedText,
+            image_path: image_path,
+            content_hash,
+          })
+          window.dispatchEvent(new Event(CLIPBOARD_SAVED_EVENT))
+
+          if (normalizedText && item.id && !item.category) {
+            classifyInBackground(item.id, normalizedText)
+          }
+        } catch (err) {
+          console.error('写入剪贴板记录失败:', err)
+        }
+      }),
+      error => showToast(`订阅剪贴板事件失败: ${String(error)}`, 'error'),
+    )
+  }, [])
+}
+
+export function useClipboardControls(onNewClip?: () => void) {
   const [watching, setWatching] = useState(false)
   const onNewClipRef = useRef(onNewClip)
   onNewClipRef.current = onNewClip
@@ -54,63 +90,17 @@ export function useClipboardWatcher(onNewClip?: () => void) {
     return current
   }, [])
 
-  // 初始化：从 settings 读取上次的开关状态
   useEffect(() => {
     if (!isTauriApp) return
-
-    ;(async () => {
-      try {
-        const saved = await settingsService.settingsGet('clipboard.auto_watch')
-        const shouldEnable = saved !== 'false'
-        if (shouldEnable) {
-          await invoke('clipboard_set_watch', { enabled: true })
-          await syncWatchState()
-          // 首次启动无配置时，写回默认值，保持 UI 状态一致
-          if (saved === null) {
-            await settingsService.settingsSet('clipboard.auto_watch', 'true')
-          }
-        } else {
-          await syncWatchState()
-        }
-      } catch (err) {
-        console.error('初始化剪贴板监听状态失败:', err)
-        showToast(`初始化剪贴板监听失败: ${String(err)}`, 'error')
-      }
-    })()
+    void syncWatchState().catch(err => {
+      showToast(`读取剪贴板监听状态失败: ${String(err)}`, 'error')
+    })
   }, [syncWatchState])
 
-  // 订阅 Rust 端的剪贴板事件
   useEffect(() => {
-    if (!isTauriApp) return
-
-    let unlisten: UnlistenFn | null = null
-
-    listen<ClipboardPayload>('clipboard://new', async (event) => {
-      const { content_type, text_content, image_path, content_hash } = event.payload
-      try {
-        const normalizedText = text_content?.trim()
-        const item = await clipboardService.clipCreate({
-          content_type: content_type as 'text' | 'code' | 'image',
-          text_content: normalizedText,
-          image_path: image_path,
-          content_hash,
-        })
-        onNewClipRef.current?.()
-
-        // 异步 AI 分类（不阻塞入库流程）
-        if (normalizedText && item.id && !item.category) {
-          classifyInBackground(item.id, normalizedText)
-        }
-      } catch (err) {
-        console.error('写入剪贴板记录失败:', err)
-      }
-    }).then(fn => {
-      unlisten = fn
-    })
-
-    return () => {
-      unlisten?.()
-    }
+    const refresh = () => onNewClipRef.current?.()
+    window.addEventListener(CLIPBOARD_SAVED_EVENT, refresh)
+    return () => window.removeEventListener(CLIPBOARD_SAVED_EVENT, refresh)
   }, [])
 
   // 切换开关
@@ -118,14 +108,17 @@ export function useClipboardWatcher(onNewClip?: () => void) {
     if (!isTauriApp) return
 
     try {
-      await invoke('clipboard_set_watch', { enabled })
-      const current = await syncWatchState()
-      await settingsService.settingsSet('clipboard.auto_watch', String(current))
-      showToast(current ? '剪贴板监听已开启' : '剪贴板监听已关闭', 'info')
+      await applyBackgroundSetting('clipboard.auto_watch', enabled, {
+        get: settingsService.settingsGet,
+        set: settingsService.settingsSet,
+        invoke: (command, payload) => invoke(command, payload),
+      })
+      setWatching(enabled)
+      showToast(enabled ? '剪贴板监听已开启' : '剪贴板监听已关闭', 'info')
     } catch (err) {
       showToast(`切换监听失败: ${String(err)}`, 'error')
     }
-  }, [syncWatchState])
+  }, [])
 
   return { watching, toggleWatch }
 }

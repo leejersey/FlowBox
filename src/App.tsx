@@ -14,12 +14,22 @@ import { useDatabase } from './hooks/useDatabase'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { useThemeStore } from './store/useThemeStore'
 import { useAppUsageTracker } from './hooks/useAppUsageTracker'
+import { useClipboardPersistence } from './hooks/useClipboardWatcher'
 import { useEffect } from 'react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { isTauri } from '@tauri-apps/api/core'
+
+const windowLabel = isTauri() ? getCurrentWindow().label : 'main'
+
+function MainWindowEffects() {
+  useClipboardPersistence()
+  useAppUsageTracker()
+  return null
+}
 
 function App() {
   const { ready, error } = useDatabase()
   const initTheme = useThemeStore(state => state.init)
-  useAppUsageTracker()
 
   useEffect(() => {
     initTheme()
@@ -35,6 +45,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      {windowLabel === 'main' && <MainWindowEffects />}
       <Routes>
         <Route path="/" element={<AppShell />}>
           <Route index element={<TodoPage />} />

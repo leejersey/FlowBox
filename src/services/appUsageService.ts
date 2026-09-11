@@ -22,29 +22,20 @@ export interface AppUsageSummary {
 }
 
 /** 记录一条使用时长（按小时聚合 upsert） */
-export async function saveUsageTick(appName: string, durationSeconds: number): Promise<void> {
+export async function saveUsageTick(
+  appName: string,
+  durationSeconds: number,
+  recordedDate: string,
+  hour: number,
+): Promise<void> {
   const db = await getDb()
-  const now = new Date()
-  const recordedDate = now.toISOString().slice(0, 10)
-  const hour = now.getHours()
-
-  // 尝试更新已有的同一小时记录
-  const existing = await db.select<AppUsageRecord[]>(
-    `SELECT id FROM app_usage WHERE app_name = $1 AND recorded_date = $2 AND hour = $3`,
-    [appName, recordedDate, hour]
+  await db.execute(
+    `INSERT INTO app_usage(app_name, duration_seconds, recorded_date, hour)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT(app_name, recorded_date, hour)
+     DO UPDATE SET duration_seconds = duration_seconds + excluded.duration_seconds`,
+    [appName, durationSeconds, recordedDate, hour]
   )
-
-  if (existing.length > 0) {
-    await db.execute(
-      `UPDATE app_usage SET duration_seconds = duration_seconds + $1 WHERE id = $2`,
-      [durationSeconds, existing[0].id]
-    )
-  } else {
-    await db.execute(
-      `INSERT INTO app_usage (app_name, duration_seconds, recorded_date, hour) VALUES ($1, $2, $3, $4)`,
-      [appName, durationSeconds, recordedDate, hour]
-    )
-  }
 }
 
 /** 查询今日 Top N 应用使用时长 */

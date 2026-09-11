@@ -12,6 +12,8 @@ import type { ButlerSkill } from '@/types/skill'
 import type { AppShellOutletContext } from '@/components/layout/AppShell'
 import { SKILL_CATEGORIES } from '@/types/skill'
 import { SkillEditPanel } from '@/components/skills/SkillEditPanel'
+import * as settingsService from '@/services/settingsService'
+import { applyBackgroundSetting, type BackgroundSettingKey } from '@/services/backgroundSettingsService'
 
 const menuItems = [
   { id: 'general', label: '通用设置', icon: SettingsIcon },
@@ -66,7 +68,7 @@ export function SettingsPage() {
   const [volcAppId, setVolcAppId] = useState('')
   const [volcToken, setVolcToken] = useState('')
   const { mode: themeMode, setMode: setThemeMode } = useThemeStore()
-  const { settings, saved, setSetting, toggleSetting } = useSettings()
+  const { settings, saved, setSetting, toggleSetting, loadSettings } = useSettings()
   const { triggerReview } = useOutletContext<AppShellOutletContext>()
   const [reviewTime, setReviewTime] = useState(settings['daily_review.time'] || '21:00')
 
@@ -108,6 +110,20 @@ export function SettingsPage() {
 
   const saveApiKey = async () => {
     await setSetting('ai.openai_api_key', localApiKey)
+  }
+
+  const updateBackgroundSetting = async (key: BackgroundSettingKey, enabled: boolean) => {
+    if (!isTauriApp) return
+    try {
+      await applyBackgroundSetting(key, enabled, {
+        get: settingsService.settingsGet,
+        set: settingsService.settingsSet,
+        invoke: (command, payload) => invoke(command, payload),
+      })
+      await loadSettings()
+    } catch (err) {
+      showToast(`切换后台服务失败: ${String(err)}`, 'error')
+    }
   }
 
   const saveAsrKeys = async () => {
@@ -389,7 +405,7 @@ export function SettingsPage() {
                       </div>
                       <Toggle
                         enabled={settings['clipboard.auto_watch'] === 'true'}
-                        onChange={() => toggleSetting('clipboard.auto_watch')}
+                        onChange={enabled => { void updateBackgroundSetting('clipboard.auto_watch', enabled) }}
                       />
                     </div>
 
@@ -400,14 +416,7 @@ export function SettingsPage() {
                       </div>
                       <Toggle
                         enabled={settings['general.app_tracking'] === 'true'}
-                        onChange={async () => {
-                          const newVal = settings['general.app_tracking'] !== 'true'
-                          await toggleSetting('general.app_tracking')
-                          try {
-                            const { invoke } = await import('@tauri-apps/api/core')
-                            await invoke('app_usage_set_tracking', { enabled: newVal })
-                          } catch { /* browser fallback */ }
-                        }}
+                        onChange={enabled => { void updateBackgroundSetting('general.app_tracking', enabled) }}
                       />
                     </div>
                   </div>

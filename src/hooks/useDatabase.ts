@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
+import { invoke, isTauri } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { showToast } from '@/store/useToastStore'
 import { seedBuiltinSkills } from '@/services/skillService'
+import { recoverRunningSessions } from '@/services/pomodoroService'
+import { initializeAppWindow } from '@/services/appInitializationService'
+import { syncBackgroundSettings } from '@/services/backgroundSettingsService'
+import * as settingsService from '@/services/settingsService'
+
+const isTauriApp = isTauri()
 
 /**
  * 数据库初始化 hook
@@ -25,10 +33,27 @@ export function useDatabase() {
         )
         console.log('✅ FlowBox DB ready, tables:', tables.map(t => t.name).join(', '))
 
-        // 初始化预设技能种子数据（幂等）
-        await seedBuiltinSkills()
+        if (!isTauriApp) {
+          setReady(true)
+          return
+        }
 
-        setReady(true)
+        try {
+          await initializeAppWindow(getCurrentWindow().label, [
+            ['恢复未结束的番茄会话', recoverRunningSessions],
+            ['同步后台服务设置', () => syncBackgroundSettings({
+              get: settingsService.settingsGet,
+              set: settingsService.settingsSet,
+              invoke: (command, payload) => invoke(command, payload),
+            })],
+            ['初始化预设技能', seedBuiltinSkills],
+          ], ({ name, error }) => {
+            console.error(`${name}失败:`, error)
+            showToast(`${name}失败: ${String(error)}`, 'error')
+          })
+        } finally {
+          setReady(true)
+        }
       } catch (err) {
         const msg = String(err)
         // 非 Tauri 环境（浏览器 dev）→ 直接放行
@@ -54,4 +79,3 @@ export function useDatabase() {
 
   return { ready, error }
 }
-

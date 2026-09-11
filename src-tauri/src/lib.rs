@@ -52,6 +52,12 @@ pub fn run() {
             sql: include_str!("../migrations/007_pomodoro_running.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 8,
+            description: "app_usage_unique",
+            sql: include_str!("../migrations/008_app_usage_unique.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
