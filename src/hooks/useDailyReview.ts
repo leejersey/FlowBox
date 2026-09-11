@@ -41,7 +41,6 @@ export function useDailyReview(): UseDailyReviewReturn {
   const [isLoadingAi, setIsLoadingAi] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
-  const hasAutoTriggeredRef = useRef(false)
 
   // 执行回顾生成
   const doReview = useCallback(async () => {
@@ -113,7 +112,7 @@ export function useDailyReview(): UseDailyReviewReturn {
   useEffect(() => {
     // 应用启动时检查一次，之后每 60 秒检查
     const check = async () => {
-      if (hasAutoTriggeredRef.current || isOpen) return
+      if (isOpen) return
 
       try {
         const { enabled, time } = await dailyReviewService.getReviewSettings()
@@ -121,7 +120,6 @@ export function useDailyReview(): UseDailyReviewReturn {
 
         const hasShown = await dailyReviewService.hasShownToday()
         if (shouldTriggerDailyReview(new Date(), time, hasShown)) {
-          hasAutoTriggeredRef.current = true
           await doReview()
         }
       } catch {
@@ -138,24 +136,6 @@ export function useDailyReview(): UseDailyReviewReturn {
       clearInterval(interval)
     }
   }, [doReview, isOpen])
-
-  // 每天零点重置自动触发标记
-  useEffect(() => {
-    const resetAtMidnight = () => {
-      const now = new Date()
-      const tomorrow = new Date(now)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      tomorrow.setHours(0, 0, 0, 0)
-      const msUntilMidnight = tomorrow.getTime() - now.getTime()
-
-      return setTimeout(() => {
-        hasAutoTriggeredRef.current = false
-      }, msUntilMidnight)
-    }
-
-    const timer = resetAtMidnight()
-    return () => clearTimeout(timer)
-  }, [])
 
   return {
     isOpen,

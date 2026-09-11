@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus, Moon, Play, Puzzle } from 'lucide-react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
@@ -6,9 +7,9 @@ import { getLucideIcon } from '@/lib/icons'
 import { useThemeStore } from '@/store/useThemeStore'
 import { useSettings } from '@/hooks/useSettings'
 import { showToast } from '@/store/useToastStore'
-import { useDailyReview } from '@/hooks/useDailyReview'
 import * as skillService from '@/services/skillService'
 import type { ButlerSkill } from '@/types/skill'
+import type { AppShellOutletContext } from '@/components/layout/AppShell'
 import { SKILL_CATEGORIES } from '@/types/skill'
 import { SkillEditPanel } from '@/components/skills/SkillEditPanel'
 
@@ -66,7 +67,7 @@ export function SettingsPage() {
   const [volcToken, setVolcToken] = useState('')
   const { mode: themeMode, setMode: setThemeMode } = useThemeStore()
   const { settings, saved, setSetting, toggleSetting } = useSettings()
-  const dailyReview = useDailyReview()
+  const { triggerReview } = useOutletContext<AppShellOutletContext>()
   const [reviewTime, setReviewTime] = useState(settings['daily_review.time'] || '21:00')
 
   // ─── Skills 状态 ────────────────────────────
@@ -457,7 +458,7 @@ export function SettingsPage() {
                     <button
                       onClick={async () => {
                         showToast('正在生成今日回顾...', 'info')
-                        await dailyReview.triggerReview()
+                        await triggerReview()
                       }}
                       className="flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 hover:from-indigo-500/20 hover:to-violet-500/20 border border-indigo-500/20 rounded-2xl transition-all text-sm font-bold text-primary"
                     >

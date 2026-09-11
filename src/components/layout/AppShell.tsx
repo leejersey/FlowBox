@@ -15,6 +15,10 @@ import { showToast } from '@/store/useToastStore'
 const DEFAULT_BUTLER_SHORTCUT = 'Shift+Space'
 const isTauriApp = isTauri()
 
+export interface AppShellOutletContext {
+  triggerReview: () => Promise<void>
+}
+
 export function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false)
   const dailyReview = useDailyReview()
@@ -64,7 +68,7 @@ export function AppShell() {
       <Sidebar onSearchClick={toggleSearch} />
       <main className="flex-1 h-full pt-10 relative overflow-hidden flex flex-col">
         <div className="flex-1 w-full max-w-7xl mx-auto h-full container relative overflow-hidden px-8 py-4 flex flex-col">
-          <Outlet />
+          <Outlet context={{ triggerReview: dailyReview.triggerReview }} />
         </div>
       </main>
       <ButlerOverlay />
