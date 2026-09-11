@@ -46,6 +46,12 @@ pub fn run() {
             sql: include_str!("../migrations/006_trending.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "pomodoro_running",
+            sql: include_str!("../migrations/007_pomodoro_running.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

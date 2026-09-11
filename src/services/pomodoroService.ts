@@ -14,6 +14,7 @@ import type {
   StartPomodoroPayload,
 } from '../types/pomodoro'
 import { localDateKey } from '../lib/localDate'
+import { finishPomodoro } from '../lib/pomodoroSession'
 
 // ============ 前端内存状态机 ============
 
@@ -53,7 +54,7 @@ export async function pomodoroStart(payload: StartPomodoroPayload): Promise<Pomo
 
   const result = await db.execute(
     `INSERT INTO pomodoro_sessions (type, duration_minutes, status, related_todo_id, started_at)
-     VALUES ($1, $2, 'completed', $3, $4)`,
+     VALUES ($1, $2, 'running', $3, $4)`,
     [payload.type, payload.duration_minutes, payload.related_todo_id ?? null, now]
   )
 
@@ -118,14 +119,15 @@ export async function pomodoroStop(interrupted: boolean): Promise<PomodoroSessio
   }
 
   const db = await getDb()
-  const now = new Date().toISOString()
-  const actualMinutes = Math.round(timerState.elapsed_seconds / 60)
+  const endedAt = new Date()
+  const { status, actualMinutes } = finishPomodoro(new Date(startedAtMs!), endedAt, interrupted)
+  const now = endedAt.toISOString()
 
   await db.execute(
     `UPDATE pomodoro_sessions
      SET status = $1, actual_minutes = $2, ended_at = $3
      WHERE id = $4`,
-    [interrupted ? 'interrupted' : 'completed', actualMinutes, now, currentSessionId]
+    [status, actualMinutes, now, currentSessionId]
   )
 
   const rows = await db.select<PomodoroSession[]>(
@@ -151,6 +153,19 @@ export async function pomodoroStop(interrupted: boolean): Promise<PomodoroSessio
 /** pomodoro_get_state — 获取当前计时状态 */
 export function pomodoroGetState(): PomodoroState {
   return { ...timerState }
+}
+
+/** 将上次异常退出遗留的 running 会话结算为中断。由 main window 初始化调用。 */
+export async function recoverRunningSessions(): Promise<void> {
+  const db = await getDb()
+  const endedAt = new Date().toISOString()
+  await db.execute(
+    `UPDATE pomodoro_sessions
+     SET status = 'interrupted', ended_at = $1,
+         actual_minutes = MIN(duration_minutes, ROUND(MAX(0, (julianday($1) - julianday(started_at)) * 1440)))
+     WHERE status = 'running'`,
+    [endedAt]
+  )
 }
 
 /** pomodoro_list_sessions — 查询历史记录 */
@@ -198,14 +213,14 @@ export async function pomodoroStats(dateFrom: string, dateTo: string): Promise<P
        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
        SUM(CASE WHEN status = 'interrupted' THEN 1 ELSE 0 END) as interrupted
      FROM pomodoro_sessions
-     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2`,
+     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2 AND ended_at IS NOT NULL`,
     [dateFrom, dateTo]
   )
 
   const rows = await db.select<{ started_at: string; minutes: number }[]>(
     `SELECT started_at, COALESCE(actual_minutes, 0) as minutes
      FROM pomodoro_sessions
-     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2`,
+     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2 AND ended_at IS NOT NULL`,
     [dateFrom, dateTo]
   )
   const totals = new Map<string, number>()

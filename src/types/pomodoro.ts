@@ -9,7 +9,7 @@ export interface PomodoroSession {
   type: PomodoroType
   duration_minutes: number
   actual_minutes: number | null
-  status: 'completed' | 'interrupted'
+  status: 'running' | 'completed' | 'interrupted'
   related_todo_id: number | null
   todo_title?: string | null
   ai_summary: string | null

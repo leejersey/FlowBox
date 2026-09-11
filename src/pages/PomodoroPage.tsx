@@ -265,7 +265,7 @@ export function PomodoroPage() {
                         {start.toTimeString().slice(0, 5)}{end ? ` - ${end.toTimeString().slice(0, 5)}` : ''}
                       </span>
                       <span className={cn("text-xs px-2 py-0.5 rounded", s.status === 'completed' ? "text-primary bg-primary/10" : "text-on-surface-variant bg-surface-container")}>
-                        {s.status === 'completed' ? '完成' : '中断'}
+                        {s.status === 'running' ? '进行中' : s.status === 'completed' ? '完成' : '中断'}
                       </span>
                     </div>
                     <p className="text-[15px] font-medium text-on-surface">
