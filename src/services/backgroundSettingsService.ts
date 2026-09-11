@@ -11,23 +11,45 @@ export interface BackgroundSettingDependencies {
   invoke: (command: string, payload: { enabled: boolean }) => Promise<unknown>
 }
 
+async function applyWithPreviousValue(
+  key: BackgroundSettingKey,
+  enabled: boolean,
+  deps: BackgroundSettingDependencies,
+  previousValue: string | null,
+) {
+  const [command] = BACKGROUND_SETTINGS[key]
+  await deps.invoke(command, { enabled })
+  try {
+    await deps.set(key, String(enabled))
+  } catch (error) {
+    const previousEnabled = previousValue === null
+      ? BACKGROUND_SETTINGS[key][1]
+      : previousValue === 'true'
+    try {
+      await deps.invoke(command, { enabled: previousEnabled })
+    } catch (rollbackError) {
+      throw new AggregateError([error, rollbackError], '设置写入及后台状态回滚均失败')
+    }
+    throw error
+  }
+}
+
 export async function applyBackgroundSetting(
   key: BackgroundSettingKey,
   enabled: boolean,
   deps: BackgroundSettingDependencies,
 ) {
-  const [command] = BACKGROUND_SETTINGS[key]
-  await deps.invoke(command, { enabled })
-  await deps.set(key, String(enabled))
+  return applyWithPreviousValue(key, enabled, deps, await deps.get(key))
 }
 
 export async function syncBackgroundSettings(deps: BackgroundSettingDependencies) {
   for (const key of Object.keys(BACKGROUND_SETTINGS) as BackgroundSettingKey[]) {
     const saved = await deps.get(key)
-    await applyBackgroundSetting(
+    await applyWithPreviousValue(
       key,
       saved === null ? BACKGROUND_SETTINGS[key][1] : saved === 'true',
       deps,
+      saved,
     )
   }
 }
