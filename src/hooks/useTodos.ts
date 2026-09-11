@@ -51,6 +51,7 @@ export function useTodos(query: TodoListQuery = {}) {
   const update = useCallback(async (payload: UpdateTodoPayload) => {
     try {
       const todo = await updateTodoAndRefresh(
+        payload.id,
         () => todoService.todoUpdate(payload),
         refresh,
       )
