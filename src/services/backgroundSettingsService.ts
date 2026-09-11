@@ -15,20 +15,21 @@ async function applyWithPreviousValue(
   key: BackgroundSettingKey,
   enabled: boolean,
   deps: BackgroundSettingDependencies,
-  previousValue: string | null,
+  previousValue?: string | null,
 ) {
   const [command] = BACKGROUND_SETTINGS[key]
   await deps.invoke(command, { enabled })
   try {
     await deps.set(key, String(enabled))
   } catch (error) {
-    const previousEnabled = previousValue === null
-      ? BACKGROUND_SETTINGS[key][1]
-      : previousValue === 'true'
     try {
+      const saved = previousValue === undefined ? await deps.get(key) : previousValue
+      const previousEnabled = saved === null
+        ? BACKGROUND_SETTINGS[key][1]
+        : saved === 'true'
       await deps.invoke(command, { enabled: previousEnabled })
     } catch (rollbackError) {
-      throw new AggregateError([error, rollbackError], '设置写入及后台状态回滚均失败')
+      console.error('后台状态回滚失败', rollbackError)
     }
     throw error
   }
@@ -39,7 +40,7 @@ export async function applyBackgroundSetting(
   enabled: boolean,
   deps: BackgroundSettingDependencies,
 ) {
-  return applyWithPreviousValue(key, enabled, deps, await deps.get(key))
+  return applyWithPreviousValue(key, enabled, deps)
 }
 
 export async function syncBackgroundSettings(deps: BackgroundSettingDependencies) {
