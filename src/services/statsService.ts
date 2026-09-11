@@ -3,6 +3,7 @@
  */
 
 import { getDb } from './database'
+import { localDateKey, localDayBounds, localMondayStart } from '../lib/localDate'
 
 export interface DashboardStats {
   today_focus_minutes: number
@@ -30,17 +31,18 @@ export interface UsageDistribution {
 /** 获取仪表盘 KPI 指标 */
 export async function getDashboardStats(): Promise<DashboardStats> {
   const db = await getDb()
-  const today = new Date().toISOString().slice(0, 10)
+  const { startIso, endIso } = localDayBounds()
 
   // 今日专注时长
   const focusRows = await db.select<{ total: number }[]>(
     `SELECT COALESCE(SUM(actual_minutes), 0) as total
-     FROM pomodoro_sessions WHERE type = 'focus' AND DATE(started_at) = $1`,
-    [today]
+     FROM pomodoro_sessions
+     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2`,
+    [startIso, endIso]
   )
 
   // 本周番茄数
-  const weekStart = getWeekStart()
+  const weekStart = localMondayStart().toISOString()
   const pomoRows = await db.select<{ cnt: number }[]>(
     `SELECT COUNT(*) as cnt FROM pomodoro_sessions
      WHERE type = 'focus' AND status = 'completed' AND started_at >= $1`,
@@ -73,21 +75,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 /** 获取今日每小时专注分布 */
 export async function getHourlyFocus(): Promise<HourlyFocus[]> {
   const db = await getDb()
-  const today = new Date().toISOString().slice(0, 10)
+  const { startIso, endIso } = localDayBounds()
 
-  const rows = await db.select<{ hour: number; minutes: number }[]>(
-    `SELECT CAST(strftime('%H', started_at) AS INTEGER) as hour,
-            COALESCE(SUM(actual_minutes), 0) as minutes
+  const rows = await db.select<{ started_at: string; minutes: number }[]>(
+    `SELECT started_at, COALESCE(actual_minutes, 0) as minutes
      FROM pomodoro_sessions
-     WHERE type = 'focus' AND DATE(started_at) = $1
-     GROUP BY hour ORDER BY hour`,
-    [today]
+     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2`,
+    [startIso, endIso]
   )
 
   // 补全 24 小时
   const full: HourlyFocus[] = Array.from({ length: 24 }, (_, i) => ({ hour: i, minutes: 0 }))
   for (const r of rows) {
-    full[r.hour].minutes = r.minutes
+    full[new Date(r.started_at).getHours()].minutes += r.minutes
   }
   return full
 }
@@ -102,25 +102,25 @@ export async function getFocusTrend(days: number = 7): Promise<FocusTrend[]> {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
-    trend.push({ date: d.toISOString().slice(5, 10), minutes: 0 }) // MM-DD
+    trend.push({ date: localDateKey(d).slice(5), minutes: 0 }) // MM-DD
   }
 
   const startDate = new Date(today)
   startDate.setDate(startDate.getDate() - days + 1)
-  const startDateStr = startDate.toISOString().slice(0, 10) + 'T00:00:00'
+  const { startIso } = localDayBounds(startDate)
+  const { endIso } = localDayBounds(today)
 
-  const rows = await db.select<{ date: string; minutes: number }[]>(
-    `SELECT strftime('%m-%d', started_at) as date,
-            COALESCE(SUM(actual_minutes), 0) as minutes
+  const rows = await db.select<{ started_at: string; minutes: number }[]>(
+    `SELECT started_at, COALESCE(actual_minutes, 0) as minutes
      FROM pomodoro_sessions
-     WHERE type = 'focus' AND started_at >= $1
-     GROUP BY date ORDER BY date`,
-    [startDateStr]
+     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2`,
+    [startIso, endIso]
   )
 
   for (const r of rows) {
-    const t = trend.find(x => x.date === r.date)
-    if (t) t.minutes = r.minutes
+    const date = localDateKey(new Date(r.started_at)).slice(5)
+    const t = trend.find(x => x.date === date)
+    if (t) t.minutes += r.minutes
   }
   return trend
 }
@@ -128,7 +128,7 @@ export async function getFocusTrend(days: number = 7): Promise<FocusTrend[]> {
 /** 获取今日应用使用分布（来自 app_usage 表的真实数据） */
 export async function getUsageDistribution(): Promise<UsageDistribution[]> {
   const db = await getDb()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey()
 
   const APP_COLORS = [
     '#4F46E5', // indigo
@@ -173,12 +173,4 @@ export async function getUsageDistribution(): Promise<UsageDistribution[]> {
     value: Math.round(row.total / 60), // 转为分钟
     color: APP_COLORS[idx % APP_COLORS.length],
   }))
-}
-
-function getWeekStart(): string {
-  const now = new Date()
-  const day = now.getDay()
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-  const monday = new Date(now.setDate(diff))
-  return monday.toISOString().slice(0, 10) + 'T00:00:00'
 }

@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/Select'
 import * as pomodoroService from '@/services/pomodoroService'
 import { useTodos } from '@/hooks/useTodos'
 import type { PomodoroType, PomodoroState, PomodoroSession } from '@/types/pomodoro'
+import { localDayBounds } from '@/lib/localDate'
 
 const isTauriApp = isTauri()
 
@@ -97,11 +98,11 @@ export function PomodoroPage() {
   const loadData = useCallback(async () => {
     if (!isTauriApp) return
     try {
-      const today = new Date().toISOString().slice(0, 10)
-      const list = await pomodoroService.pomodoroListSessions({ date_from: today + 'T00:00:00', limit: 20 })
+      const { startIso, endIso } = localDayBounds()
+      const list = await pomodoroService.pomodoroListSessions({ date_from: startIso, date_to: endIso, limit: 20 })
       setSessions(list)
 
-      const stats = await pomodoroService.pomodoroStats(today + 'T00:00:00', today + 'T23:59:59')
+      const stats = await pomodoroService.pomodoroStats(startIso, endIso)
       const rate = stats.session_count > 0 ? Math.round((stats.completed_count / stats.session_count) * 100) : 0
       setTodayStats({ count: stats.completed_count, minutes: stats.total_focus_minutes, rate })
     } catch { /* ignore in browser */ }

@@ -13,6 +13,7 @@ import type {
   PomodoroStats,
   StartPomodoroPayload,
 } from '../types/pomodoro'
+import { localDateKey } from '../lib/localDate'
 
 // ============ 前端内存状态机 ============
 
@@ -168,7 +169,7 @@ export async function pomodoroListSessions(params: {
     sqlParams.push(params.date_from)
   }
   if (params.date_to) {
-    conditions.push(`started_at <= $${idx++}`)
+    conditions.push(`started_at < $${idx++}`)
     sqlParams.push(params.date_to)
   }
 
@@ -197,17 +198,22 @@ export async function pomodoroStats(dateFrom: string, dateTo: string): Promise<P
        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
        SUM(CASE WHEN status = 'interrupted' THEN 1 ELSE 0 END) as interrupted
      FROM pomodoro_sessions
-     WHERE type = 'focus' AND started_at >= $1 AND started_at <= $2`,
+     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2`,
     [dateFrom, dateTo]
   )
 
-  const daily = await db.select<{ date: string; minutes: number }[]>(
-    `SELECT DATE(started_at) as date, COALESCE(SUM(actual_minutes), 0) as minutes
+  const rows = await db.select<{ started_at: string; minutes: number }[]>(
+    `SELECT started_at, COALESCE(actual_minutes, 0) as minutes
      FROM pomodoro_sessions
-     WHERE type = 'focus' AND started_at >= $1 AND started_at <= $2
-     GROUP BY DATE(started_at) ORDER BY date`,
+     WHERE type = 'focus' AND started_at >= $1 AND started_at < $2`,
     [dateFrom, dateTo]
   )
+  const totals = new Map<string, number>()
+  for (const row of rows) {
+    const date = localDateKey(new Date(row.started_at))
+    totals.set(date, (totals.get(date) ?? 0) + row.minutes)
+  }
+  const daily = [...totals].map(([date, minutes]) => ({ date, minutes })).sort((a, b) => a.date.localeCompare(b.date))
 
   const s = summary[0] ?? { total: 0, cnt: 0, completed: 0, interrupted: 0 }
 

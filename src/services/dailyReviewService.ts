@@ -7,6 +7,7 @@
 import { getDb } from './database'
 import * as aiService from './aiService'
 import * as settingsService from './settingsService'
+import { localDateKey, localDayBounds } from '../lib/localDate'
 
 // ─── 类型定义 ──────────────────────────────────────
 
@@ -41,14 +42,14 @@ export interface DailyReviewReport {
 /** 聚合今日各模块数据 */
 export async function gatherTodayData(): Promise<DailyReviewData> {
   const db = await getDb()
-  const today = new Date().toISOString().slice(0, 10)
-  const todayStart = today + 'T00:00:00'
-  const todayEnd = today + 'T23:59:59'
+  const today = localDateKey()
+  const { startIso, endIso } = localDayBounds()
 
   // 今日完成的待办（包含之前创建、今天完成的）
   const completedRows = await db.select<{ cnt: number }[]>(
-    `SELECT COUNT(*) as cnt FROM todos WHERE status = 'done' AND DATE(completed_at) = $1`,
-    [today]
+    `SELECT COUNT(*) as cnt FROM todos
+     WHERE status = 'done' AND completed_at >= $1 AND completed_at < $2`,
+    [startIso, endIso]
   )
 
   // 所有活跃待办数
@@ -62,8 +63,8 @@ export async function gatherTodayData(): Promise<DailyReviewData> {
 
   // 今日灵感
   const ideaRows = await db.select<{ cnt: number }[]>(
-    `SELECT COUNT(*) as cnt FROM ideas WHERE DATE(created_at) = $1`,
-    [today]
+    `SELECT COUNT(*) as cnt FROM ideas WHERE created_at >= $1 AND created_at < $2`,
+    [startIso, endIso]
   )
 
   // 今日番茄钟
@@ -72,20 +73,20 @@ export async function gatherTodayData(): Promise<DailyReviewData> {
        COUNT(*) as cnt,
        COALESCE(SUM(actual_minutes), 0) as total_min
      FROM pomodoro_sessions
-     WHERE type = 'focus' AND status = 'completed' AND started_at >= $1 AND started_at <= $2`,
-    [todayStart, todayEnd]
+     WHERE type = 'focus' AND status = 'completed' AND started_at >= $1 AND started_at < $2`,
+    [startIso, endIso]
   )
 
   // 今日语音
   const voiceRows = await db.select<{ cnt: number }[]>(
-    `SELECT COUNT(*) as cnt FROM voice_records WHERE DATE(created_at) = $1`,
-    [today]
+    `SELECT COUNT(*) as cnt FROM voice_records WHERE created_at >= $1 AND created_at < $2`,
+    [startIso, endIso]
   )
 
   // 今日剪贴板
   const clipRows = await db.select<{ cnt: number }[]>(
-    `SELECT COUNT(*) as cnt FROM clipboard_items WHERE DATE(created_at) = $1`,
-    [today]
+    `SELECT COUNT(*) as cnt FROM clipboard_items WHERE created_at >= $1 AND created_at < $2`,
+    [startIso, endIso]
   )
 
   // 滞留待办：高优先级且超过 3 天未处理
@@ -207,14 +208,14 @@ export async function saveReviewReport(report: DailyReviewReport): Promise<void>
 
 /** 标记今日已弹窗 */
 export async function markShown(): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey()
   await settingsService.settingsSet(LAST_SHOWN_KEY, today)
 }
 
 /** 检查今日是否已弹窗 */
 export async function hasShownToday(): Promise<boolean> {
   const lastShown = await settingsService.settingsGet(LAST_SHOWN_KEY)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey()
   return lastShown === today
 }
 

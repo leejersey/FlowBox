@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import * as dailyReviewService from '@/services/dailyReviewService'
 import type { DailyReviewData, DailyReviewReport } from '@/services/dailyReviewService'
+import { shouldTriggerDailyReview } from '@/lib/dailyReviewSchedule'
 
 const CHECK_INTERVAL_MS = 60_000 // 每 60 秒检测一次
 
@@ -119,12 +120,7 @@ export function useDailyReview(): UseDailyReviewReturn {
         if (!enabled) return
 
         const hasShown = await dailyReviewService.hasShownToday()
-        if (hasShown) return
-
-        const now = new Date()
-        const [targetHour, targetMin] = time.split(':').map(Number)
-
-        if (now.getHours() === targetHour && now.getMinutes() >= targetMin) {
+        if (shouldTriggerDailyReview(new Date(), time, hasShown)) {
           hasAutoTriggeredRef.current = true
           await doReview()
         }

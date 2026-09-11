@@ -9,6 +9,7 @@ import * as settingsService from './settingsService'
 import * as aiService from './aiService'
 import * as ideaService from './ideaService'
 import type { TrendingRepo, OSSInsightResponse } from '../types/trending'
+import { localDateKey } from '../lib/localDate'
 
 // ─── 常量 ──────────────────────────────────────────
 
@@ -22,7 +23,7 @@ export async function needsRefresh(): Promise<boolean> {
   const lastFetched = await settingsService.settingsGet(SETTINGS_KEY_LAST_FETCHED)
   if (!lastFetched) return true
 
-  const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const today = localDateKey()
   return lastFetched !== today
 }
 
@@ -50,7 +51,7 @@ async function fetchFromOSSInsight(language: string = 'All'): Promise<OSSInsight
 /** 将 API 数据写入本地 SQLite */
 async function cacheTrendingRepos(data: OSSInsightResponse): Promise<void> {
   const db = await getDb()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey()
   const rows = data.data?.rows ?? []
 
   for (const row of rows) {
@@ -98,7 +99,7 @@ export async function fetchAndCacheTrending(language: string = 'All'): Promise<v
 /** 从本地缓存读取热门仓库列表 */
 export async function getTrendingList(date?: string): Promise<TrendingRepo[]> {
   const db = await getDb()
-  const targetDate = date ?? new Date().toISOString().slice(0, 10)
+  const targetDate = date ?? localDateKey()
 
   return db.select<TrendingRepo[]>(
     `SELECT * FROM trending_repos WHERE fetched_date = $1 ORDER BY total_score DESC`,

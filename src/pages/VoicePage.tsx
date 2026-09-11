@@ -7,6 +7,7 @@ import type { VoiceRecord } from '@/types/voice'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import { useVoiceTranscribe } from '@/hooks/useVoiceTranscribe'
 import * as settingsService from '@/services/settingsService'
+import { localDateKey } from '@/lib/localDate'
 
 const isTauriApp = isTauri()
 
@@ -18,8 +19,8 @@ function formatDuration(seconds: number): string {
 
 function timeLabel(dateStr: string): string {
   const d = new Date(dateStr)
-  const today = new Date().toISOString().slice(0, 10)
-  const dateOnly = dateStr.slice(0, 10)
+  const today = localDateKey()
+  const dateOnly = localDateKey(d)
   const time = d.toTimeString().slice(0, 5)
   if (dateOnly === today) return `今天 ${time}`
   return `${dateOnly} ${time}`
