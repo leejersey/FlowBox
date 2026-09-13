@@ -79,3 +79,34 @@ test('Keychain 已有值时删除残留 SQLite 明文', async () => {
   assert.deepEqual(result, { value: 'secure-token', migrated: true })
   assert.equal(deleted, true)
 })
+
+test('空白 SQLite 凭据只删除明文且不写入 Keychain', async () => {
+  const calls = []
+  const result = await migrateLegacySecret('ai.openai_api_key', {
+    getSecret: async () => null,
+    getLegacy: async () => '  \n ',
+    setSecret: async () => calls.push('set'),
+    deleteLegacy: async () => calls.push('delete'),
+  })
+  assert.deepEqual(result, { value: null, migrated: true })
+  assert.deepEqual(calls, ['delete'])
+})
+
+test('空白 Keychain 凭据不覆盖有效 SQLite 凭据', async () => {
+  const writes = []
+  const result = await migrateLegacySecret('ai.openai_api_key', {
+    getSecret: async () => '   ',
+    getLegacy: async () => 'legacy-token',
+    setSecret: async (_key, value) => writes.push(value),
+    deleteLegacy: async () => {},
+  })
+  assert.deepEqual(result, { value: 'legacy-token', migrated: true })
+  assert.deepEqual(writes, ['legacy-token'])
+})
+
+test('读取时忽略空白 Keychain 凭据并回退到有效旧值', async () => {
+  assert.equal(await getSecret('ai.openai_api_key', {
+    getSecure: async () => ' \t ',
+    getLegacy: async () => 'legacy-token',
+  }), 'legacy-token')
+})

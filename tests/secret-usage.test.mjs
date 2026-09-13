@@ -23,6 +23,23 @@ test('设置页仅显示固定掩码，不回填已保存密钥', async () => {
   assert.doesNotMatch(page, /setVolc(AppId|Token)\(settings\['asr\./)
 })
 
+test('密钥子写入不独立标记全局保存成功', async () => {
+  const [hook, page] = await Promise.all([
+    read('../src/hooks/useSettings.ts'),
+    read('../src/pages/SettingsPage.tsx'),
+  ])
+  const secretSetter = hook.match(/const setSecretSetting[\s\S]*?\n  \}, \[\]\)/)?.[0] ?? ''
+  assert.doesNotMatch(secretSetter, /setSaved\(/)
+  assert.match(hook, /const markSaved/)
+  assert.match(page, /attempted[\s\S]*allSaved[\s\S]*markSaved\(\)/)
+})
+
+test('前端 trim 密钥并拒绝空白写入', async () => {
+  const hook = await read('../src/hooks/useSettings.ts')
+  assert.match(hook, /value\.trim\(\)/)
+  assert.match(hook, /请输入[^'"`]*凭据/)
+})
+
 test('原生命令使用固定白名单且 CSP 不允许内联脚本或 Google Fonts', async () => {
   const [secrets, config] = await Promise.all([
     read('../src-tauri/src/services/secrets.rs'),

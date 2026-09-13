@@ -21,6 +21,11 @@ export function useSettings() {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false) // 用于触发"已保存"动画
 
+  const markSaved = useCallback(() => {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1500)
+  }, [])
+
   const loadSettings = useCallback(async () => {
     if (!isTauriEnv) return
     setLoading(true)
@@ -39,12 +44,15 @@ export function useSettings() {
   }, [])
 
   const setSecretSetting = useCallback(async (key: SecretKey, value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      showToast('请输入有效凭据', 'error')
+      return false
+    }
     if (!isTauriEnv) return false
     try {
-      await setSecret(key, value)
+      await setSecret(key, trimmed)
       setSecretsConfigured(prev => ({ ...prev, [key]: true }))
-      setSaved(true)
-      setTimeout(() => setSaved(false), 1500)
       return true
     } catch {
       showToast('安全存储暂不可用，可稍后重试', 'error')
@@ -62,14 +70,11 @@ export function useSettings() {
       await settingsService.settingsSet(key, value)
       setSettings(prev => ({ ...prev, [key]: value }))
       
-      if (showFeedback) {
-        setSaved(true)
-        setTimeout(() => setSaved(false), 1500)
-      }
+      if (showFeedback) markSaved()
     } catch (err) {
       showToast(`保存设置失败: ${String(err)}`, 'error')
     }
-  }, [])
+  }, [markSaved])
 
   const toggleSetting = useCallback(async (key: string, showFeedback = true) => {
     const current = settings[key] === 'true'
@@ -81,6 +86,7 @@ export function useSettings() {
     secretsConfigured,
     loading,
     saved,
+    markSaved,
     setSetting,
     setSecretSetting,
     toggleSetting,

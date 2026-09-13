@@ -11,6 +11,7 @@ export const SECRET_KEYS = [
 export type SecretKey = typeof SECRET_KEYS[number]
 
 const getSecure = (key: SecretKey) => invoke<string | null>('secret_get', { key })
+const configured = (value: string | null) => value?.trim() ? value : null
 
 export async function getSecret(
   key: SecretKey,
@@ -18,13 +19,13 @@ export async function getSecret(
 ): Promise<string | null> {
   let secure: string | null = null
   try {
-    secure = await deps.getSecure(key)
+    secure = configured(await deps.getSecure(key))
   } catch {
     console.warn(`安全存储读取失败，将尝试旧设置: ${key}`)
   }
   if (secure !== null) return secure
 
-  const legacy = await deps.getLegacy(key)
+  const legacy = configured(await deps.getLegacy(key))
   if (legacy !== null) console.warn(`正在使用待迁移的旧凭据: ${key}`)
   return legacy
 }
@@ -38,7 +39,7 @@ export async function secretExists(key: SecretKey): Promise<boolean> {
   } catch {
     console.warn(`安全存储状态读取失败，将检查旧设置: ${key}`)
   }
-  return (await settingsGetLegacySecret(key)) !== null
+  return configured(await settingsGetLegacySecret(key)) !== null
 }
 
 interface MigrationDeps {
@@ -60,25 +61,32 @@ export async function migrateLegacySecret(
 ): Promise<MigrationResult> {
   let secure: string | null
   try {
-    secure = await deps.getSecret(key)
+    secure = configured(await deps.getSecret(key))
   } catch (error) {
     let legacy: string | null = null
     try {
-      legacy = await deps.getLegacy(key)
+      const rawLegacy = await deps.getLegacy(key)
+      legacy = configured(rawLegacy)
+      if (rawLegacy !== null && legacy === null) {
+        await deps.deleteLegacy(key)
+        return { value: null, migrated: true }
+      }
     } catch { /* keep the original secure-storage error */ }
     return { value: legacy, migrated: false, error: error instanceof Error ? error.message : String(error) }
   }
 
-  let legacy: string | null
+  let rawLegacy: string | null
   try {
-    legacy = await deps.getLegacy(key)
+    rawLegacy = await deps.getLegacy(key)
   } catch (error) {
     return { value: secure, migrated: false, error: error instanceof Error ? error.message : String(error) }
   }
-  if (legacy === null) return { value: secure, migrated: false }
+  if (rawLegacy === null) return { value: secure, migrated: false }
+
+  const legacy = configured(rawLegacy)
 
   try {
-    if (secure === null) await deps.setSecret(key, legacy)
+    if (secure === null && legacy !== null) await deps.setSecret(key, legacy)
     await deps.deleteLegacy(key)
     return { value: secure ?? legacy, migrated: true }
   } catch (error) {

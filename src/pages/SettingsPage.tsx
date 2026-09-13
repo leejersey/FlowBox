@@ -68,7 +68,7 @@ export function SettingsPage() {
   const [volcAppId, setVolcAppId] = useState('')
   const [volcToken, setVolcToken] = useState('')
   const { mode: themeMode, setMode: setThemeMode } = useThemeStore()
-  const { settings, secretsConfigured, saved, setSetting, setSecretSetting, toggleSetting, loadSettings } = useSettings()
+  const { settings, secretsConfigured, saved, markSaved, setSetting, setSecretSetting, toggleSetting, loadSettings } = useSettings()
   const { triggerReview } = useOutletContext<AppShellOutletContext>()
   const [reviewTime, setReviewTime] = useState(settings['daily_review.time'] || '21:00')
 
@@ -100,7 +100,10 @@ export function SettingsPage() {
   }, [settings['daily_review.time']])
 
   const saveApiKey = async () => {
-    if (localApiKey && await setSecretSetting('ai.openai_api_key', localApiKey)) setLocalApiKey('')
+    if (await setSecretSetting('ai.openai_api_key', localApiKey.trim())) {
+      setLocalApiKey('')
+      markSaved()
+    }
   }
 
   const updateBackgroundSetting = async (key: BackgroundSettingKey, enabled: boolean) => {
@@ -118,10 +121,24 @@ export function SettingsPage() {
   }
 
   const saveAsrKeys = async () => {
-    const savedAppId = !volcAppId || await setSecretSetting('asr.volc_app_id', volcAppId)
-    const savedToken = !volcToken || await setSecretSetting('asr.volc_access_token', volcToken)
-    if (savedAppId) setVolcAppId('')
-    if (savedToken) setVolcToken('')
+    const appId = volcAppId.trim()
+    const token = volcToken.trim()
+    let attempted = false
+    let allSaved = true
+
+    if (appId) {
+      attempted = true
+      if (await setSecretSetting('asr.volc_app_id', appId)) setVolcAppId('')
+      else allSaved = false
+    }
+    if (token) {
+      attempted = true
+      if (await setSecretSetting('asr.volc_access_token', token)) setVolcToken('')
+      else allSaved = false
+    }
+
+    if (!attempted) showToast('请输入至少一项凭据', 'error')
+    else if (allSaved) markSaved()
   }
 
   const saveButlerShortcut = async () => {
