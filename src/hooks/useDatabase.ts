@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import * as autostart from '@tauri-apps/plugin-autostart'
 import { showToast } from '@/store/useToastStore'
 import { seedBuiltinSkills } from '@/services/skillService'
 import { recoverRunningSessions } from '@/services/pomodoroService'
 import { initializeAppWindow } from '@/services/appInitializationService'
-import { syncBackgroundSettings } from '@/services/backgroundSettingsService'
+import { syncAutostart, syncBackgroundSettings } from '@/services/backgroundSettingsService'
 import * as settingsService from '@/services/settingsService'
 import { migrateLegacySecrets } from '@/services/secretService'
 
@@ -48,6 +49,7 @@ export function useDatabase() {
               set: settingsService.settingsSet,
               invoke: (command, payload) => invoke(command, payload),
             })],
+            ['同步开机自启动设置', () => syncAutostart(autostart, settingsService.settingsSet)],
             ['初始化预设技能', seedBuiltinSkills],
           ], ({ name, error }) => {
             console.error(`${name}失败:`, error)

@@ -5,6 +5,7 @@ pub mod commands;
 
 use tauri::Manager;
 use tauri_plugin_sql::{Builder as SqlBuilder, Migration, MigrationKind};
+use tauri_plugin_autostart::MacosLauncher;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -61,6 +62,7 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(
             SqlBuilder::default()
                 .add_migrations("sqlite:flowbox.db", migrations)

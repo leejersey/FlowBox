@@ -11,6 +11,29 @@ export interface BackgroundSettingDependencies {
   invoke: (command: string, payload: { enabled: boolean }) => Promise<unknown>
 }
 
+export interface AutostartPlugin {
+  enable: () => Promise<void>
+  disable: () => Promise<void>
+  isEnabled: () => Promise<boolean>
+}
+
+type PersistSetting = (key: string, value: string) => Promise<unknown>
+
+export async function syncAutostart(plugin: AutostartPlugin, persist: PersistSetting) {
+  const enabled = await plugin.isEnabled()
+  await persist('general.autostart', String(enabled))
+  return enabled
+}
+
+export async function setAutostart(
+  enabled: boolean,
+  plugin: AutostartPlugin,
+  persist: PersistSetting,
+) {
+  await (enabled ? plugin.enable() : plugin.disable())
+  return syncAutostart(plugin, persist)
+}
+
 async function applyWithPreviousValue(
   key: BackgroundSettingKey,
   enabled: boolean,

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus, Moon, Play, Puzzle } from 'lucide-react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import * as autostart from '@tauri-apps/plugin-autostart'
 import { cn } from '@/lib/utils'
 import { getLucideIcon } from '@/lib/icons'
 import { useThemeStore } from '@/store/useThemeStore'
@@ -13,7 +14,7 @@ import type { AppShellOutletContext } from '@/components/layout/AppShell'
 import { SKILL_CATEGORIES } from '@/types/skill'
 import { SkillEditPanel } from '@/components/skills/SkillEditPanel'
 import * as settingsService from '@/services/settingsService'
-import { applyBackgroundSetting, type BackgroundSettingKey } from '@/services/backgroundSettingsService'
+import { applyBackgroundSetting, setAutostart, type BackgroundSettingKey } from '@/services/backgroundSettingsService'
 
 const menuItems = [
   { id: 'general', label: '通用设置', icon: SettingsIcon },
@@ -117,6 +118,16 @@ export function SettingsPage() {
       await loadSettings()
     } catch (err) {
       showToast(`切换后台服务失败: ${String(err)}`, 'error')
+    }
+  }
+
+  const updateAutostart = async (enabled: boolean) => {
+    if (!isTauriApp) return
+    try {
+      await setAutostart(enabled, autostart, settingsService.settingsSet)
+      await loadSettings()
+    } catch (err) {
+      showToast(`切换开机自启动失败: ${String(err)}`, 'error')
     }
   }
 
@@ -404,7 +415,7 @@ export function SettingsPage() {
                       </div>
                       <Toggle
                         enabled={settings['general.autostart'] === 'true'}
-                        onChange={() => toggleSetting('general.autostart')}
+                        onChange={enabled => { void updateAutostart(enabled) }}
                       />
                     </div>
                     
