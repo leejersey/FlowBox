@@ -94,6 +94,9 @@ pub fn run() {
             commands::voice::voice_stop_recording,
             commands::voice::voice_transcribe_audio,
             commands::screenshot::screenshot_from_clipboard,
+            commands::secrets::secret_get,
+            commands::secrets::secret_set,
+            commands::secrets::secret_exists,
         ])
         .setup(move |app| {
             services::butler_shortcut::register_initial_shortcut(

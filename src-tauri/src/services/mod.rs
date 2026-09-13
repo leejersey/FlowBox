@@ -5,3 +5,4 @@ pub mod butler_shortcut;
 pub mod obsidian_export;
 pub mod voice_recorder;
 pub mod voice_transcribe;
+pub mod secrets;

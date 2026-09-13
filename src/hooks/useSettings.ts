@@ -7,11 +7,17 @@ import { useState, useCallback, useEffect } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import * as settingsService from '@/services/settingsService'
 import { showToast } from '@/store/useToastStore'
+import { SECRET_KEYS, secretExists, setSecret, type SecretKey } from '@/services/secretService'
 
 const isTauriEnv = isTauri()
 
 export function useSettings() {
   const [settings, setSettings] = useState<Record<string, string>>({})
+  const [secretsConfigured, setSecretsConfigured] = useState<Record<SecretKey, boolean>>({
+    'ai.openai_api_key': false,
+    'asr.volc_app_id': false,
+    'asr.volc_access_token': false,
+  })
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false) // 用于触发"已保存"动画
 
@@ -19,12 +25,30 @@ export function useSettings() {
     if (!isTauriEnv) return
     setLoading(true)
     try {
-      const all = await settingsService.settingsGetAll()
+      const [all, configured] = await Promise.all([
+        settingsService.settingsGetAll(),
+        Promise.all(SECRET_KEYS.map(async key => [key, await secretExists(key)] as const)),
+      ])
       setSettings(all)
+      setSecretsConfigured(Object.fromEntries(configured) as Record<SecretKey, boolean>)
     } catch (err) {
       showToast(`加载设置失败: ${String(err)}`, 'error')
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const setSecretSetting = useCallback(async (key: SecretKey, value: string) => {
+    if (!isTauriEnv) return false
+    try {
+      await setSecret(key, value)
+      setSecretsConfigured(prev => ({ ...prev, [key]: true }))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 1500)
+      return true
+    } catch {
+      showToast('安全存储暂不可用，可稍后重试', 'error')
+      return false
     }
   }, [])
 
@@ -54,9 +78,11 @@ export function useSettings() {
 
   return {
     settings,
+    secretsConfigured,
     loading,
     saved,
     setSetting,
+    setSecretSetting,
     toggleSetting,
     loadSettings
   }

@@ -7,6 +7,7 @@ import { recoverRunningSessions } from '@/services/pomodoroService'
 import { initializeAppWindow } from '@/services/appInitializationService'
 import { syncBackgroundSettings } from '@/services/backgroundSettingsService'
 import * as settingsService from '@/services/settingsService'
+import { migrateLegacySecrets } from '@/services/secretService'
 
 const isTauriApp = isTauri()
 
@@ -40,6 +41,7 @@ export function useDatabase() {
 
         try {
           await initializeAppWindow(getCurrentWindow().label, [
+            ['迁移安全凭据', migrateLegacySecrets],
             ['恢复未结束的番茄会话', recoverRunningSessions],
             ['同步后台服务设置', () => syncBackgroundSettings({
               get: settingsService.settingsGet,

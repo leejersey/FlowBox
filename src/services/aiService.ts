@@ -6,6 +6,7 @@
  */
 
 import * as settingsService from './settingsService'
+import { getSecret } from './secretService'
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
 
 // ─── 配置 ──────────────────────────────────────────
@@ -19,7 +20,7 @@ interface AiConfig {
 
 async function getAiConfig(): Promise<AiConfig> {
   const provider = await settingsService.settingsGet('ai.provider') ?? 'deepseek'
-  const apiKey = await settingsService.settingsGet('ai.openai_api_key') ?? ''
+  const apiKey = await getSecret('ai.openai_api_key') ?? ''
 
   if (provider === 'openai') {
     return {

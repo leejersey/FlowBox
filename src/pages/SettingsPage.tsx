@@ -68,7 +68,7 @@ export function SettingsPage() {
   const [volcAppId, setVolcAppId] = useState('')
   const [volcToken, setVolcToken] = useState('')
   const { mode: themeMode, setMode: setThemeMode } = useThemeStore()
-  const { settings, saved, setSetting, toggleSetting, loadSettings } = useSettings()
+  const { settings, secretsConfigured, saved, setSetting, setSecretSetting, toggleSetting, loadSettings } = useSettings()
   const { triggerReview } = useOutletContext<AppShellOutletContext>()
   const [reviewTime, setReviewTime] = useState(settings['daily_review.time'] || '21:00')
 
@@ -92,15 +92,6 @@ export function SettingsPage() {
   }, [activeTab, fetchSkills])
 
   useEffect(() => {
-    if (settings['ai.openai_api_key']) setLocalApiKey(settings['ai.openai_api_key'])
-  }, [settings['ai.openai_api_key']])
-
-  useEffect(() => {
-    if (settings['asr.volc_app_id']) setVolcAppId(settings['asr.volc_app_id'])
-    if (settings['asr.volc_access_token']) setVolcToken(settings['asr.volc_access_token'])
-  }, [settings['asr.volc_app_id'], settings['asr.volc_access_token']])
-
-  useEffect(() => {
     setButlerShortcut(settings['shortcuts.butler_hotkey'] || DEFAULT_BUTLER_SHORTCUT)
   }, [settings['shortcuts.butler_hotkey']])
 
@@ -109,7 +100,7 @@ export function SettingsPage() {
   }, [settings['daily_review.time']])
 
   const saveApiKey = async () => {
-    await setSetting('ai.openai_api_key', localApiKey)
+    if (localApiKey && await setSecretSetting('ai.openai_api_key', localApiKey)) setLocalApiKey('')
   }
 
   const updateBackgroundSetting = async (key: BackgroundSettingKey, enabled: boolean) => {
@@ -127,8 +118,10 @@ export function SettingsPage() {
   }
 
   const saveAsrKeys = async () => {
-    await setSetting('asr.volc_app_id', volcAppId)
-    await setSetting('asr.volc_access_token', volcToken)
+    const savedAppId = !volcAppId || await setSecretSetting('asr.volc_app_id', volcAppId)
+    const savedToken = !volcToken || await setSecretSetting('asr.volc_access_token', volcToken)
+    if (savedAppId) setVolcAppId('')
+    if (savedToken) setVolcToken('')
   }
 
   const saveButlerShortcut = async () => {
@@ -214,7 +207,7 @@ export function SettingsPage() {
                           <span className="text-xs text-on-surface-variant font-medium">推荐，中文能力强，价格极低</span>
                         </div>
                       </div>
-                      {settings['ai.openai_api_key'] && aiProvider === 'deepseek' && (
+                      {secretsConfigured['ai.openai_api_key'] && aiProvider === 'deepseek' && (
                         <div className="px-2 py-0.5 bg-green-500/10 text-green-600 rounded text-xs font-bold">已连接</div>
                       )}
                     </label>
@@ -263,7 +256,7 @@ export function SettingsPage() {
                         type="password"
                         value={localApiKey}
                         onChange={e => setLocalApiKey(e.target.value)}
-                        placeholder="sk-..."
+                        placeholder={secretsConfigured['ai.openai_api_key'] ? '••••••••' : 'sk-...'}
                         className="flex-1 h-11 bg-surface-container px-4 rounded-xl text-sm text-on-surface border border-transparent focus:border-primary/50 focus:outline-none transition-all font-mono"
                       />
                       <button
@@ -287,7 +280,7 @@ export function SettingsPage() {
                         type="text"
                         value={volcAppId}
                         onChange={e => setVolcAppId(e.target.value)}
-                        placeholder="请输入 AppID（如：123456789）"
+                        placeholder={secretsConfigured['asr.volc_app_id'] ? '••••••••' : '请输入 AppID（如：123456789）'}
                         className="h-11 bg-surface-container px-4 rounded-xl text-sm text-on-surface border border-transparent focus:border-primary/50 focus:outline-none transition-all font-mono"
                       />
                     </div>
@@ -298,7 +291,7 @@ export function SettingsPage() {
                           type="password"
                           value={volcToken}
                           onChange={e => setVolcToken(e.target.value)}
-                          placeholder="请输入 Access Token"
+                          placeholder={secretsConfigured['asr.volc_access_token'] ? '••••••••' : '请输入 Access Token'}
                           className="flex-1 h-11 bg-surface-container px-4 rounded-xl text-sm text-on-surface border border-transparent focus:border-primary/50 focus:outline-none transition-all font-mono"
                         />
                         <button
@@ -309,7 +302,7 @@ export function SettingsPage() {
                         </button>
                       </div>
                     </div>
-                    {settings['asr.volc_app_id'] && settings['asr.volc_access_token'] && (
+                    {secretsConfigured['asr.volc_app_id'] && secretsConfigured['asr.volc_access_token'] && (
                       <div className="flex items-center gap-2 text-xs font-medium text-green-600">
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                         已配置 — 可在录音列表中点击「转写」使用

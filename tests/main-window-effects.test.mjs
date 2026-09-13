@@ -38,3 +38,9 @@ test('异步 listen 晚到时仍安全清理，Butler 不订阅', async () => {
   await Promise.resolve()
   assert.equal(butlerListens, 0)
 })
+
+test('密钥迁移只挂在 main-only 初始化步骤', async () => {
+  const databaseHook = await readFile(new URL('../src/hooks/useDatabase.ts', import.meta.url), 'utf8')
+  assert.match(databaseHook, /initializeAppWindow\([\s\S]*migrateLegacySecrets/)
+  assert.doesNotMatch(databaseHook, /label\s*===\s*['"]butler['"][\s\S]*migrateLegacySecrets/)
+})

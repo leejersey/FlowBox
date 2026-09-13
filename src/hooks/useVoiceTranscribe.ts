@@ -8,6 +8,7 @@ import { useState, useCallback } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import * as voiceService from '@/services/voiceService'
 import * as settingsService from '@/services/settingsService'
+import { getSecret } from '@/services/secretService'
 import * as aiService from '@/services/aiService'
 import { showToast } from '@/store/useToastStore'
 
@@ -34,9 +35,9 @@ export function useVoiceTranscribe(onComplete?: () => void) {
       showToast('正在转写语音...', 'info')
       const [aiProvider, openaiApiKey, volcAppId, volcToken] = await Promise.all([
         settingsService.settingsGet('ai.provider'),
-        settingsService.settingsGet('ai.openai_api_key'),
-        settingsService.settingsGet('asr.volc_app_id'),
-        settingsService.settingsGet('asr.volc_access_token'),
+        getSecret('ai.openai_api_key'),
+        getSecret('asr.volc_app_id'),
+        getSecret('asr.volc_access_token'),
       ])
       const transcript = isTauriApp
         ? String(await invoke('voice_transcribe_audio', {
