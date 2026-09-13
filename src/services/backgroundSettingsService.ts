@@ -30,8 +30,21 @@ export async function setAutostart(
   plugin: AutostartPlugin,
   persist: PersistSetting,
 ) {
+  const previous = await plugin.isEnabled()
   await (enabled ? plugin.enable() : plugin.disable())
-  return syncAutostart(plugin, persist)
+  let actual: boolean | undefined
+  try {
+    actual = await plugin.isEnabled()
+    await persist('general.autostart', String(actual))
+    return actual
+  } catch (error) {
+    if ((actual ?? enabled) !== previous) {
+      try {
+        await (previous ? plugin.enable() : plugin.disable())
+      } catch {}
+    }
+    throw error
+  }
 }
 
 async function applyWithPreviousValue(
