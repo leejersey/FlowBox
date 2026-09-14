@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 import type { Idea } from '@/types/idea'
 import { useIdeas } from '@/hooks/useIdeas'
 import { LinkPanel } from '@/components/links/LinkPanel'
+import { ensureLinkedTarget, linkedTargetId } from '@/lib/itemLink'
+import { ideaGet } from '@/services/ideaService'
 
 function timeAgo(dateStr: string): string {
   const now = Date.now()
@@ -281,11 +283,23 @@ export function IdeaPage() {
   const [searchParams] = useSearchParams()
   const { ideas, loading, createIdea, archiveIdea, deleteIdea, updateIdea } = useIdeas()
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null)
+  const [linkedIdea, setLinkedIdea] = useState<Idea | null>(null)
   const highlight = searchParams.get('highlight')
+  const highlightId = linkedTargetId(highlight, 'idea')
+  const visibleIdeas = linkedIdea?.id === highlightId && !ideas.some(idea => idea.id === linkedIdea.id) ? [...ideas, linkedIdea] : ideas
 
   useEffect(() => {
-    if (loading || !highlight?.startsWith('idea-')) return
-    const idea = ideas.find(item => `idea-${item.id}` === highlight)
+    if (loading || !highlightId) return
+    let cancelled = false
+    void ensureLinkedTarget(visibleIdeas, highlightId, ideaGet).then(({ target }) => {
+      if (!cancelled && !visibleIdeas.includes(target)) setLinkedIdea(target)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [highlightId, loading, ideas, linkedIdea])
+
+  useEffect(() => {
+    if (loading || !highlightId || !highlight) return
+    const idea = visibleIdeas.find(item => item.id === highlightId)
     const target = document.getElementById(highlight)
     if (!idea || !target) return
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -293,7 +307,7 @@ export function IdeaPage() {
     setSelectedIdea(idea)
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, loading, ideas])
+  }, [highlight, highlightId, loading, ideas, linkedIdea])
 
   const [newContent, setNewContent] = useState('')
   const [newTags, setNewTags] = useState<string[]>([])
@@ -409,7 +423,7 @@ export function IdeaPage() {
           </div>
         )}
 
-        {ideas.map(idea => (
+        {visibleIdeas.map(idea => (
           <IdeaCard
             key={idea.id}
             idea={idea}

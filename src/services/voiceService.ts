@@ -16,6 +16,13 @@ export async function voiceList(limit = 50): Promise<VoiceRecord[]> {
   )
 }
 
+export async function voiceGet(id: number): Promise<VoiceRecord> {
+  const db = await getDb()
+  const rows = await db.select<VoiceRecord[]>('SELECT * FROM voice_records WHERE id = $1', [id])
+  if (!rows[0]) throw new Error(`NOT_FOUND: 语音 #${id} 不存在`)
+  return rows[0]
+}
+
 /** voice_create — 创建语音记录 */
 export async function voiceCreate(audioPath: string, durationSeconds: number): Promise<VoiceRecord> {
   const db = await getDb()

@@ -14,6 +14,24 @@ interface LinkDatabase {
   select<T>(sql: string, params: unknown[]): Promise<T>
 }
 
+export async function ensureLinkedTarget<T extends { id: number }>(
+  items: T[],
+  id: number,
+  load: (id: number) => Promise<T>
+): Promise<{ items: T[]; target: T }> {
+  const existing = items.find(item => item.id === id)
+  if (existing) return { items, target: existing }
+  const target = await load(id)
+  return { items: [...items, target], target }
+}
+
+export function linkedTargetId(highlight: string | null, type: LinkableType): number | null {
+  const match = highlight?.match(new RegExp(`^${type}-([1-9]\\d*)$`))
+  if (!match) return null
+  const id = Number(match[1])
+  return Number.isSafeInteger(id) ? id : null
+}
+
 export function canonicalizeLink(
   aType: LinkableType,
   aId: number,

@@ -13,6 +13,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ImageLightbox } from '@/components/ui/ImageLightbox'
 import { LinkPanel } from '@/components/links/LinkPanel'
+import { ensureLinkedTarget, linkedTargetId } from '@/lib/itemLink'
 
 const isTauriApp = isTauri()
 
@@ -189,6 +190,7 @@ export function ClipboardPage() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const [linkId, setLinkId] = useState<number | null>(null)
   const highlight = searchParams.get('highlight')
+  const highlightId = linkedTargetId(highlight, 'clipboard')
 
   // 接入搜索防抖
   const debouncedKeyword = useDebounce(keyword, 250)
@@ -216,14 +218,23 @@ export function ClipboardPage() {
   useEffect(() => { refresh() }, [refresh])
 
   useEffect(() => {
-    if (loading || !highlight?.startsWith('clipboard-')) return
+    if (loading || !highlightId) return
+    let cancelled = false
+    void ensureLinkedTarget(clips, highlightId, clipboardService.clipGet).then(result => {
+      if (!cancelled && result.items !== clips) setClips(result.items)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [highlightId, loading, clips])
+
+  useEffect(() => {
+    if (loading || !highlightId || !highlight) return
     const target = document.getElementById(highlight)
-    if (!clips.some(item => `clipboard-${item.id}` === highlight) || !target) return
+    if (!clips.some(item => item.id === highlightId) || !target) return
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
     target.classList.add('ring-2', 'ring-primary')
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, loading, clips])
+  }, [highlight, highlightId, loading, clips])
 
   // 接入剪贴板监听
   const { watching, toggleWatch } = useClipboardControls(refresh)

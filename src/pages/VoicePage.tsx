@@ -10,6 +10,7 @@ import { useVoiceTranscribe } from '@/hooks/useVoiceTranscribe'
 import * as settingsService from '@/services/settingsService'
 import { localDateKey } from '@/lib/localDate'
 import { LinkPanel } from '@/components/links/LinkPanel'
+import { ensureLinkedTarget, linkedTargetId } from '@/lib/itemLink'
 
 const isTauriApp = isTauri()
 
@@ -189,10 +190,20 @@ export function VoicePage() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [linkId, setLinkId] = useState<number | null>(null)
   const highlight = searchParams.get('highlight')
+  const highlightId = linkedTargetId(highlight, 'voice')
 
   useEffect(() => {
-    if (loading || !highlight?.startsWith('voice-')) return
-    const record = records.find(item => `voice-${item.id}` === highlight)
+    if (loading || !highlightId) return
+    let cancelled = false
+    void ensureLinkedTarget(records, highlightId, voiceService.voiceGet).then(result => {
+      if (!cancelled && result.items !== records) setRecords(result.items)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [highlightId, loading, records])
+
+  useEffect(() => {
+    if (loading || !highlightId || !highlight) return
+    const record = records.find(item => item.id === highlightId)
     const target = document.getElementById(highlight)
     if (!record || !target) return
     setExpandedId(record.id)
@@ -200,7 +211,7 @@ export function VoicePage() {
     target.classList.add('ring-2', 'ring-primary')
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, loading, records])
+  }, [highlight, highlightId, loading, records])
 
   const refresh = useCallback(async () => {
     if (!isTauriApp) return
@@ -208,11 +219,11 @@ export function VoicePage() {
     try {
       const list = await voiceService.voiceList()
       setRecords(list)
-      if (list.length > 0 && !expandedId) setExpandedId(list[0].id)
+      if (list.length > 0) setExpandedId(current => current ?? list[0].id)
     } finally {
       setLoading(false)
     }
-  }, [expandedId])
+  }, [])
 
   useEffect(() => { refresh() }, [refresh])
 

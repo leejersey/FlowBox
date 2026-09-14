@@ -21,7 +21,7 @@ export async function ideaCreate(content: string, tags: string[] = []): Promise<
 }
 
 /** 获取单条灵感 */
-async function ideaGet(id: number): Promise<Idea> {
+export async function ideaGet(id: number): Promise<Idea> {
   const db = await getDb()
   const rows = await db.select<Idea[]>('SELECT * FROM ideas WHERE id = $1', [id])
   if (rows.length === 0) throw new Error(`NOT_FOUND: 灵感 #${id} 不存在`)

@@ -9,6 +9,8 @@ import { SkeletonList } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TodoDetailModal } from '@/components/todo/TodoDetailModal'
 import type { Todo, TodoListQuery } from '@/types/todo'
+import { ensureLinkedTarget, linkedTargetId } from '@/lib/itemLink'
+import { todoGet } from '@/services/todoService'
 
 const priorityLabels: Record<number, string> = { 0: '无', 1: '低', 2: '中', 3: '高' }
 const priorityColors: Record<number, string> = {
@@ -133,6 +135,7 @@ export function TodoPage() {
   const [newTitle, setNewTitle] = useState('')
   const [showInput, setShowInput] = useState(false)
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null)
+  const [linkedTodo, setLinkedTodo] = useState<Todo | null>(null)
 
   // 构建查询参数（防抖搜索）
   const debouncedKeyword = useDebounce(keyword, 250)
@@ -149,10 +152,22 @@ export function TodoPage() {
 
   const { todos, loading, create, update, remove } = useTodos(query)
   const highlight = searchParams.get('highlight')
+  const highlightId = linkedTargetId(highlight, 'todo')
+  const displayFilter = highlightId ? 'all' : activeFilter
+  const visibleTodos = linkedTodo?.id === highlightId && !todos.some(todo => todo.id === linkedTodo.id) ? [...todos, linkedTodo] : todos
 
   useEffect(() => {
-    if (loading || !highlight?.startsWith('todo-')) return
-    const todo = todos.find(item => `todo-${item.id}` === highlight)
+    if (loading || !highlightId) return
+    let cancelled = false
+    void ensureLinkedTarget(visibleTodos, highlightId, todoGet).then(({ target }) => {
+      if (!cancelled && !visibleTodos.includes(target)) setLinkedTodo(target)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [highlightId, loading, todos, linkedTodo])
+
+  useEffect(() => {
+    if (loading || !highlightId || !highlight) return
+    const todo = visibleTodos.find(item => item.id === highlightId)
     const target = document.getElementById(highlight)
     if (!todo || !target) return
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -160,11 +175,11 @@ export function TodoPage() {
     setSelectedTodo(todo)
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, loading, todos])
+  }, [highlight, highlightId, loading, todos, linkedTodo])
 
-  const pendingTodos = activeFilter === 'all' ? todos.filter(t => t.status === 'pending') : todos.filter(t => t.status !== 'done')
-  const inProgressTodos = activeFilter === 'all' ? todos.filter(t => t.status === 'in_progress') : []
-  const doneTodos = activeFilter === 'all' ? todos.filter(t => t.status === 'done') : todos.filter(t => t.status === 'done')
+  const pendingTodos = displayFilter === 'all' ? visibleTodos.filter(t => t.status === 'pending') : visibleTodos.filter(t => t.status !== 'done')
+  const inProgressTodos = displayFilter === 'all' ? visibleTodos.filter(t => t.status === 'in_progress') : []
+  const doneTodos = displayFilter === 'all' ? visibleTodos.filter(t => t.status === 'done') : visibleTodos.filter(t => t.status === 'done')
 
   const handleToggle = async (todo: Todo) => {
     const nextStatus = todo.status === 'done' ? 'pending' : 'done'
@@ -252,7 +267,7 @@ export function TodoPage() {
       {/* Main List */}
       {!loading && (
         <div className="flex-1 pb-20 space-y-10">
-          {activeFilter === 'all' && inProgressTodos.length > 0 && (
+          {displayFilter === 'all' && inProgressTodos.length > 0 && (
             <section>
               <h2 className="text-xl font-display font-bold mb-4 flex items-center gap-3">
                 进行中
@@ -267,7 +282,7 @@ export function TodoPage() {
           {pendingTodos.length > 0 && (
             <section>
               <h2 className="text-xl font-display font-bold mb-4 flex items-center gap-3">
-                {activeFilter === 'all' ? '待处理' : filters.find(f => f.key === activeFilter)?.label ?? '结果'}
+                {displayFilter === 'all' ? '待处理' : filters.find(f => f.key === displayFilter)?.label ?? '结果'}
                 <span className="bg-surface-container px-2.5 py-0.5 rounded-full text-xs font-bold text-on-surface-variant">{pendingTodos.length}</span>
               </h2>
               <div className="flex flex-col gap-3">
@@ -276,7 +291,7 @@ export function TodoPage() {
             </section>
           )}
 
-          {doneTodos.length > 0 && activeFilter === 'all' && (
+          {doneTodos.length > 0 && displayFilter === 'all' && (
             <section className="opacity-70">
               <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-3">已完成</h2>
               <div className="flex flex-col gap-3">

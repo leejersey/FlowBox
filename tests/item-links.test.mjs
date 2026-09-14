@@ -2,7 +2,43 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
 import { readFile } from 'node:fs/promises'
-import { canonicalizeLink, createOrGetLink } from '../src/lib/itemLink.ts'
+import { canonicalizeLink, createOrGetLink, ensureLinkedTarget, linkedTargetId } from '../src/lib/itemLink.ts'
+
+test('关联高亮只接受对应类型的安全正整数 ID', () => {
+  assert.equal(linkedTargetId('todo-42', 'todo'), 42)
+  for (const value of ['todo-0', 'todo--1', 'todo-1.5', 'idea-42', `todo-${Number.MAX_SAFE_INTEGER}0`]) {
+    assert.equal(linkedTargetId(value, 'todo'), null)
+  }
+})
+
+test('关联目标超出列表上限时按 ID 补载', async () => {
+  const items = Array.from({ length: 200 }, (_, index) => ({ id: index + 1 }))
+  const loaded = { id: 999 }
+  const result = await ensureLinkedTarget(items, loaded.id, async () => loaded)
+
+  assert.equal(result.target, loaded)
+  assert.equal(result.items.find(item => item.id === loaded.id), loaded)
+})
+
+test('关联目标已在列表中时不重复加载', async () => {
+  const items = [{ id: 1 }]
+  let calls = 0
+  const result = await ensureLinkedTarget(items, 1, async () => {
+    calls++
+    return { id: 1 }
+  })
+
+  assert.equal(calls, 0)
+  assert.equal(result.items, items)
+  assert.equal(result.target, items[0])
+})
+
+test('关联目标加载失败时向调用方报错', async () => {
+  await assert.rejects(
+    ensureLinkedTarget([], 999, async () => { throw new Error('NOT_FOUND') }),
+    /NOT_FOUND/
+  )
+})
 
 test('A-B 与 B-A 规范化为同一端点顺序', () => {
   assert.deepEqual(canonicalizeLink('todo', 9, 'idea', 2), canonicalizeLink('idea', 2, 'todo', 9))
@@ -68,10 +104,10 @@ test('共享关联面板提供真实 CRUD 与四类路由', async () => {
   for (const name of ['globalSearch', 'linksByItem', 'linkCreate', 'linkDelete']) {
     assert.match(source, new RegExp(`\\b${name}\\b`))
   }
-  assert.match(source, /todo:\s*['"]\/['"]/) 
-  assert.match(source, /idea:\s*['"]\/idea['"]/) 
-  assert.match(source, /voice:\s*['"]\/voice['"]/) 
-  assert.match(source, /clipboard:\s*['"]\/clipboard['"]/) 
+  assert.match(source, /todo:\s*['"]\/['"]/)
+  assert.match(source, /idea:\s*['"]\/idea['"]/)
+  assert.match(source, /voice:\s*['"]\/voice['"]/)
+  assert.match(source, /clipboard:\s*['"]\/clipboard['"]/)
   assert.match(source, /highlight=\$\{target\.type\}-\$\{target\.id\}/)
   assert.match(searchSource, /SearchResultType\s*=\s*LinkableType/)
 })

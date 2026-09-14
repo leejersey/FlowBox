@@ -42,6 +42,13 @@ export async function clipList(params: {
   )
 }
 
+export async function clipGet(id: number): Promise<ClipboardItem> {
+  const db = await getDb()
+  const rows = await db.select<ClipboardItem[]>('SELECT * FROM clipboard_items WHERE id = $1', [id])
+  if (!rows[0]) throw new Error(`NOT_FOUND: 剪贴板条目 #${id} 不存在`)
+  return rows[0]
+}
+
 /** clip_create — 添加剪贴板条目 */
 export async function clipCreate(data: {
   content_type: 'text' | 'code' | 'image'
