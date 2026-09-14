@@ -49,6 +49,11 @@ async function getAiConfig(): Promise<AiConfig> {
   }
 }
 
+/** 当前 provider 名称；不暴露 API Key 等 secret。 */
+export async function getAiProvider(): Promise<string> {
+  return await settingsService.settingsGet('ai.provider') ?? 'deepseek'
+}
+
 function ensureApiAccess(config: AiConfig) {
   if (!config.apiKey && config.provider !== 'ollama') {
     throw new Error('请先在设置中配置 AI API Key。')

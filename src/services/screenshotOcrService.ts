@@ -8,6 +8,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import * as aiService from './aiService'
 import * as ideaService from './ideaService'
 import * as todoService from './todoService'
+import { normalizeOcrResult, ocrRoute } from '@/lib/ocrRouting'
 
 // ─── 类型定义 ──────────────────────────────────────
 
@@ -40,7 +41,7 @@ export async function captureFromClipboard(): Promise<string> {
 
 // ─── AI OCR 识别 ──────────────────────────────────
 
-const OCR_SYSTEM_PROMPT = `你是 FlowBox 效率工具的 OCR 助手。用户给你一张屏幕截图，请完成以下任务：
+const OCR_SYSTEM_PROMPT = `你是 FlowBox 效率工具的 OCR 助手。用户会给你一张屏幕截图或其识别文字，请完成以下任务：
 
 1. 准确识别图中所有文字内容
 2. 判断内容更适合作为"灵感笔记"还是"待办事项"
@@ -61,40 +62,31 @@ const OCR_USER_PROMPT = '请识别这张截图中的文字内容，并按要求�
  * 对截图进行 AI OCR 识别
  */
 export async function recognizeScreenshot(imagePath: string): Promise<OcrResult> {
-  const result = await aiService.chatWithVision({
-    prompt: OCR_USER_PROMPT,
-    imagePath,
-    systemPrompt: OCR_SYSTEM_PROMPT,
-    temperature: 0.2,
-  })
+  const provider = await aiService.getAiProvider()
+  let result: string
 
-  // 解析 AI 返回的 JSON
-  try {
-    // 尝试从可能的 markdown 代码块中提取 JSON
-    let jsonStr = result
-    const codeBlockMatch = result.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (codeBlockMatch) {
-      jsonStr = codeBlockMatch[1].trim()
-    }
-
-    const parsed = JSON.parse(jsonStr)
-    return {
-      rawText: parsed.rawText || result,
-      suggestedTitle: parsed.suggestedTitle || '截图识别内容',
-      suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
-      suggestedType: parsed.suggestedType === 'todo' ? 'todo' : 'idea',
+  if (ocrRoute(provider) === 'vision') {
+    result = await aiService.chatWithVision({
+      prompt: OCR_USER_PROMPT,
       imagePath,
-    }
-  } catch {
-    // AI 返回非 JSON 格式，回退到纯文本模式
-    return {
-      rawText: result,
-      suggestedTitle: result.slice(0, 20).replace(/\n/g, ' '),
-      suggestedTags: [],
-      suggestedType: 'idea',
-      imagePath,
+      systemPrompt: OCR_SYSTEM_PROMPT,
+      temperature: 0.2,
+    })
+  } else {
+    const recognizedText = await invoke<string>('ocr_recognize_text', { imagePath })
+    if (!recognizedText.trim()) throw new Error('没有文本')
+    try {
+      result = await aiService.chatWithAssistant({
+        input: recognizedText,
+        systemPrompt: OCR_SYSTEM_PROMPT,
+        temperature: 0.2,
+      })
+    } catch (error) {
+      throw new Error(`模型整理失败: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
+
+  return { ...normalizeOcrResult(result), imagePath }
 }
 
 // ─── 保存为灵感/待办 ──────────────────────────────

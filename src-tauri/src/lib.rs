@@ -99,6 +99,7 @@ pub fn run() {
             commands::secrets::secret_get,
             commands::secrets::secret_set,
             commands::secrets::secret_exists,
+            commands::ocr::ocr_recognize_text,
         ])
         .setup(move |app| {
             services::butler_shortcut::register_initial_shortcut(
