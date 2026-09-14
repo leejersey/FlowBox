@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Calendar, Tag as TagIcon, Flag, Clock, Mic, Clipboard as ClipboardIcon, Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DatePicker } from '@/components/ui/DatePicker'
+import { LinkPanel } from '@/components/links/LinkPanel'
 import type { Todo, UpdateTodoPayload } from '@/types/todo'
 
 interface TodoDetailModalProps {
@@ -31,6 +32,7 @@ export function TodoDetailModal({ todo, onClose, onSave }: TodoDetailModalProps)
   const [tagInput, setTagInput] = useState('')
 
   const [saving, setSaving] = useState(false)
+  const [showLinks, setShowLinks] = useState(false)
 
   // Prevent background scroll
   useEffect(() => {
@@ -221,6 +223,15 @@ export function TodoDetailModal({ todo, onClose, onSave }: TodoDetailModalProps)
               </a>
             </div>
           )}
+
+          <div className="bg-surface-container-low rounded-2xl p-3 border border-transparent">
+            <label className="text-xs font-bold text-on-surface-variant flex items-center gap-1.5 px-1 mb-2">
+              <Link2 className="w-3.5 h-3.5" /> 关联
+            </label>
+            <button onClick={() => setShowLinks(true)} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+              查看和管理关联
+            </button>
+          </div>
           
         </div>
 
@@ -242,6 +253,7 @@ export function TodoDetailModal({ todo, onClose, onSave }: TodoDetailModalProps)
         </div>
 
       </div>
+      {showLinks && <LinkPanel type="todo" id={todo.id} onClose={() => setShowLinks(false)} />}
     </div>
   )
 }

@@ -59,6 +59,12 @@ pub fn run() {
             sql: include_str!("../migrations/008_app_usage_unique.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 9,
+            description: "item_links_canonical",
+            sql: include_str!("../migrations/009_item_links_canonical.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

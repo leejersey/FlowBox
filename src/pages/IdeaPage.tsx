@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Mic, Clipboard as ClipboardIcon, MoreHorizontal, Archive, Trash2, Tag, X, Check, Calendar, ExternalLink, Edit2 } from 'lucide-react'
+import { Sparkles, Mic, Clipboard as ClipboardIcon, MoreHorizontal, Archive, Trash2, Tag, X, Check, Calendar, ExternalLink, Edit2, Link2 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import type { Idea } from '@/types/idea'
 import { useIdeas } from '@/hooks/useIdeas'
+import { LinkPanel } from '@/components/links/LinkPanel'
 
 function timeAgo(dateStr: string): string {
   const now = Date.now()
@@ -63,6 +65,7 @@ function IdeaCard({
 
   return (
     <div
+      id={`idea-${idea.id}`}
       className="group relative bg-surface-container hover:bg-surface-container-highest transition-all duration-300 rounded-3xl p-5 break-inside-avoid mb-6 flex flex-col shadow-sm border border-transparent hover:border-white/10 hover:shadow-md cursor-pointer"
       onClick={() => onClick(idea)}
     >
@@ -178,6 +181,7 @@ function IdeaDetailModal({ idea, onClose, onUpdate }: { idea: Idea; onClose: () 
   const [isEditing, setIsEditing] = useState(false)
   const [content, setContent] = useState(idea.content)
   const [saving, setSaving] = useState(false)
+  const [showLinks, setShowLinks] = useState(false)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -249,6 +253,10 @@ function IdeaDetailModal({ idea, onClose, onUpdate }: { idea: Idea; onClose: () 
               ))}
             </div>
           )}
+
+          <button onClick={() => setShowLinks(true)} className="mt-6 flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-sm font-bold text-primary hover:bg-primary/20">
+            <Link2 className="w-4 h-4" /> 查看和管理关联
+          </button>
         </div>
 
         {/* Footer Meta */}
@@ -263,14 +271,29 @@ function IdeaDetailModal({ idea, onClose, onUpdate }: { idea: Idea; onClose: () 
           </span>
         </div>
       </div>
+      {showLinks && <LinkPanel type="idea" id={idea.id} onClose={() => setShowLinks(false)} />}
     </div>
   )
 }
 
 /* ─── Main Page ──────────────────────────────────────── */
 export function IdeaPage() {
+  const [searchParams] = useSearchParams()
   const { ideas, loading, createIdea, archiveIdea, deleteIdea, updateIdea } = useIdeas()
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null)
+  const highlight = searchParams.get('highlight')
+
+  useEffect(() => {
+    if (loading || !highlight?.startsWith('idea-')) return
+    const idea = ideas.find(item => `idea-${item.id}` === highlight)
+    const target = document.getElementById(highlight)
+    if (!idea || !target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.classList.add('ring-2', 'ring-primary')
+    setSelectedIdea(idea)
+    const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
+    return () => window.clearTimeout(timer)
+  }, [highlight, loading, ideas])
 
   const [newContent, setNewContent] = useState('')
   const [newTags, setNewTags] = useState<string[]>([])

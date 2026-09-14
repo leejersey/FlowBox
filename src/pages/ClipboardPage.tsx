@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Pin, Copy, Bot, Trash2, Clock, Code2, Type, Image as ImageIcon, ListChecks, CheckSquare, Square, ArrowRightLeft, X, Maximize2 } from 'lucide-react'
+import { Search, Pin, Copy, Bot, Trash2, Clock, Code2, Type, Image as ImageIcon, ListChecks, CheckSquare, Square, ArrowRightLeft, X, Maximize2, Link2 } from 'lucide-react'
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
+import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import * as clipboardService from '@/services/clipboardService'
 import { showToast } from '@/store/useToastStore'
@@ -11,6 +12,7 @@ import { ClipDiffModal } from '@/components/clipboard/ClipDiffModal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ImageLightbox } from '@/components/ui/ImageLightbox'
+import { LinkPanel } from '@/components/links/LinkPanel'
 
 const isTauriApp = isTauri()
 
@@ -32,11 +34,12 @@ function timeAgo(dateStr: string): string {
 
 type FilterKey = 'all' | 'text' | 'code' | 'image' | 'pinned'
 
-function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelectToggle, onImageClick }: {
+function ClipCard({ clip, onPin, onCopy, onDelete, onLink, selectable, selected, onSelectToggle, onImageClick }: {
   clip: ClipboardItem
   onPin: (id: number) => void
   onCopy: (clip: ClipboardItem) => void
   onDelete: (id: number) => void
+  onLink: (id: number) => void
   selectable?: boolean
   selected?: boolean
   onSelectToggle?: (id: number) => void
@@ -56,6 +59,7 @@ function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelec
 
   return (
     <div 
+      id={`clipboard-${clip.id}`}
       onClick={handleCardClick}
       className={cn(
         "group relative bg-surface-container hover:bg-surface-container-highest transition-all duration-300 rounded-[24px] p-6 flex flex-col shadow-sm border",
@@ -157,6 +161,9 @@ function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelec
 
         {!selectable && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-200">
+            <button onClick={(e) => { e.stopPropagation(); onLink(clip.id) }} className="p-2 hover:bg-primary/10 rounded-lg text-on-surface-variant hover:text-primary transition-colors" title="关联">
+              <Link2 className="w-4 h-4" />
+            </button>
             <button onClick={(e) => { e.stopPropagation(); onCopy(clip) }} className="p-2 hover:bg-surface-container-highest rounded-lg text-on-surface-variant hover:text-on-surface transition-colors" title="复制">
               <Copy className="w-4 h-4" />
             </button>
@@ -174,11 +181,14 @@ function ClipCard({ clip, onPin, onCopy, onDelete, selectable, selected, onSelec
 }
 
 export function ClipboardPage() {
+  const [searchParams] = useSearchParams()
   const [clips, setClips] = useState<ClipboardItem[]>([])
   const [loading, setLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
   const [keyword, setKeyword] = useState('')
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+  const [linkId, setLinkId] = useState<number | null>(null)
+  const highlight = searchParams.get('highlight')
 
   // 接入搜索防抖
   const debouncedKeyword = useDebounce(keyword, 250)
@@ -204,6 +214,16 @@ export function ClipboardPage() {
   }, [activeFilter, debouncedKeyword])
 
   useEffect(() => { refresh() }, [refresh])
+
+  useEffect(() => {
+    if (loading || !highlight?.startsWith('clipboard-')) return
+    const target = document.getElementById(highlight)
+    if (!clips.some(item => `clipboard-${item.id}` === highlight) || !target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.classList.add('ring-2', 'ring-primary')
+    const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
+    return () => window.clearTimeout(timer)
+  }, [highlight, loading, clips])
 
   // 接入剪贴板监听
   const { watching, toggleWatch } = useClipboardControls(refresh)
@@ -379,6 +399,7 @@ export function ClipboardPage() {
               onPin={handlePin} 
               onCopy={handleCopy} 
               onDelete={handleDelete}
+              onLink={setLinkId}
               selectable={isSelectionMode}
               selected={selectedIds.has(clip.id)}
               onSelectToggle={handleSelectToggle}
@@ -463,6 +484,7 @@ export function ClipboardPage() {
         src={lightboxSrc}
         onClose={() => setLightboxSrc(null)}
       />
+      {linkId !== null && <LinkPanel type="clipboard" id={linkId} onClose={() => setLinkId(null)} />}
     </div>
   )
 }

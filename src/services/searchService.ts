@@ -6,8 +6,9 @@
  */
 
 import { getDb } from './database'
+import type { LinkableType } from '@/lib/itemLink'
 
-export type SearchResultType = 'todo' | 'idea' | 'voice' | 'clipboard'
+export type SearchResultType = LinkableType
 
 export interface SearchResult {
   type: SearchResultType

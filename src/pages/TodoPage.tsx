@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Mic, Clipboard as ClipboardIcon, Check, Trash2, CheckSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTodos } from '@/hooks/useTodos'
@@ -31,6 +31,7 @@ function TodoCard({ todo, onToggle, onDelete, onClick }: {
 
   return (
     <div 
+      id={`todo-${todo.id}`}
       onClick={() => onClick(todo)}
       className={cn(
       "group flex items-start gap-4 p-4 rounded-2xl transition-all duration-200 border border-transparent",
@@ -126,6 +127,7 @@ const filters: { key: FilterKey; label: string }[] = [
 ]
 
 export function TodoPage() {
+  const [searchParams] = useSearchParams()
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
   const [keyword, setKeyword] = useState('')
   const [newTitle, setNewTitle] = useState('')
@@ -146,6 +148,19 @@ export function TodoPage() {
   }
 
   const { todos, loading, create, update, remove } = useTodos(query)
+  const highlight = searchParams.get('highlight')
+
+  useEffect(() => {
+    if (loading || !highlight?.startsWith('todo-')) return
+    const todo = todos.find(item => `todo-${item.id}` === highlight)
+    const target = document.getElementById(highlight)
+    if (!todo || !target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.classList.add('ring-2', 'ring-primary')
+    setSelectedTodo(todo)
+    const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
+    return () => window.clearTimeout(timer)
+  }, [highlight, loading, todos])
 
   const pendingTodos = activeFilter === 'all' ? todos.filter(t => t.status === 'pending') : todos.filter(t => t.status !== 'done')
   const inProgressTodos = activeFilter === 'all' ? todos.filter(t => t.status === 'in_progress') : []

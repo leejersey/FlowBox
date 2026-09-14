@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Mic, Play, Pause, Trash2, Square, RefreshCw } from 'lucide-react'
+import { Mic, Play, Pause, Trash2, Square, RefreshCw, Link2 } from 'lucide-react'
 import { isTauri } from '@tauri-apps/api/core'
+import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import * as voiceService from '@/services/voiceService'
 import type { VoiceRecord } from '@/types/voice'
@@ -8,6 +9,7 @@ import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import { useVoiceTranscribe } from '@/hooks/useVoiceTranscribe'
 import * as settingsService from '@/services/settingsService'
 import { localDateKey } from '@/lib/localDate'
+import { LinkPanel } from '@/components/links/LinkPanel'
 
 const isTauriApp = isTauri()
 
@@ -26,10 +28,11 @@ function timeLabel(dateStr: string): string {
   return `${dateOnly} ${time}`
 }
 
-function RecordCard({ record, onDelete, onExpand, expanded, onTranscribe, transcribing }: {
+function RecordCard({ record, onDelete, onExpand, onLink, expanded, onTranscribe, transcribing }: {
   record: VoiceRecord
   onDelete: (id: number) => void
   onExpand: (id: number) => void
+  onLink: (id: number) => void
   expanded: boolean
   onTranscribe?: (id: number) => void
   transcribing?: boolean
@@ -70,7 +73,7 @@ function RecordCard({ record, onDelete, onExpand, expanded, onTranscribe, transc
   }
 
   return (
-    <div className={cn(
+    <div id={`voice-${record.id}`} className={cn(
       "bg-surface-container rounded-[24px] overflow-hidden transition-all duration-300 shadow-sm border border-transparent",
       expanded ? "border-primary/20 shadow-md bg-surface" : "hover:bg-surface-container-highest cursor-pointer"
     )}>
@@ -150,6 +153,9 @@ function RecordCard({ record, onDelete, onExpand, expanded, onTranscribe, transc
               )}
 
               <div className="flex items-center gap-2 pt-2">
+                <button onClick={(e) => { e.stopPropagation(); onLink(record.id) }} className="p-2.5 hover:bg-primary/10 rounded-xl text-primary transition-colors flex items-center gap-2 text-sm font-medium">
+                  <Link2 className="w-4 h-4" /> 关联
+                </button>
                 <button onClick={(e) => { e.stopPropagation(); onDelete(record.id) }} className="p-2.5 hover:bg-surface-container rounded-xl text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors flex items-center gap-2 text-sm font-medium">
                   <Trash2 className="w-4 h-4" /> 删除录音
                 </button>
@@ -177,9 +183,24 @@ function RecordCard({ record, onDelete, onExpand, expanded, onTranscribe, transc
 }
 
 export function VoicePage() {
+  const [searchParams] = useSearchParams()
   const [records, setRecords] = useState<VoiceRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [linkId, setLinkId] = useState<number | null>(null)
+  const highlight = searchParams.get('highlight')
+
+  useEffect(() => {
+    if (loading || !highlight?.startsWith('voice-')) return
+    const record = records.find(item => `voice-${item.id}` === highlight)
+    const target = document.getElementById(highlight)
+    if (!record || !target) return
+    setExpandedId(record.id)
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.classList.add('ring-2', 'ring-primary')
+    const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
+    return () => window.clearTimeout(timer)
+  }, [highlight, loading, records])
 
   const refresh = useCallback(async () => {
     if (!isTauriApp) return
@@ -289,6 +310,7 @@ export function VoicePage() {
             record={record}
             onDelete={handleDelete}
             onExpand={id => setExpandedId(expandedId === id ? null : id)}
+            onLink={setLinkId}
             expanded={expandedId === record.id}
             onTranscribe={transcribeRecord}
             transcribing={transcribingId === record.id}
@@ -302,6 +324,8 @@ export function VoicePage() {
           <p className="text-sm">点击上方麦克风按钮开始录音</p>
         </div>
       )}
+
+      {linkId !== null && <LinkPanel type="voice" id={linkId} onClose={() => setLinkId(null)} />}
     </div>
   )
 }

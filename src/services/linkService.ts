@@ -5,17 +5,9 @@
  */
 
 import { getDb } from './database'
+import { createOrGetLink, type ItemLink, type LinkableType } from '@/lib/itemLink'
 
-export type LinkableType = 'todo' | 'idea' | 'voice' | 'clipboard'
-
-export interface ItemLink {
-  id: number
-  source_type: LinkableType
-  source_id: number
-  target_type: LinkableType
-  target_id: number
-  created_at: string
-}
+export type { ItemLink, LinkableType } from '@/lib/itemLink'
 
 /** 创建关联（自动去重） */
 export async function linkCreate(
@@ -25,22 +17,7 @@ export async function linkCreate(
   targetId: number
 ): Promise<ItemLink> {
   const db = await getDb()
-  const now = new Date().toISOString()
-
-  await db.execute(
-    `INSERT OR IGNORE INTO item_links (source_type, source_id, target_type, target_id, created_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [sourceType, sourceId, targetType, targetId, now]
-  )
-
-  // 查询回来（可能已存在）
-  const rows = await db.select<ItemLink[]>(
-    `SELECT * FROM item_links
-     WHERE source_type = $1 AND source_id = $2 AND target_type = $3 AND target_id = $4`,
-    [sourceType, sourceId, targetType, targetId]
-  )
-
-  return rows[0]
+  return createOrGetLink(db, sourceType, sourceId, targetType, targetId)
 }
 
 /** 删除关联 */
