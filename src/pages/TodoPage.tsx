@@ -209,9 +209,9 @@ export function TodoPage() {
   }
 
   return (
-    <div className="flex flex-col h-full animate-fade-in w-full max-w-4xl mx-auto overflow-y-auto overflow-x-hidden pb-10 custom-scrollbar">
+    <div className="flex flex-col h-full animate-fade-in w-full max-w-4xl mx-auto overflow-y-auto overflow-x-hidden no-scrollbar">
       {/* Top Toolbar */}
-      <div className="flex items-center justify-between gap-6 mb-8 mt-2 sticky top-0 z-10 bg-surface/80 backdrop-blur-xl py-4 -mx-2 px-2 border-b border-outline-variant/10">
+      <div className="flex items-center justify-between gap-6 mb-4 mt-2 sticky top-0 z-10 bg-surface/80 backdrop-blur-xl py-4 -mx-2 px-2 border-b border-outline-variant/10 shrink-0">
         <div className="flex-1 max-w-md relative group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant group-focus-within:text-primary transition-colors" />
           <input
@@ -253,7 +253,7 @@ export function TodoPage() {
 
       {/* Quick Add Input */}
       {showInput && (
-        <div className="mb-6 flex gap-3 animate-fade-in">
+        <div className="mb-6 flex gap-3 animate-fade-in shrink-0">
           <input
             autoFocus
             type="text"
@@ -279,43 +279,10 @@ export function TodoPage() {
         </div>
       )}
 
-      {/* Main List */}
+      {/* Main Content */}
       {!loading && (
-        <div className="flex-1 pb-20 space-y-10">
-          {displayFilter === 'all' && inProgressTodos.length > 0 && (
-            <section>
-              <h2 className="text-xl font-display font-bold mb-4 flex items-center gap-3">
-                进行中
-                <span className="bg-surface-container px-2.5 py-0.5 rounded-full text-xs font-bold text-on-surface-variant">{inProgressTodos.length}</span>
-              </h2>
-              <div className="flex flex-col gap-3">
-                {inProgressTodos.map(t => <TodoCard key={t.id} todo={t} onToggle={handleToggle} onDelete={remove} onClick={setSelectedTodo} />)}
-              </div>
-            </section>
-          )}
-
-          {pendingTodos.length > 0 && (
-            <section>
-              <h2 className="text-xl font-display font-bold mb-4 flex items-center gap-3">
-                {displayFilter === 'all' ? '待处理' : filters.find(f => f.key === displayFilter)?.label ?? '结果'}
-                <span className="bg-surface-container px-2.5 py-0.5 rounded-full text-xs font-bold text-on-surface-variant">{pendingTodos.length}</span>
-              </h2>
-              <div className="flex flex-col gap-3">
-                {pendingTodos.map(t => <TodoCard key={t.id} todo={t} onToggle={handleToggle} onDelete={remove} onClick={setSelectedTodo} />)}
-              </div>
-            </section>
-          )}
-
-          {doneTodos.length > 0 && displayFilter === 'all' && (
-            <section className="opacity-70">
-              <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-3">已完成</h2>
-              <div className="flex flex-col gap-3">
-                {doneTodos.map(t => <TodoCard key={t.id} todo={t} onToggle={handleToggle} onDelete={remove} onClick={setSelectedTodo} />)}
-              </div>
-            </section>
-          )}
-
-          {todos.length === 0 && (
+        todos.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center pb-8 animate-fade-in">
             <EmptyState
               icon={<CheckSquare className="w-8 h-8 text-primary" />}
               title="暂无待办事项"
@@ -326,8 +293,43 @@ export function TodoPage() {
                 </Button>
               }
             />
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex-1 pb-16 space-y-8">
+            {displayFilter === 'all' && inProgressTodos.length > 0 && (
+              <section>
+                <h2 className="text-xl font-display font-bold mb-4 flex items-center gap-3">
+                  进行中
+                  <span className="bg-surface-container px-2.5 py-0.5 rounded-full text-xs font-bold text-on-surface-variant">{inProgressTodos.length}</span>
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {inProgressTodos.map(t => <TodoCard key={t.id} todo={t} onToggle={handleToggle} onDelete={remove} onClick={setSelectedTodo} />)}
+                </div>
+              </section>
+            )}
+
+            {pendingTodos.length > 0 && (
+              <section>
+                <h2 className="text-xl font-display font-bold mb-4 flex items-center gap-3">
+                  {displayFilter === 'all' ? '待处理' : filters.find(f => f.key === displayFilter)?.label ?? '结果'}
+                  <span className="bg-surface-container px-2.5 py-0.5 rounded-full text-xs font-bold text-on-surface-variant">{pendingTodos.length}</span>
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {pendingTodos.map(t => <TodoCard key={t.id} todo={t} onToggle={handleToggle} onDelete={remove} onClick={setSelectedTodo} />)}
+                </div>
+              </section>
+            )}
+
+            {doneTodos.length > 0 && displayFilter === 'all' && (
+              <section className="opacity-70">
+                <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-3">已完成</h2>
+                <div className="flex flex-col gap-3">
+                  {doneTodos.map(t => <TodoCard key={t.id} todo={t} onToggle={handleToggle} onDelete={remove} onClick={setSelectedTodo} />)}
+                </div>
+              </section>
+            )}
+          </div>
+        )
       )}
 
       {/* Detail Modal */}

@@ -330,7 +330,7 @@ export function ClipboardPage() {
   ]
 
   return (
-    <div className="flex flex-col h-full animate-fade-in w-full max-w-4xl mx-auto overflow-y-auto overflow-x-hidden pb-10 relative custom-scrollbar">
+    <div className="flex flex-col h-full animate-fade-in w-full max-w-4xl mx-auto overflow-y-auto overflow-x-hidden pb-10 relative no-scrollbar">
       {/* 顶部固定工具栏 */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 mb-8 mt-2 sticky top-0 z-10 bg-surface/80 backdrop-blur-xl py-4 -mx-2 px-2 border-b border-outline-variant/20">
         

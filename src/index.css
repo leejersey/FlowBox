@@ -51,21 +51,28 @@
     outline-offset: 2px;
   }
 
-  /* 统一精致滚动条 */
+  /* 彻底隐藏原生滚动条，保留触控板和鼠标滚轮顺滑手势滚动 */
+  *, html, body {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  *::-webkit-scrollbar,
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
   }
-  ::-webkit-scrollbar-track {
-    background: transparent;
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
-  ::-webkit-scrollbar-thumb {
-    background-color: var(--color-outline-variant);
-    border-radius: 9999px;
-    transition: background-color 0.2s;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-on-surface-variant);
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
   }
 }
 
