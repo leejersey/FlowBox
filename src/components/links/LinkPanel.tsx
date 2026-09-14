@@ -44,11 +44,17 @@ export function LinkPanel({ type, id, onClose }: LinkPanelProps) {
   const [error, setError] = useState('')
 
   const refresh = useCallback(async () => {
-    setLinks(await linksByItem(type, id))
+    return linksByItem(type, id)
   }, [type, id])
 
   useEffect(() => {
-    refresh().catch(err => setError(err instanceof Error ? err.message : '关联加载失败'))
+    let cancelled = false
+    void refresh().then(items => {
+      if (!cancelled) setLinks(items)
+    }).catch(err => {
+      if (!cancelled) setError(err instanceof Error ? err.message : '关联加载失败')
+    })
+    return () => { cancelled = true }
   }, [refresh])
 
   useEffect(() => {
@@ -71,7 +77,7 @@ export function LinkPanel({ type, id, onClose }: LinkPanelProps) {
     try {
       setError('')
       await linkCreate(type, id, target.type, target.id)
-      await refresh()
+      setLinks(await refresh())
     } catch (err) {
       setError(err instanceof Error ? err.message : '关联创建失败')
     }
@@ -81,7 +87,7 @@ export function LinkPanel({ type, id, onClose }: LinkPanelProps) {
     try {
       setError('')
       await linkDelete(linkId)
-      await refresh()
+      setLinks(await refresh())
     } catch (err) {
       setError(err instanceof Error ? err.message : '关联删除失败')
     }

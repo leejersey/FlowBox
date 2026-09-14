@@ -108,7 +108,24 @@ export function PomodoroPage() {
     } catch { /* ignore in browser */ }
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => {
+    if (!isTauriApp) return
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const { startIso, endIso } = localDayBounds()
+        const list = await pomodoroService.pomodoroListSessions({ date_from: startIso, date_to: endIso, limit: 20 })
+        const stats = await pomodoroService.pomodoroStats(startIso, endIso)
+        if (cancelled) return
+        const rate = stats.session_count > 0 ? Math.round((stats.completed_count / stats.session_count) * 100) : 0
+        setSessions(list)
+        setTodayStats({ count: stats.completed_count, minutes: stats.total_focus_minutes, rate })
+      } catch { /* ignore in browser */ }
+    })()
+
+    return () => { cancelled = true }
+  }, [])
 
   const handleStart = async () => {
     await pomodoroService.pomodoroStart({
@@ -149,12 +166,12 @@ export function PomodoroPage() {
         <div className="w-full flex justify-center shrink-0 z-20">
           <Select
             disabled={isActive}
-            value={selectedTodoId}
+            value={selectedTodoId ?? ''}
             onChange={(val: string | number | null) => setSelectedTodoId(val ? Number(val) : null)}
             icon={<ListChecks className="w-4 h-4" />}
             className="min-w-[200px] max-w-[280px]"
             options={[
-              { label: '(不关联待办)', value: null as any },
+              { label: '(不关联待办)', value: '' },
               ...activeTodos.map(t => ({ label: t.title, value: t.id }))
             ]}
           />

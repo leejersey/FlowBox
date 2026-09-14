@@ -20,17 +20,17 @@ export function VirtualList<T>({
   const [viewportHeight, setViewportHeight] = useState(600)
 
   // 记录每个 item 的实测高度
-  const heightsRef = useRef<Map<number, number>>(new Map())
+  const [heights, setHeights] = useState<Map<number, number>>(() => new Map())
 
   // 计算位置前缀和
   const positions = useMemo(() => {
     const pos: number[] = [0]
     for (let i = 0; i < items.length; i++) {
-      const h = heightsRef.current.get(i) ?? estimateHeight
+      const h = heights.get(i) ?? estimateHeight
       pos.push(pos[i] + h)
     }
     return pos
-  }, [items.length, estimateHeight])
+  }, [items.length, estimateHeight, heights])
 
   const totalHeight = positions[items.length] || 0
 
@@ -122,8 +122,13 @@ export function VirtualList<T>({
             ref={(el) => {
               if (el) {
                 const height = el.getBoundingClientRect().height
-                if (height > 0 && heightsRef.current.get(index) !== height) {
-                  heightsRef.current.set(index, height)
+                if (height > 0) {
+                  setHeights(current => {
+                    if (current.get(index) === height) return current
+                    const next = new Map(current)
+                    next.set(index, height)
+                    return next
+                  })
                 }
               }
             }}

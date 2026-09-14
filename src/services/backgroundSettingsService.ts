@@ -43,11 +43,11 @@ export function setAutostart(
       let changed = enabled !== previous
       try {
         changed = await plugin.isEnabled() !== previous
-      } catch {}
+      } catch { /* Keep the original transition error. */ }
       if (changed) {
         try {
           await (previous ? plugin.enable() : plugin.disable())
-        } catch {}
+        } catch { /* Rollback is best effort. */ }
       }
       throw error
     }

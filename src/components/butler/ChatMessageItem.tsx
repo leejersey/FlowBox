@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import type { ChatMessage } from '@/types/butler';
 import { Bot, Copy, Sparkles, RefreshCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { CodeBlock } from '@/components/ui/CodeBlock';
@@ -21,9 +22,9 @@ export const ChatMessageItem = memo(function ChatMessageItem({
 }: ChatMessageItemProps) {
   const isUser = message.role === 'user';
 
-  const markdownComponents = useMemo(
+  const markdownComponents = useMemo<Components>(
     () => ({
-      code({ className, children, ...props }: any) {
+      code({ className, children, ...props }) {
         const match = /language-(\w+)/.exec(className || '');
         const codeText = String(children).replace(/\n$/, '');
         const isInline = !match && !codeText.includes('\n');
@@ -46,7 +47,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
           />
         );
       },
-      table({ children }: any) {
+      table({ children }) {
         return (
           <div className="overflow-x-auto my-3 rounded-xl border border-outline-variant/30">
             <table className="min-w-full divide-y divide-outline-variant/30 text-xs">

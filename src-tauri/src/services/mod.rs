@@ -1,4 +1,3 @@
-pub mod mod_placeholder;
 pub mod clipboard_watcher;
 pub mod app_usage_tracker;
 pub mod butler_shortcut;

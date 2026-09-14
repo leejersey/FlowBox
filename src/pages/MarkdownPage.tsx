@@ -50,7 +50,7 @@ function generateDefaultFileName(markdown: string): string {
     .find(line => line.length > 0)
     ?.replace(/^#{1,6}\s+/, '')
     ?.replace(/^[-*+]\s+/, '')
-    ?.replace(/^\d+[\.\)]\s+/, '')
+    ?.replace(/^\d+[.)]\s+/, '')
     ?? ''
 
   return `${timestamp} ${sanitizeTitleSegment(firstMeaningfulLine)}.md`
@@ -382,6 +382,7 @@ export function MarkdownPage() {
   const editorRef = useRef<HTMLDivElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const activeCodeTheme = codeThemes[codeThemeName]
+  const savedVaultPath = settings['obsidian.vault_path'] || ''
   const markdownPreviewComponents = useMemo(
     () => createMarkdownPreviewComponents(activeCodeTheme),
     [activeCodeTheme]
@@ -389,11 +390,9 @@ export function MarkdownPage() {
 
   // Load settings on mount
   useEffect(() => {
-    setVaultPath(settings['obsidian.vault_path'] || '')
-    if (!markdownText) {
-      setFileName(generateDefaultFileName(''))
-    }
-  }, [settings['obsidian.vault_path']])
+    setVaultPath(savedVaultPath)
+    setFileName(current => current || generateDefaultFileName(''))
+  }, [savedVaultPath])
 
   // Handle pasting Rich Text / HTML
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
@@ -458,7 +457,7 @@ export function MarkdownPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
       showToast('Markdown 已复制', 'success')
-    } catch (err) {
+    } catch {
       showToast('复制失败', 'error')
     }
   }

@@ -82,20 +82,21 @@ export function useClipboardPersistence() {
 export function useClipboardControls(onNewClip?: () => void) {
   const [watching, setWatching] = useState(false)
   const onNewClipRef = useRef(onNewClip)
-  onNewClipRef.current = onNewClip
 
-  const syncWatchState = useCallback(async () => {
-    const current = await invoke<boolean>('clipboard_is_watching')
-    setWatching(current)
-    return current
-  }, [])
+  useEffect(() => {
+    onNewClipRef.current = onNewClip
+  }, [onNewClip])
 
   useEffect(() => {
     if (!isTauriApp) return
-    void syncWatchState().catch(err => {
+    let cancelled = false
+    void invoke<boolean>('clipboard_is_watching').then(current => {
+      if (!cancelled) setWatching(current)
+    }).catch(err => {
       showToast(`读取剪贴板监听状态失败: ${String(err)}`, 'error')
     })
-  }, [syncWatchState])
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     const refresh = () => onNewClipRef.current?.()

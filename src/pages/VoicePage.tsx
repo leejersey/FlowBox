@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Mic, Play, Pause, Trash2, Square, RefreshCw, Link2 } from 'lucide-react'
 import { isTauri } from '@tauri-apps/api/core'
 import { useSearchParams } from 'react-router-dom'
@@ -193,7 +193,10 @@ export function VoicePage() {
   const highlight = searchParams.get('highlight')
   const highlightId = linkedTargetId(highlight, 'voice')
   const currentLinkedRecord = linkedTargetFor(highlightId, linkedRecord)
-  const visibleRecords = currentLinkedRecord && !records.some(record => record.id === currentLinkedRecord.id) ? [...records, currentLinkedRecord] : records
+  const visibleRecords = useMemo(
+    () => currentLinkedRecord && !records.some(record => record.id === currentLinkedRecord.id) ? [...records, currentLinkedRecord] : records,
+    [records, currentLinkedRecord],
+  )
 
   useEffect(() => { setExpandedId(null) }, [highlight])
 
@@ -204,7 +207,7 @@ export function VoicePage() {
       if (!cancelled && !visibleRecords.includes(target)) setLinkedRecord(target)
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [highlightId, loading, records, linkedRecord])
+  }, [highlightId, loading, visibleRecords])
 
   useEffect(() => {
     if (loading || !highlightId || !highlight) return
@@ -216,7 +219,7 @@ export function VoicePage() {
     target.classList.add('ring-2', 'ring-primary')
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, highlightId, loading, records, linkedRecord])
+  }, [highlight, highlightId, loading, visibleRecords])
 
   const refresh = useCallback(async () => {
     if (!isTauriApp) return

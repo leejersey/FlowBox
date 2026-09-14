@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronRight, ArrowUpRight, TrendingUp, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import * as statsService from '@/services/statsService'
@@ -7,6 +7,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
+import type { TooltipValueType } from 'recharts'
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
 
@@ -19,23 +20,25 @@ export function StatsPage() {
   const [usage, setUsage] = useState<UsageDistribution[]>([])
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day')
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     if (!isTauri) return
-    try {
-      const [s, h, t, u] = await Promise.all([
-        statsService.getDashboardStats(),
-        statsService.getHourlyFocus(),
-        statsService.getFocusTrend(7),
-        statsService.getUsageDistribution(),
-      ])
-      setStats(s)
-      setHourly(h)
-      setTrend(t)
-      setUsage(u)
-    } catch { /* browser fallback */ }
-  }, [])
+    let cancelled = false
 
-  useEffect(() => { load() }, [load])
+    void Promise.all([
+      statsService.getDashboardStats(),
+      statsService.getHourlyFocus(),
+      statsService.getFocusTrend(7),
+      statsService.getUsageDistribution(),
+    ]).then(([nextStats, nextHourly, nextTrend, nextUsage]) => {
+      if (cancelled) return
+      setStats(nextStats)
+      setHourly(nextHourly)
+      setTrend(nextTrend)
+      setUsage(nextUsage)
+    }).catch(() => { /* browser fallback */ })
+
+    return () => { cancelled = true }
+  }, [])
 
   const focusHours = Math.floor(stats.today_focus_minutes / 60)
   const focusMins = stats.today_focus_minutes % 60
@@ -136,7 +139,7 @@ export function StatsPage() {
                 <Tooltip
                   contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}
                   itemStyle={{ color: 'var(--color-on-surface)' }}
-                  formatter={(value: any) => [`${value} 分钟`, '专注时长']}
+                  formatter={(value: TooltipValueType | undefined) => [`${value ?? 0} 分钟`, '专注时长']}
                   labelStyle={{ color: 'var(--color-on-surface-variant)', marginBottom: '4px' }}
                 />
                 <Line type="monotone" dataKey="minutes" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: '#4F46E5', strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} />
@@ -171,7 +174,7 @@ export function StatsPage() {
                     <Tooltip
                       contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}
                       itemStyle={{ color: 'var(--color-on-surface)', fontWeight: 'bold' }}
-                      formatter={(value: any, name: any) => [value, name]}
+                      formatter={(value: TooltipValueType | undefined, name: string | number | undefined) => [String(value ?? ''), name ?? '']}
                     />
                   </PieChart>
                 </ResponsiveContainer>

@@ -26,7 +26,7 @@ export function useDebounce<T>(value: T, delay: number = 250): T {
  * @param callback 要防抖的函数
  * @param delay 延迟毫秒数，默认 250ms
  */
-export function useDebouncedCallback<T extends (...args: any[]) => any>(
+export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   callback: T,
   delay: number = 250
 ): (...args: Parameters<T>) => void {

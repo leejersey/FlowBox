@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Mic, Clipboard as ClipboardIcon, Check, Trash2, CheckSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -154,11 +154,19 @@ export function TodoPage() {
   const highlight = searchParams.get('highlight')
   const highlightId = linkedTargetId(highlight, 'todo')
   const displayFilter = highlightId ? 'all' : activeFilter
-  const currentLinkedTodo = linkedTargetFor(highlightId, linkedTodo)
-  const visibleTodos = currentLinkedTodo && !todos.some(todo => todo.id === currentLinkedTodo.id) ? [...todos, currentLinkedTodo] : todos
+  const visibleTodos = useMemo(
+    () => {
+      const currentLinkedTodo = linkedTargetFor(highlightId, linkedTodo)
+      return currentLinkedTodo && !todos.some(todo => todo.id === currentLinkedTodo.id) ? [...todos, currentLinkedTodo] : todos
+    },
+    [todos, highlightId, linkedTodo],
+  )
   const visibleSelectedTodo = highlightId ? linkedTargetFor(highlightId, selectedTodo) : selectedTodo
 
-  useEffect(() => { setSelectedTodo(null) }, [highlight])
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSelectedTodo(null), 0)
+    return () => window.clearTimeout(timer)
+  }, [highlight])
 
   useEffect(() => {
     if (loading || !highlightId) return
@@ -167,7 +175,7 @@ export function TodoPage() {
       if (!cancelled && !visibleTodos.includes(target)) setLinkedTodo(target)
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [highlightId, loading, todos, linkedTodo])
+  }, [highlightId, loading, visibleTodos])
 
   useEffect(() => {
     if (loading || !highlightId || !highlight) return
@@ -176,10 +184,13 @@ export function TodoPage() {
     if (!todo || !target) return
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
     target.classList.add('ring-2', 'ring-primary')
-    setSelectedTodo(todo)
+    const selectionTimer = window.setTimeout(() => setSelectedTodo(todo), 0)
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
-    return () => window.clearTimeout(timer)
-  }, [highlight, highlightId, loading, todos, linkedTodo])
+    return () => {
+      window.clearTimeout(selectionTimer)
+      window.clearTimeout(timer)
+    }
+  }, [highlight, highlightId, loading, visibleTodos])
 
   const pendingTodos = displayFilter === 'all' ? visibleTodos.filter(t => t.status === 'pending') : visibleTodos.filter(t => t.status !== 'done')
   const inProgressTodos = displayFilter === 'all' ? visibleTodos.filter(t => t.status === 'in_progress') : []

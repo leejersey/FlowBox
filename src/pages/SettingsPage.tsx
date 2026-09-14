@@ -65,13 +65,17 @@ function Kbd({ children }: { children: React.ReactNode }) {
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('ai')
   const [localApiKey, setLocalApiKey] = useState('')
-  const [butlerShortcut, setButlerShortcut] = useState(DEFAULT_BUTLER_SHORTCUT)
+  const [butlerShortcutOverride, setButlerShortcutOverride] = useState<string | null>(null)
   const [volcAppId, setVolcAppId] = useState('')
   const [volcToken, setVolcToken] = useState('')
   const { mode: themeMode, setMode: setThemeMode } = useThemeStore()
   const { settings, secretsConfigured, saved, markSaved, setSetting, setSecretSetting, toggleSetting, loadSettings } = useSettings()
   const { triggerReview } = useOutletContext<AppShellOutletContext>()
-  const [reviewTime, setReviewTime] = useState(settings['daily_review.time'] || '21:00')
+  const [reviewTimeOverride, setReviewTimeOverride] = useState<string | null>(null)
+  const savedButlerShortcut = settings['shortcuts.butler_hotkey'] || DEFAULT_BUTLER_SHORTCUT
+  const savedReviewTime = settings['daily_review.time'] || '21:00'
+  const butlerShortcut = butlerShortcutOverride ?? savedButlerShortcut
+  const reviewTime = reviewTimeOverride ?? savedReviewTime
 
   // ─── Skills 状态 ────────────────────────────
   const [skills, setSkills] = useState<ButlerSkill[]>([])
@@ -89,16 +93,15 @@ export function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    if (activeTab === 'skills') fetchSkills()
-  }, [activeTab, fetchSkills])
-
-  useEffect(() => {
-    setButlerShortcut(settings['shortcuts.butler_hotkey'] || DEFAULT_BUTLER_SHORTCUT)
-  }, [settings['shortcuts.butler_hotkey']])
-
-  useEffect(() => {
-    if (settings['daily_review.time']) setReviewTime(settings['daily_review.time'])
-  }, [settings['daily_review.time']])
+    if (activeTab !== 'skills') return
+    let cancelled = false
+    void skillService.loadSkills().then(data => {
+      if (!cancelled) setSkills(data)
+    }).catch(err => {
+      if (!cancelled) showToast(`加载技能失败: ${String(err)}`, 'error')
+    })
+    return () => { cancelled = true }
+  }, [activeTab])
 
   const saveApiKey = async () => {
     if (await setSecretSetting('ai.openai_api_key', localApiKey.trim())) {
@@ -159,12 +162,12 @@ export function SettingsPage() {
       if (isTauriApp) {
         const appliedShortcut = await invoke<string>('butler_set_shortcut', { shortcut })
         await setSetting('shortcuts.butler_hotkey', appliedShortcut)
-        setButlerShortcut(appliedShortcut)
+        setButlerShortcutOverride(appliedShortcut)
         return
       }
 
       await setSetting('shortcuts.butler_hotkey', shortcut)
-      setButlerShortcut(shortcut)
+      setButlerShortcutOverride(shortcut)
     } catch (err) {
       showToast(`保存 Butler 快捷键失败: ${String(err)}`, 'error')
     }
@@ -470,7 +473,7 @@ export function SettingsPage() {
                         <input
                           type="time"
                           value={reviewTime}
-                          onChange={e => setReviewTime(e.target.value)}
+                          onChange={e => setReviewTimeOverride(e.target.value)}
                           className="h-11 bg-surface-container px-4 rounded-xl text-sm text-on-surface border border-transparent focus:border-primary/50 focus:outline-none transition-all font-mono"
                         />
                         <button
@@ -575,7 +578,7 @@ export function SettingsPage() {
                     <input
                       type="text"
                       value={butlerShortcut}
-                      onChange={(e) => setButlerShortcut(e.target.value)}
+                      onChange={(e) => setButlerShortcutOverride(e.target.value)}
                       placeholder={DEFAULT_BUTLER_SHORTCUT}
                       className="flex-1 h-11 bg-surface-container px-4 rounded-xl text-sm text-on-surface border border-transparent focus:border-primary/50 focus:outline-none transition-all font-mono"
                     />
@@ -601,7 +604,7 @@ export function SettingsPage() {
 
                 <button 
                   onClick={async () => {
-                    setButlerShortcut(DEFAULT_BUTLER_SHORTCUT)
+                    setButlerShortcutOverride(DEFAULT_BUTLER_SHORTCUT)
                     try {
                       if (isTauriApp) {
                         await invoke<string>('butler_set_shortcut', { shortcut: DEFAULT_BUTLER_SHORTCUT })

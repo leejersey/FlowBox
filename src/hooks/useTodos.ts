@@ -16,13 +16,14 @@ export function useTodos(query: TodoListQuery = {}) {
   const [todos, setTodos] = useState<Todo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { status, priority, keyword, offset, limit } = query
 
   const refresh = useCallback(async () => {
     if (!isTauriApp) return
     setLoading(true)
     setError(null)
     try {
-      const list = await todoService.todoList(query)
+      const list = await todoService.todoList({ status, priority, keyword, offset, limit })
       setTodos(list)
     } catch (err) {
       setError(String(err))
@@ -30,7 +31,7 @@ export function useTodos(query: TodoListQuery = {}) {
     } finally {
       setLoading(false)
     }
-  }, [query.status, query.priority, query.keyword, query.offset, query.limit])
+  }, [status, priority, keyword, offset, limit])
 
   useEffect(() => {
     refresh()

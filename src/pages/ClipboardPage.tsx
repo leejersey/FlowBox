@@ -46,11 +46,10 @@ function ClipCard({ clip, onPin, onCopy, onDelete, onLink, selectable, selected,
   onSelectToggle?: (id: number) => void
   onImageClick?: (src: string) => void
 }) {
-  const [imageSrc, setImageSrc] = useState<string | null>(resolveImageSrc(clip.image_path))
-
-  useEffect(() => {
-    setImageSrc(resolveImageSrc(clip.image_path))
-  }, [clip.image_path])
+  const [imageFallback, setImageFallback] = useState<{ path: string; src: string } | null>(null)
+  const imageSrc = imageFallback?.path === clip.image_path
+    ? imageFallback.src
+    : resolveImageSrc(clip.image_path)
 
   const handleCardClick = () => {
     if (selectable && onSelectToggle) {
@@ -105,7 +104,7 @@ function ClipCard({ clip, onPin, onCopy, onDelete, onLink, selectable, selected,
                     if (!clip.image_path) return
                     const fileFallback = `file://${encodeURI(clip.image_path)}`
                     if (imageSrc !== fileFallback) {
-                      setImageSrc(fileFallback)
+                      setImageFallback({ path: clip.image_path, src: fileFallback })
                     }
                   }}
                 />
@@ -193,7 +192,10 @@ export function ClipboardPage() {
   const highlight = searchParams.get('highlight')
   const highlightId = linkedTargetId(highlight, 'clipboard')
   const currentLinkedClip = linkedTargetFor(highlightId, linkedClip)
-  const visibleClips = currentLinkedClip && !clips.some(clip => clip.id === currentLinkedClip.id) ? [...clips, currentLinkedClip] : clips
+  const visibleClips = useMemo(
+    () => currentLinkedClip && !clips.some(clip => clip.id === currentLinkedClip.id) ? [...clips, currentLinkedClip] : clips,
+    [clips, currentLinkedClip],
+  )
 
   // 接入搜索防抖
   const debouncedKeyword = useDebounce(keyword, 250)
@@ -227,7 +229,7 @@ export function ClipboardPage() {
       if (!cancelled && !visibleClips.includes(target)) setLinkedClip(target)
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [highlightId, loading, clips, linkedClip])
+  }, [highlightId, loading, visibleClips])
 
   useEffect(() => {
     if (loading || !highlightId || !highlight) return
@@ -237,7 +239,7 @@ export function ClipboardPage() {
     target.classList.add('ring-2', 'ring-primary')
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, highlightId, loading, clips, linkedClip])
+  }, [highlight, highlightId, loading, visibleClips])
 
   // 接入剪贴板监听
   const { watching, toggleWatch } = useClipboardControls(refresh)

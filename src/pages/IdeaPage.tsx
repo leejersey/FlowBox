@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Sparkles, Mic, Clipboard as ClipboardIcon, MoreHorizontal, Archive, Trash2, Tag, X, Check, Calendar, ExternalLink, Edit2, Link2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,14 @@ function timeAgo(dateStr: string): string {
   return dateStr.slice(0, 10)
 }
 
+function parseIdeaTags(tags: string | null): string[] {
+  try {
+    return JSON.parse(tags || '[]')
+  } catch {
+    return []
+  }
+}
+
 function IdeaCard({
   idea,
   onArchive,
@@ -37,23 +45,13 @@ function IdeaCard({
   const [showMenu, setShowMenu] = useState(false)
   const [isEditingTags, setIsEditingTags] = useState(false)
   const [tagInput, setTagInput] = useState('')
-  const [currentTags, setCurrentTags] = useState<string[]>([])
-
-  // Parse tags safely
-  useEffect(() => {
-    try {
-      setCurrentTags(JSON.parse(idea.tags || '[]'))
-    } catch {
-      setCurrentTags([])
-    }
-  }, [idea.tags])
+  const currentTags = parseIdeaTags(idea.tags)
 
   const handleAddTag = () => {
     const trimmed = tagInput.trim()
     if (!trimmed) return
     if (!currentTags.includes(trimmed)) {
       const newTags = [...currentTags, trimmed]
-      setCurrentTags(newTags)
       onUpdateTags(idea.id, newTags)
     }
     setTagInput('')
@@ -61,7 +59,6 @@ function IdeaCard({
 
   const handleRemoveTag = (tagToRemove: string) => {
     const newTags = currentTags.filter(t => t !== tagToRemove)
-    setCurrentTags(newTags)
     onUpdateTags(idea.id, newTags)
   }
 
@@ -287,10 +284,13 @@ export function IdeaPage() {
   const highlight = searchParams.get('highlight')
   const highlightId = linkedTargetId(highlight, 'idea')
   const currentLinkedIdea = linkedTargetFor(highlightId, linkedIdea)
-  const visibleIdeas = currentLinkedIdea && !ideas.some(idea => idea.id === currentLinkedIdea.id) ? [...ideas, currentLinkedIdea] : ideas
-  const visibleSelectedIdea = highlightId ? linkedTargetFor(highlightId, selectedIdea) : selectedIdea
-
-  useEffect(() => { setSelectedIdea(null) }, [highlight])
+  const visibleIdeas = useMemo(
+    () => currentLinkedIdea && !ideas.some(idea => idea.id === currentLinkedIdea.id) ? [...ideas, currentLinkedIdea] : ideas,
+    [ideas, currentLinkedIdea],
+  )
+  const visibleSelectedIdea = highlightId
+    ? visibleIdeas.find(idea => idea.id === highlightId) ?? null
+    : selectedIdea
 
   useEffect(() => {
     if (loading || !highlightId) return
@@ -299,7 +299,7 @@ export function IdeaPage() {
       if (!cancelled && !visibleIdeas.includes(target)) setLinkedIdea(target)
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [highlightId, loading, ideas, linkedIdea])
+  }, [highlightId, loading, visibleIdeas])
 
   useEffect(() => {
     if (loading || !highlightId || !highlight) return
@@ -308,10 +308,9 @@ export function IdeaPage() {
     if (!idea || !target) return
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
     target.classList.add('ring-2', 'ring-primary')
-    setSelectedIdea(idea)
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, highlightId, loading, ideas, linkedIdea])
+  }, [highlight, highlightId, loading, visibleIdeas])
 
   const [newContent, setNewContent] = useState('')
   const [newTags, setNewTags] = useState<string[]>([])
