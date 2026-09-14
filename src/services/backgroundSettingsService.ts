@@ -19,32 +19,41 @@ export interface AutostartPlugin {
 
 type PersistSetting = (key: string, value: string) => Promise<unknown>
 
+let autostartQueue: Promise<unknown> = Promise.resolve()
+
 export async function syncAutostart(plugin: AutostartPlugin, persist: PersistSetting) {
   const enabled = await plugin.isEnabled()
   await persist('general.autostart', String(enabled))
   return enabled
 }
 
-export async function setAutostart(
+export function setAutostart(
   enabled: boolean,
   plugin: AutostartPlugin,
   persist: PersistSetting,
 ) {
-  const previous = await plugin.isEnabled()
-  await (enabled ? plugin.enable() : plugin.disable())
-  let actual: boolean | undefined
-  try {
-    actual = await plugin.isEnabled()
-    await persist('general.autostart', String(actual))
-    return actual
-  } catch (error) {
-    if ((actual ?? enabled) !== previous) {
+  const transition = autostartQueue.then(async () => {
+    const previous = await plugin.isEnabled()
+    try {
+      await (enabled ? plugin.enable() : plugin.disable())
+      const actual = await plugin.isEnabled()
+      await persist('general.autostart', String(actual))
+      return actual
+    } catch (error) {
+      let changed = enabled !== previous
       try {
-        await (previous ? plugin.enable() : plugin.disable())
+        changed = await plugin.isEnabled() !== previous
       } catch {}
+      if (changed) {
+        try {
+          await (previous ? plugin.enable() : plugin.disable())
+        } catch {}
+      }
+      throw error
     }
-    throw error
-  }
+  })
+  autostartQueue = transition.catch(() => {})
+  return transition
 }
 
 async function applyWithPreviousValue(
