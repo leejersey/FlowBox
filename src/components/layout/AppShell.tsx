@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { Sidebar } from './Sidebar'
 import { TitleBar } from './TitleBar'
+import { StatusBar } from './StatusBar'
 import { ButlerOverlay } from './ButlerOverlay'
 import { GlobalSearchBar } from './GlobalSearchBar'
 import { DailyReviewModal } from '@/components/review/DailyReviewModal'
@@ -20,23 +21,44 @@ export interface AppShellOutletContext {
 }
 
 export function AppShell() {
+  const navigate = useNavigate()
   const [searchOpen, setSearchOpen] = useState(false)
   const dailyReview = useDailyReview()
   const screenshotOcr = useScreenshotOcr()
 
   const toggleSearch = useCallback(() => setSearchOpen(v => !v), [])
 
-  // Cmd+/ keyboard shortcut for global search
+  // 全局桌面级快捷键体系
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey
+
+      // ⌘/ 全局搜索
+      if (isCmdOrCtrl && e.key === '/') {
         e.preventDefault()
         toggleSearch()
+        return
+      }
+
+      // ⌘1 ~ ⌘5, ⌘8, ⌘, 模块极速切换
+      if (isCmdOrCtrl && !e.shiftKey && !e.altKey) {
+        if (e.key === '1') { e.preventDefault(); navigate('/') }
+        else if (e.key === '2') { e.preventDefault(); navigate('/pomodoro') }
+        else if (e.key === '3') { e.preventDefault(); navigate('/idea') }
+        else if (e.key === '4') { e.preventDefault(); navigate('/clipboard') }
+        else if (e.key === '5') { e.preventDefault(); navigate('/voice') }
+        else if (e.key === '8') { e.preventDefault(); navigate('/stats') }
+        else if (e.key === ',') { e.preventDefault(); navigate('/settings') }
+        else if (e.key.toLowerCase() === 'n') {
+          // ⌘N 广播全局新建捕获事件
+          e.preventDefault()
+          window.dispatchEvent(new CustomEvent('flowbox:quick_create'))
+        }
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [toggleSearch])
+  }, [toggleSearch, navigate])
 
   useEffect(() => {
     if (!isTauriApp) return
@@ -66,10 +88,11 @@ export function AppShell() {
     <div className="flex h-screen w-screen overflow-hidden bg-surface relative">
       <TitleBar />
       <Sidebar onSearchClick={toggleSearch} />
-      <main className="flex-1 h-full pt-10 relative overflow-hidden flex flex-col">
-        <div className="flex-1 w-full max-w-7xl mx-auto h-full container relative overflow-hidden px-8 py-4 flex flex-col">
+      <main className="flex-1 h-full pt-10 relative overflow-hidden flex flex-col min-w-0">
+        <div className="flex-1 w-full h-full relative overflow-hidden px-4 lg:px-6 py-4 flex flex-col min-w-0">
           <Outlet context={{ triggerReview: dailyReview.triggerReview }} />
         </div>
+        <StatusBar />
       </main>
       <ButlerOverlay />
       <GlobalSearchBar isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
