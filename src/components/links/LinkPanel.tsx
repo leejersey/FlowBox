@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link2, Search, Trash2, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { globalSearch, type SearchResult } from '@/services/searchService'
@@ -42,19 +42,31 @@ export function LinkPanel({ type, id, onClose }: LinkPanelProps) {
   const [links, setLinks] = useState<ItemLink[]>([])
   const [results, setResults] = useState<SearchResult[]>([])
   const [error, setError] = useState('')
+  const mountedRef = useRef(false)
+  const mutationIdRef = useRef(0)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      mutationIdRef.current += 1
+    }
+  }, [])
 
   const refresh = useCallback(async () => {
     return linksByItem(type, id)
   }, [type, id])
 
   useEffect(() => {
-    let cancelled = false
+    const mutationId = ++mutationIdRef.current
     void refresh().then(items => {
-      if (!cancelled) setLinks(items)
+      if (mountedRef.current && mutationId === mutationIdRef.current) setLinks(items)
     }).catch(err => {
-      if (!cancelled) setError(err instanceof Error ? err.message : '关联加载失败')
+      if (mountedRef.current && mutationId === mutationIdRef.current) {
+        setError(err instanceof Error ? err.message : '关联加载失败')
+      }
     })
-    return () => { cancelled = true }
+    return () => { mutationIdRef.current += 1 }
   }, [refresh])
 
   useEffect(() => {
@@ -74,22 +86,30 @@ export function LinkPanel({ type, id, onClose }: LinkPanelProps) {
   }, [query, type, id])
 
   const add = async (target: SearchResult) => {
+    const mutationId = ++mutationIdRef.current
     try {
       setError('')
       await linkCreate(type, id, target.type, target.id)
-      setLinks(await refresh())
+      const items = await refresh()
+      if (mountedRef.current && mutationId === mutationIdRef.current) setLinks(items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '关联创建失败')
+      if (mountedRef.current && mutationId === mutationIdRef.current) {
+        setError(err instanceof Error ? err.message : '关联创建失败')
+      }
     }
   }
 
   const remove = async (linkId: number) => {
+    const mutationId = ++mutationIdRef.current
     try {
       setError('')
       await linkDelete(linkId)
-      setLinks(await refresh())
+      const items = await refresh()
+      if (mountedRef.current && mutationId === mutationIdRef.current) setLinks(items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '关联删除失败')
+      if (mountedRef.current && mutationId === mutationIdRef.current) {
+        setError(err instanceof Error ? err.message : '关联删除失败')
+      }
     }
   }
 

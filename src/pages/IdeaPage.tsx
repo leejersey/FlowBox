@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Sparkles, Mic, Clipboard as ClipboardIcon, MoreHorizontal, Archive, Trash2, Tag, X, Check, Calendar, ExternalLink, Edit2, Link2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -288,9 +288,13 @@ export function IdeaPage() {
     () => currentLinkedIdea && !ideas.some(idea => idea.id === currentLinkedIdea.id) ? [...ideas, currentLinkedIdea] : ideas,
     [ideas, currentLinkedIdea],
   )
-  const visibleSelectedIdea = highlightId
-    ? visibleIdeas.find(idea => idea.id === highlightId) ?? null
-    : selectedIdea
+  const lastOpenedHighlightRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    lastOpenedHighlightRef.current = null
+    const timer = window.setTimeout(() => setSelectedIdea(null), 0)
+    return () => window.clearTimeout(timer)
+  }, [highlight])
 
   useEffect(() => {
     if (loading || !highlightId) return
@@ -304,12 +308,24 @@ export function IdeaPage() {
   useEffect(() => {
     if (loading || !highlightId || !highlight) return
     const idea = visibleIdeas.find(item => item.id === highlightId)
+    if (!idea || lastOpenedHighlightRef.current === highlight) return
+
+    const selectionTimer = window.setTimeout(() => {
+      lastOpenedHighlightRef.current = highlight
+      setSelectedIdea(idea)
+    }, 0)
     const target = document.getElementById(highlight)
-    if (!idea || !target) return
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    target.classList.add('ring-2', 'ring-primary')
-    const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
-    return () => window.clearTimeout(timer)
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      target.classList.add('ring-2', 'ring-primary')
+    }
+    const highlightTimer = target
+      ? window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
+      : undefined
+    return () => {
+      window.clearTimeout(selectionTimer)
+      if (highlightTimer !== undefined) window.clearTimeout(highlightTimer)
+    }
   }, [highlight, highlightId, loading, visibleIdeas])
 
   const [newContent, setNewContent] = useState('')
@@ -447,9 +463,9 @@ export function IdeaPage() {
       )}
 
       {/* Detail Modal */}
-      {visibleSelectedIdea && (
+      {selectedIdea && (
         <IdeaDetailModal 
-          idea={visibleSelectedIdea}
+          idea={selectedIdea}
           onClose={() => setSelectedIdea(null)} 
           onUpdate={updateIdea}
         />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 
 export interface VirtualListProps<T> {
   items: T[]
@@ -6,6 +6,38 @@ export interface VirtualListProps<T> {
   buffer?: number
   renderItem: (item: T, index: number) => React.ReactNode
   className?: string
+}
+
+interface VirtualListRowProps {
+  index: number
+  top: number
+  children: React.ReactNode
+  observe: (index: number, element: HTMLDivElement | null) => void
+}
+
+function VirtualListRow({ index, top, children, observe }: VirtualListRowProps) {
+  const elementRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const element = elementRef.current
+    if (!element) return
+    observe(index, element)
+    return () => observe(index, null)
+  }, [index, observe])
+
+  return (
+    <div
+      ref={elementRef}
+      style={{
+        position: 'absolute',
+        top: `${top}px`,
+        left: 0,
+        right: 0,
+      }}
+    >
+      {children}
+    </div>
+  )
 }
 
 export function VirtualList<T>({
@@ -21,6 +53,38 @@ export function VirtualList<T>({
 
   // 记录每个 item 的实测高度
   const [heights, setHeights] = useState<Map<number, number>>(() => new Map())
+  const rowObserversRef = useRef<Map<number, ResizeObserver>>(new Map())
+
+  const updateHeight = useCallback((index: number, height: number) => {
+    if (height <= 0) return
+    setHeights(current => {
+      if (current.get(index) === height) return current
+      const next = new Map(current)
+      next.set(index, height)
+      return next
+    })
+  }, [])
+
+  const observeRow = useCallback((index: number, element: HTMLDivElement | null) => {
+    const existingObserver = rowObserversRef.current.get(index)
+    existingObserver?.disconnect()
+    rowObserversRef.current.delete(index)
+
+    if (!element) return
+
+    updateHeight(index, element.getBoundingClientRect().height)
+    const observer = new ResizeObserver(entries => {
+      const height = entries[0]?.contentRect.height ?? element.getBoundingClientRect().height
+      updateHeight(index, height)
+    })
+    observer.observe(element)
+    rowObserversRef.current.set(index, observer)
+  }, [updateHeight])
+
+  useEffect(() => () => {
+    for (const observer of rowObserversRef.current.values()) observer.disconnect()
+    rowObserversRef.current.clear()
+  }, [])
 
   // 计算位置前缀和
   const positions = useMemo(() => {
@@ -111,30 +175,14 @@ export function VirtualList<T>({
     >
       <div style={{ height: `${totalHeight}px`, width: '100%', position: 'relative' }}>
         {visibleItems.map(({ item, index, top }) => (
-          <div
+          <VirtualListRow
             key={index}
-            style={{
-              position: 'absolute',
-              top: `${top}px`,
-              left: 0,
-              right: 0,
-            }}
-            ref={(el) => {
-              if (el) {
-                const height = el.getBoundingClientRect().height
-                if (height > 0) {
-                  setHeights(current => {
-                    if (current.get(index) === height) return current
-                    const next = new Map(current)
-                    next.set(index, height)
-                    return next
-                  })
-                }
-              }
-            }}
+            index={index}
+            top={top}
+            observe={observeRow}
           >
             {renderItem(item, index)}
-          </div>
+          </VirtualListRow>
         ))}
       </div>
     </div>
