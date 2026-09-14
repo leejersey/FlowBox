@@ -32,6 +32,10 @@ export function linkedTargetId(highlight: string | null, type: LinkableType): nu
   return Number.isSafeInteger(id) ? id : null
 }
 
+export function linkedTargetFor<T extends { id: number }>(highlightId: number | null, item: T | null): T | null {
+  return item?.id === highlightId ? item : null
+}
+
 export function canonicalizeLink(
   aType: LinkableType,
   aId: number,

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
 import { readFile } from 'node:fs/promises'
-import { canonicalizeLink, createOrGetLink, ensureLinkedTarget, linkedTargetId } from '../src/lib/itemLink.ts'
+import { canonicalizeLink, createOrGetLink, ensureLinkedTarget, linkedTargetFor, linkedTargetId } from '../src/lib/itemLink.ts'
 
 test('关联高亮只接受对应类型的安全正整数 ID', () => {
   assert.equal(linkedTargetId('todo-42', 'todo'), 42)
@@ -38,6 +38,15 @@ test('关联目标加载失败时向调用方报错', async () => {
     ensureLinkedTarget([], 999, async () => { throw new Error('NOT_FOUND') }),
     /NOT_FOUND/
   )
+})
+
+test('highlight 连续切换或加载失败时只暴露当前目标', () => {
+  const oldTarget = { id: 999 }
+  const nextTarget = { id: 998 }
+  assert.equal(linkedTargetFor(999, oldTarget), oldTarget)
+  assert.equal(linkedTargetFor(998, oldTarget), null)
+  assert.equal(linkedTargetFor(998, nextTarget), nextTarget)
+  assert.equal(linkedTargetFor(998, oldTarget), null)
 })
 
 test('A-B 与 B-A 规范化为同一端点顺序', () => {
@@ -98,6 +107,39 @@ test('四类关联支持创建、双向读取、反向去重与删除', async ()
   assert.equal(db.prepare('SELECT COUNT(*) count FROM item_links').get().count, 1)
 })
 
+test('删除四类实体会清理两端关联且保留无关关联', async () => {
+  const migration009 = await readFile(new URL('../src-tauri/migrations/009_item_links_canonical.sql', import.meta.url), 'utf8')
+  const migration010 = await readFile(new URL('../src-tauri/migrations/010_item_link_cleanup.sql', import.meta.url), 'utf8')
+  const rustSource = await readFile(new URL('../src-tauri/src/lib.rs', import.meta.url), 'utf8')
+  const cases = [
+    ['todos', 'todo'],
+    ['ideas', 'idea'],
+    ['voice_records', 'voice'],
+    ['clipboard_items', 'clipboard'],
+  ]
+
+  assert.match(rustSource, /version:\s*10[\s\S]*010_item_link_cleanup\.sql/)
+  for (const [table, type] of cases) {
+    const db = new DatabaseSync(':memory:')
+    for (const entityTable of ['todos', 'ideas', 'voice_records', 'clipboard_items']) {
+      db.exec(`CREATE TABLE ${entityTable}(id INTEGER PRIMARY KEY)`)
+      db.exec(`INSERT INTO ${entityTable}(id) VALUES (1), (2)`)
+    }
+    db.exec('CREATE TABLE item_links(id INTEGER PRIMARY KEY, source_type TEXT NOT NULL, source_id INTEGER NOT NULL, target_type TEXT NOT NULL, target_id INTEGER NOT NULL, created_at TEXT NOT NULL, UNIQUE(source_type, source_id, target_type, target_id))')
+    db.exec(migration009)
+    db.exec(migration010)
+    db.prepare('INSERT INTO item_links VALUES (?, ?, ?, ?, ?, ?)').run(1, type, 1, 'todo', 2, '2026-09-14')
+    db.prepare('INSERT INTO item_links VALUES (?, ?, ?, ?, ?, ?)').run(2, 'voice', 2, type, 1, '2026-09-14')
+    db.prepare('INSERT INTO item_links VALUES (?, ?, ?, ?, ?, ?)').run(3, 'clipboard', 2, 'idea', 2, '2026-09-14')
+
+    db.prepare(`DELETE FROM ${table} WHERE id = 1`).run()
+    assert.equal(db.prepare('SELECT COUNT(*) count FROM item_links WHERE id = 1').get().count, 0, type)
+    assert.equal(db.prepare('SELECT COUNT(*) count FROM item_links WHERE id = 2').get().count, 0, type)
+    assert.equal(db.prepare('SELECT COUNT(*) count FROM item_links WHERE id = 3').get().count, 1, type)
+    db.close()
+  }
+})
+
 test('共享关联面板提供真实 CRUD 与四类路由', async () => {
   const source = await readFile(new URL('../src/components/links/LinkPanel.tsx', import.meta.url), 'utf8')
   const searchSource = await readFile(new URL('../src/services/searchService.ts', import.meta.url), 'utf8')
@@ -124,6 +166,7 @@ test('四类页面消费 highlight，四类详情或卡片接入关联入口', a
     assert.match(source, /useSearchParams/)
     assert.match(source, /highlight/)
     assert.match(source, /scrollIntoView/)
+    assert.match(source, /linkedTargetFor/)
   }
   for (const path of [
     '../src/components/todo/TodoDetailModal.tsx',

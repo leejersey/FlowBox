@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import type { Idea } from '@/types/idea'
 import { useIdeas } from '@/hooks/useIdeas'
 import { LinkPanel } from '@/components/links/LinkPanel'
-import { ensureLinkedTarget, linkedTargetId } from '@/lib/itemLink'
+import { ensureLinkedTarget, linkedTargetFor, linkedTargetId } from '@/lib/itemLink'
 import { ideaGet } from '@/services/ideaService'
 
 function timeAgo(dateStr: string): string {
@@ -286,7 +286,11 @@ export function IdeaPage() {
   const [linkedIdea, setLinkedIdea] = useState<Idea | null>(null)
   const highlight = searchParams.get('highlight')
   const highlightId = linkedTargetId(highlight, 'idea')
-  const visibleIdeas = linkedIdea?.id === highlightId && !ideas.some(idea => idea.id === linkedIdea.id) ? [...ideas, linkedIdea] : ideas
+  const currentLinkedIdea = linkedTargetFor(highlightId, linkedIdea)
+  const visibleIdeas = currentLinkedIdea && !ideas.some(idea => idea.id === currentLinkedIdea.id) ? [...ideas, currentLinkedIdea] : ideas
+  const visibleSelectedIdea = highlightId ? linkedTargetFor(highlightId, selectedIdea) : selectedIdea
+
+  useEffect(() => { setSelectedIdea(null) }, [highlight])
 
   useEffect(() => {
     if (loading || !highlightId) return
@@ -444,9 +448,9 @@ export function IdeaPage() {
       )}
 
       {/* Detail Modal */}
-      {selectedIdea && (
+      {visibleSelectedIdea && (
         <IdeaDetailModal 
-          idea={selectedIdea} 
+          idea={visibleSelectedIdea}
           onClose={() => setSelectedIdea(null)} 
           onUpdate={updateIdea}
         />

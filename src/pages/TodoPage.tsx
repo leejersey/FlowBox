@@ -9,7 +9,7 @@ import { SkeletonList } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TodoDetailModal } from '@/components/todo/TodoDetailModal'
 import type { Todo, TodoListQuery } from '@/types/todo'
-import { ensureLinkedTarget, linkedTargetId } from '@/lib/itemLink'
+import { ensureLinkedTarget, linkedTargetFor, linkedTargetId } from '@/lib/itemLink'
 import { todoGet } from '@/services/todoService'
 
 const priorityLabels: Record<number, string> = { 0: '无', 1: '低', 2: '中', 3: '高' }
@@ -154,7 +154,11 @@ export function TodoPage() {
   const highlight = searchParams.get('highlight')
   const highlightId = linkedTargetId(highlight, 'todo')
   const displayFilter = highlightId ? 'all' : activeFilter
-  const visibleTodos = linkedTodo?.id === highlightId && !todos.some(todo => todo.id === linkedTodo.id) ? [...todos, linkedTodo] : todos
+  const currentLinkedTodo = linkedTargetFor(highlightId, linkedTodo)
+  const visibleTodos = currentLinkedTodo && !todos.some(todo => todo.id === currentLinkedTodo.id) ? [...todos, currentLinkedTodo] : todos
+  const visibleSelectedTodo = highlightId ? linkedTargetFor(highlightId, selectedTodo) : selectedTodo
+
+  useEffect(() => { setSelectedTodo(null) }, [highlight])
 
   useEffect(() => {
     if (loading || !highlightId) return
@@ -316,9 +320,9 @@ export function TodoPage() {
       )}
 
       {/* Detail Modal */}
-      {selectedTodo && (
+      {visibleSelectedTodo && (
         <TodoDetailModal
-          todo={selectedTodo}
+          todo={visibleSelectedTodo}
           onClose={() => setSelectedTodo(null)}
           onSave={async (payload) => {
             await update(payload)

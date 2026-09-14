@@ -10,7 +10,7 @@ import { useVoiceTranscribe } from '@/hooks/useVoiceTranscribe'
 import * as settingsService from '@/services/settingsService'
 import { localDateKey } from '@/lib/localDate'
 import { LinkPanel } from '@/components/links/LinkPanel'
-import { ensureLinkedTarget, linkedTargetId } from '@/lib/itemLink'
+import { ensureLinkedTarget, linkedTargetFor, linkedTargetId } from '@/lib/itemLink'
 
 const isTauriApp = isTauri()
 
@@ -186,24 +186,29 @@ function RecordCard({ record, onDelete, onExpand, onLink, expanded, onTranscribe
 export function VoicePage() {
   const [searchParams] = useSearchParams()
   const [records, setRecords] = useState<VoiceRecord[]>([])
+  const [linkedRecord, setLinkedRecord] = useState<VoiceRecord | null>(null)
   const [loading, setLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [linkId, setLinkId] = useState<number | null>(null)
   const highlight = searchParams.get('highlight')
   const highlightId = linkedTargetId(highlight, 'voice')
+  const currentLinkedRecord = linkedTargetFor(highlightId, linkedRecord)
+  const visibleRecords = currentLinkedRecord && !records.some(record => record.id === currentLinkedRecord.id) ? [...records, currentLinkedRecord] : records
+
+  useEffect(() => { setExpandedId(null) }, [highlight])
 
   useEffect(() => {
     if (loading || !highlightId) return
     let cancelled = false
-    void ensureLinkedTarget(records, highlightId, voiceService.voiceGet).then(result => {
-      if (!cancelled && result.items !== records) setRecords(result.items)
+    void ensureLinkedTarget(visibleRecords, highlightId, voiceService.voiceGet).then(({ target }) => {
+      if (!cancelled && !visibleRecords.includes(target)) setLinkedRecord(target)
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [highlightId, loading, records])
+  }, [highlightId, loading, records, linkedRecord])
 
   useEffect(() => {
     if (loading || !highlightId || !highlight) return
-    const record = records.find(item => item.id === highlightId)
+    const record = visibleRecords.find(item => item.id === highlightId)
     const target = document.getElementById(highlight)
     if (!record || !target) return
     setExpandedId(record.id)
@@ -211,7 +216,7 @@ export function VoicePage() {
     target.classList.add('ring-2', 'ring-primary')
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, highlightId, loading, records])
+  }, [highlight, highlightId, loading, records, linkedRecord])
 
   const refresh = useCallback(async () => {
     if (!isTauriApp) return
@@ -308,14 +313,14 @@ export function VoicePage() {
       <div className="shrink-0 flex items-center justify-between mb-6 px-1">
         <h3 className="text-xl font-display font-bold text-on-surface">
           录音历史
-          {records.length > 0 && <span className="ml-2 text-sm font-normal text-on-surface-variant">{records.length} 条</span>}
+          {visibleRecords.length > 0 && <span className="ml-2 text-sm font-normal text-on-surface-variant">{visibleRecords.length} 条</span>}
         </h3>
       </div>
 
       {loading && <div className="text-center text-on-surface-variant py-12">加载中...</div>}
 
       <div className="flex flex-col gap-4">
-        {records.map(record => (
+        {visibleRecords.map(record => (
           <RecordCard
             key={record.id}
             record={record}

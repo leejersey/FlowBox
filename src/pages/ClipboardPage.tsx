@@ -13,7 +13,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ImageLightbox } from '@/components/ui/ImageLightbox'
 import { LinkPanel } from '@/components/links/LinkPanel'
-import { ensureLinkedTarget, linkedTargetId } from '@/lib/itemLink'
+import { ensureLinkedTarget, linkedTargetFor, linkedTargetId } from '@/lib/itemLink'
 
 const isTauriApp = isTauri()
 
@@ -184,6 +184,7 @@ function ClipCard({ clip, onPin, onCopy, onDelete, onLink, selectable, selected,
 export function ClipboardPage() {
   const [searchParams] = useSearchParams()
   const [clips, setClips] = useState<ClipboardItem[]>([])
+  const [linkedClip, setLinkedClip] = useState<ClipboardItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
   const [keyword, setKeyword] = useState('')
@@ -191,6 +192,8 @@ export function ClipboardPage() {
   const [linkId, setLinkId] = useState<number | null>(null)
   const highlight = searchParams.get('highlight')
   const highlightId = linkedTargetId(highlight, 'clipboard')
+  const currentLinkedClip = linkedTargetFor(highlightId, linkedClip)
+  const visibleClips = currentLinkedClip && !clips.some(clip => clip.id === currentLinkedClip.id) ? [...clips, currentLinkedClip] : clips
 
   // 接入搜索防抖
   const debouncedKeyword = useDebounce(keyword, 250)
@@ -220,21 +223,21 @@ export function ClipboardPage() {
   useEffect(() => {
     if (loading || !highlightId) return
     let cancelled = false
-    void ensureLinkedTarget(clips, highlightId, clipboardService.clipGet).then(result => {
-      if (!cancelled && result.items !== clips) setClips(result.items)
+    void ensureLinkedTarget(visibleClips, highlightId, clipboardService.clipGet).then(({ target }) => {
+      if (!cancelled && !visibleClips.includes(target)) setLinkedClip(target)
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [highlightId, loading, clips])
+  }, [highlightId, loading, clips, linkedClip])
 
   useEffect(() => {
     if (loading || !highlightId || !highlight) return
     const target = document.getElementById(highlight)
-    if (!clips.some(item => item.id === highlightId) || !target) return
+    if (!visibleClips.some(item => item.id === highlightId) || !target) return
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
     target.classList.add('ring-2', 'ring-primary')
     const timer = window.setTimeout(() => target.classList.remove('ring-2', 'ring-primary'), 1800)
     return () => window.clearTimeout(timer)
-  }, [highlight, highlightId, loading, clips])
+  }, [highlight, highlightId, loading, clips, linkedClip])
 
   // 接入剪贴板监听
   const { watching, toggleWatch } = useClipboardControls(refresh)
@@ -403,7 +406,7 @@ export function ClipboardPage() {
       {/* 卡片列表：单层滚动，消除双层 overflow 冲突 */}
       {!loading && (
         <div className={cn("flex flex-col gap-4", isSelectionMode ? "pb-32" : "pb-16")}>
-          {clips.map(clip => (
+          {visibleClips.map(clip => (
             <ClipCard 
               key={clip.id} 
               clip={clip} 
