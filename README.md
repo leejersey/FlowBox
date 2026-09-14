@@ -35,7 +35,7 @@
 - **Diff 对比**：选中两条记录，并排高亮差异（类似 Git Diff）
 
 ### 🎙️ 语音备忘录
-- **一键录音**：浏览器 MediaRecorder API，实时计时 + 脉冲动画
+- **一键录音**：Tauri 原生录音，浏览器 MediaRecorder 作为兼容兜底，支持实时计时 + 脉冲动画
 - **AI 转写**：火山引擎 ASR（推荐） / OpenAI Whisper（兜底）
 - **智能摘要**：DeepSeek / OpenAI 自动提取摘要和待办事项
 - 原声回放，导出文本
@@ -50,7 +50,7 @@
 ### 📊 效率分析看板
 - 今日专注时长、本周番茄数、待办完成率、灵感总数
 - 专注时长趋势折线图（Recharts）
-- **应用使用追踪**：自动记录前台应用切换，饼图展示使用分布
+- **应用使用追踪**：每 5 秒采样前台应用，按周期增量写入使用时长，饼图展示使用分布
 - 每日专注时段热力图
 - AI 周报生成（占位）
 
@@ -60,13 +60,12 @@
 - 250ms 防抖，丝滑搜索体验
 
 ### 🧲 跨模块智能关联
-- 通用 `item_links` 多对多关联表，任意模块间双向链接
-- 灵感可关联待办，语音转写可关联灵感，剪贴板可关联待办
-- 详情页展示关联条目列表，点击即跳转
+- 通用 `item_links` 多对多关联表，待办、灵感、语音、剪贴板四类入口均可双向查看、跳转、删除关联
+- 删除任一实体时同步清理两端关联
 
 ### 📸 截图 OCR → 灵感 / 待办
 - 使用系统截图后，从剪贴板自动捕获图片
-- **AI Vision 识别**：GPT-4o / DeepSeek 提取文字 + 推荐标题和标签
+- **分流识别**：OpenAI 直接使用 Vision；DeepSeek / Ollama 先经 macOS Vision OCR 提取文字，再由文本模型整理标题和标签
 - 一键选择存为灵感笔记或待办事项
 
 ### 🌙 AI 每日回顾
@@ -99,16 +98,17 @@
 │  │ app_usage  │ │ app_usage_tracker  │   │
 │  │ clipboard  │ │ butler_shortcut    │   │
 │  │ obsidian   │ │ obsidian_export    │   │
-│  │ voice      │ │ voice_recorder     │   │
+│  │ voice/ocr  │ │ voice_recorder     │   │
 │  │ screenshot │ │ voice_transcribe   │   │
+│  │ secrets    │ │ ocr/secrets        │   │
 │  └───────────┘ └────────────────────┘   │
-│  Plugins: sql · global-shortcut · log   │
-│              SQLite (flowbox.db)         │
+│  Plugins: sql · shortcut · log · autostart│
+│       SQLite (flowbox.db) · Keychain     │
 ├─────────────────────────────────────────┤
 │           React + TypeScript            │
 │  ┌─────────┐ ┌──────────┐ ┌──────────┐ │
 │  │  Pages  │ │  Hooks   │ │ Services │ │
-│  │10 pages │ │ 11 hooks │ │ 19 svc   │ │
+│  │10 pages │ │ 12 hooks │ │ 22 svc   │ │
 │  └─────────┘ └──────────┘ └──────────┘ │
 │  Vite · TailwindCSS · Recharts · Zustand│
 └─────────────────────────────────────────┘
@@ -116,7 +116,7 @@
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| **桌面壳** | Tauri v2 + Rust | 窗口管理、全局快捷键、原生录音/截图、后台线程 |
+| **桌面壳** | Tauri v2 + Rust | 窗口管理、全局快捷键、原生录音/截图、macOS Vision OCR、后台线程 |
 | **数据库** | SQLite (tauri-plugin-sql) | 13 张核心表（含 `trending_repos`、`butler_skills`、`item_links`），本地优先 |
 | **前端框架** | React 19 + TypeScript | 页面组件 + Hooks 架构 |
 | **样式** | TailwindCSS v4 + @tailwindcss/typography | Material Design 3 色彩体系 |
@@ -132,7 +132,7 @@
 
 ### 环境要求
 
-- **Node.js** ≥ 18
+- **Node.js** ≥ 20.19
 - **Rust** ≥ 1.77（通过 [rustup](https://rustup.rs) 安装）
 - **Xcode Command Line Tools**（macOS）
 
@@ -203,7 +203,7 @@ FlowBox/
 │   │       ├── DatePicker.tsx       # 日期选择器
 │   │       ├── Select.tsx           # 下拉选择
 │   │       └── ToastContainer.tsx   # Toast 通知
-│   ├── hooks/                    # 自定义 Hooks（11 个）
+│   ├── hooks/                    # 自定义 Hooks（12 个）
 │   │   ├── useDatabase.ts        # DB 初始化（含 Skills 种子）
 │   │   ├── useTodos.ts           # 待办 CRUD
 │   │   ├── useIdeas.ts           # 灵感 CRUD
@@ -214,8 +214,9 @@ FlowBox/
 │   │   ├── useClipboardWatcher.ts # 剪贴板监听
 │   │   ├── useAppUsageTracker.ts # 应用追踪事件监听
 │   │   ├── useDailyReview.ts     # 每日回顾数据聚合
+│   │   ├── useDebounce.ts        # 通用防抖
 │   │   └── useScreenshotOcr.ts   # 截图 OCR 流程
-│   ├── services/                 # 数据服务层（19 个）
+│   ├── services/                 # 数据服务层（22 个）
 │   │   ├── aiService.ts          # AI 引擎（对话 / 转写 / 摘要 / Vision）
 │   │   ├── butlerService.ts      # Butler 指令编排（Skill 驱动）
 │   │   ├── butlerDbService.ts    # Butler 对话 SQLite 持久化
@@ -234,6 +235,9 @@ FlowBox/
 │   │   ├── linkService.ts        # 跨模块关联（item_links）
 │   │   ├── dailyReviewService.ts # AI 每日回顾
 │   │   ├── screenshotOcrService.ts # 截图 OCR
+│   │   ├── appInitializationService.ts # 主窗口初始化
+│   │   ├── backgroundSettingsService.ts # 后台设置同步
+│   │   ├── secretService.ts      # Keychain 凭据桥接
 │   │   └── database.ts           # SQLite 连接单例
 │   ├── lib/                      # 工具库
 │   │   ├── utils.ts              # 通用工具（cn 等）
@@ -246,29 +250,36 @@ FlowBox/
 ├── src-tauri/                    # Rust 后端
 │   ├── src/
 │   │   ├── lib.rs                # 主入口（插件注册、快捷键）
-│   │   ├── commands/             # IPC 命令（6 个）
+│   │   ├── commands/             # IPC 命令（8 个）
 │   │   │   ├── butler.rs         # AI Butler 窗口控制
 │   │   │   ├── app_usage.rs      # 应用追踪开关
 │   │   │   ├── clipboard.rs      # 剪贴板监听
 │   │   │   ├── obsidian.rs       # Obsidian vault 路径检测
 │   │   │   ├── voice.rs          # 录音启停 + 转写
-│   │   │   └── screenshot.rs     # 截图捕获（剪贴板→BMP）
-│   │   └── services/             # 后台服务（6 个）
+│   │   │   ├── screenshot.rs     # 截图捕获（剪贴板→BMP）
+│   │   │   ├── ocr.rs            # macOS Vision OCR
+│   │   │   └── secrets.rs        # macOS Keychain
+│   │   └── services/             # 后台服务（8 个）
 │   │       ├── clipboard_watcher.rs   # 剪贴板轮询
 │   │       ├── app_usage_tracker.rs   # 应用使用追踪
 │   │       ├── butler_shortcut.rs     # 全局快捷键管理
 │   │       ├── obsidian_export.rs     # Obsidian 文件导出
 │   │       ├── voice_recorder.rs      # 原生录音
-│   │       └── voice_transcribe.rs    # 火山引擎 ASR 转写
-│   ├── migrations/               # 数据库迁移（6 个）
+│   │       ├── voice_transcribe.rs    # 火山引擎 ASR 转写
+│   │       ├── ocr.rs                 # Vision 文字识别
+│   │       └── secrets.rs             # Keychain 读写
+│   ├── migrations/               # 数据库迁移（10 个）
 │   │   ├── 001_init.sql          # 核心表结构
 │   │   ├── 002_error_logs.sql    # 错误日志表
 │   │   ├── 003_butler_messages.sql # Butler 对话持久化表
 │   │   ├── 004_cross_link.sql    # 跨模块关联表
 │   │   ├── 005_butler_skills.sql # Butler 技能管理表
-│   │   └── 006_trending.sql      # Dev Trending 热门仓库缓存表
+│   │   ├── 006_trending.sql      # Dev Trending 热门仓库缓存表
+│   │   └── 007–010               # 番茄恢复、usage 去重、关联规范化与清理
 │   ├── capabilities/             # Tauri 安全能力声明
 │   └── tauri.conf.json           # 窗口 / CSP / 权限配置
+├── docs/                         # 架构与功能文档
+├── docs/ui_assets/               # UI 参考素材
 └── package.json
 ```
 
@@ -300,7 +311,9 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 
 ## 🔐 隐私设计
 
-- **Local-First**：所有数据存储在本地 SQLite，不上传任何服务器
+- **Local-First**：业务数据默认存储在本地 SQLite；仅在启用云端 AI / ASR 时发送完成请求所需的内容
+- **安全凭据**：AI 与 ASR 凭据（API Key、AppID、Token）存入 macOS Keychain；旧配置迁移成功后会删除 SQLite 中的明文
+- **开机自启动**：使用 Tauri 官方 autostart 插件，并以插件实际状态回写设置
 - **AI 可选**：AI 功能完全可关闭，不影响核心使用
 - **macOS Private API**：用于透明窗口（Butler），不影响功能安全性
 - **无遥测**：不收集任何用户行为数据
@@ -316,7 +329,7 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 - [x] 剪贴板复制反馈 + 待办"进行中"状态标识
 - [x] 暗色模式 UI 全面适配（Sidebar / 按钮 / 图标去底色）
 - [x] 跨模块智能关联 + 全局搜索（`Cmd+/`）
-- [x] 截图 OCR → 灵感 / 待办（AI Vision）
+- [x] 截图 OCR → 灵感 / 待办（OpenAI Vision / macOS Vision OCR）
 - [x] AI 每日回顾（数据聚合 + 流式总结）
 - [x] 剪贴板批量拼接 + Diff 对比
 - [x] Rust 原生录音 + 火山引擎 ASR 转写
