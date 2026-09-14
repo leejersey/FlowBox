@@ -15,9 +15,19 @@ test('feature routes use named-export lazy adapters', () => {
   }
 })
 
-test('one Suspense boundary wraps Routes with a loading fallback', () => {
+test('one Suspense boundary wraps only the lazy outlet below AppShell', () => {
   assert.equal(source.match(/<Suspense\b/g)?.length, 1)
-  assert.match(source, /<Suspense fallback=\{<div[^>]*>加载中\.\.\.<\/div>\}>\s*<Routes>[\s\S]*<\/Routes>\s*<\/Suspense>/)
+  assert.match(source, /function SuspendedOutlet\(\)[\s\S]*<Suspense fallback=\{<div[^>]*>加载中\.\.\.<\/div>\}>\s*<Outlet \/>\s*<\/Suspense>/)
+  assert.doesNotMatch(source, /<Suspense[^>]*>\s*<Routes>/)
+
+  const lazyOutlet = source.match(
+    /<Route path="\/" element=\{<AppShell \/>\}>\s*<Route element=\{<SuspendedOutlet \/>\}>([\s\S]*?)<\/Route>\s*<\/Route>/,
+  )?.[1]
+  assert.ok(lazyOutlet, 'AppShell should stay outside the lazy outlet boundary')
+
+  for (const name of lazyRoutes) assert.match(lazyOutlet, new RegExp(`element=\\{<${name}Page \\/>\\}`))
+  assert.doesNotMatch(lazyOutlet, /ButlerPage/)
+  assert.match(source, /<\/Route>\s*<\/Route>[\s\S]*<Route path="\/butler" element=\{<ButlerPage \/>\} \/>/)
 })
 
 test('app shell, toast, and Butler stay synchronously loaded', () => {

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
 import { ButlerPage } from './pages/ButlerPage'
 import { useDatabase } from './hooks/useDatabase'
@@ -28,6 +28,14 @@ function MainWindowEffects() {
   return null
 }
 
+function SuspendedOutlet() {
+  return (
+    <Suspense fallback={<div style={{ padding: 20 }}>加载中...</div>}>
+      <Outlet />
+    </Suspense>
+  )
+}
+
 function App() {
   const { ready, error } = useDatabase()
   const initTheme = useThemeStore(state => state.init)
@@ -47,9 +55,9 @@ function App() {
   return (
     <BrowserRouter>
       {windowLabel === 'main' && <MainWindowEffects />}
-      <Suspense fallback={<div style={{ padding: 20 }}>加载中...</div>}>
-        <Routes>
-          <Route path="/" element={<AppShell />}>
+      <Routes>
+        <Route path="/" element={<AppShell />}>
+          <Route element={<SuspendedOutlet />}>
             <Route index element={<TodoPage />} />
             <Route path="idea" element={<IdeaPage />} />
             <Route path="pomodoro" element={<PomodoroPage />} />
@@ -60,10 +68,10 @@ function App() {
             <Route path="trending" element={<TrendingPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
-          {/* Butler 独立窗口路由 — 不包裹 AppShell */}
-          <Route path="/butler" element={<ButlerPage />} />
-        </Routes>
-      </Suspense>
+        </Route>
+        {/* Butler 独立窗口路由 — 不包裹 AppShell */}
+        <Route path="/butler" element={<ButlerPage />} />
+      </Routes>
       <ToastContainer />
     </BrowserRouter>
   )
