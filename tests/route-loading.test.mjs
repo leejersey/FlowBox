@@ -17,7 +17,7 @@ test('feature routes use named-export lazy adapters', () => {
 
 test('one Suspense boundary wraps only the lazy outlet below AppShell', () => {
   assert.equal(source.match(/<Suspense\b/g)?.length, 1)
-  assert.match(source, /function SuspendedOutlet\(\)[\s\S]*<Suspense fallback=\{<div[^>]*>加载中\.\.\.<\/div>\}>\s*<Outlet \/>\s*<\/Suspense>/)
+  assert.match(source, /function SuspendedOutlet\(\)[\s\S]*<Suspense fallback=\{<div[^>]*>加载中\.\.\.<\/div>\}>\s*<Outlet context=\{context\} \/>\s*<\/Suspense>/)
   assert.doesNotMatch(source, /<Suspense[^>]*>\s*<Routes>/)
 
   const lazyOutlet = source.match(
@@ -30,12 +30,19 @@ test('one Suspense boundary wraps only the lazy outlet below AppShell', () => {
   assert.match(source, /<\/Route>\s*<\/Route>[\s\S]*<Route path="\/butler" element=\{<ButlerPage \/>\} \/>/)
 })
 
+test('suspended outlet preserves the AppShell outlet context', () => {
+  assert.match(source, /import \{[^}]*useOutletContext[^}]*\} from 'react-router-dom'/)
+  assert.match(source, /import (?:type )?\{[^}]*AppShellOutletContext[^}]*\} from '\.\/components\/layout\/AppShell'/)
+  assert.match(source, /const context = useOutletContext<AppShellOutletContext>\(\)/)
+  assert.match(source, /<Outlet context=\{context\} \/>/)
+})
+
 test('app shell, toast, and Butler stay synchronously loaded', () => {
   for (const [name, path] of [
     ['AppShell', './components/layout/AppShell'],
     ['ToastContainer', './components/ui/ToastContainer'],
     ['ButlerPage', './pages/ButlerPage'],
   ]) {
-    assert.match(source, new RegExp(`import \\{ ${name} \\} from '${path}'`))
+    assert.match(source, new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '${path}'`))
   }
 })

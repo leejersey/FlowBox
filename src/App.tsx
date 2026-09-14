@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
-import { AppShell } from './components/layout/AppShell'
+import { BrowserRouter, Routes, Route, Outlet, useOutletContext } from 'react-router-dom'
+import { AppShell, type AppShellOutletContext } from './components/layout/AppShell'
 import { ButlerPage } from './pages/ButlerPage'
 import { useDatabase } from './hooks/useDatabase'
 import { ToastContainer } from './components/ui/ToastContainer'
@@ -29,9 +29,11 @@ function MainWindowEffects() {
 }
 
 function SuspendedOutlet() {
+  const context = useOutletContext<AppShellOutletContext>()
+
   return (
     <Suspense fallback={<div style={{ padding: 20 }}>加载中...</div>}>
-      <Outlet />
+      <Outlet context={context} />
     </Suspense>
   )
 }
