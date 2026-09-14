@@ -44,6 +44,7 @@ export function LinkPanel({ type, id, onClose }: LinkPanelProps) {
   const [error, setError] = useState('')
   const mountedRef = useRef(false)
   const mutationIdRef = useRef(0)
+  const mutationQueueRef = useRef(Promise.resolve())
 
   useEffect(() => {
     mountedRef.current = true
@@ -85,32 +86,29 @@ export function LinkPanel({ type, id, onClose }: LinkPanelProps) {
     }
   }, [query, type, id])
 
-  const add = async (target: SearchResult) => {
-    const mutationId = ++mutationIdRef.current
-    try {
-      setError('')
-      await linkCreate(type, id, target.type, target.id)
-      const items = await refresh()
-      if (mountedRef.current && mutationId === mutationIdRef.current) setLinks(items)
-    } catch (err) {
-      if (mountedRef.current && mutationId === mutationIdRef.current) {
-        setError(err instanceof Error ? err.message : '关联创建失败')
+  const mutate = (operation: () => Promise<unknown>, fallbackError: string) => {
+    mutationIdRef.current += 1
+    const run = mutationQueueRef.current.then(async () => {
+      try {
+        await operation()
+        const items = await refresh()
+        if (mountedRef.current) {
+          setLinks(items)
+          setError('')
+        }
+      } catch (err) {
+        if (mountedRef.current) setError(err instanceof Error ? err.message : fallbackError)
       }
-    }
+    })
+    mutationQueueRef.current = run
   }
 
-  const remove = async (linkId: number) => {
-    const mutationId = ++mutationIdRef.current
-    try {
-      setError('')
-      await linkDelete(linkId)
-      const items = await refresh()
-      if (mountedRef.current && mutationId === mutationIdRef.current) setLinks(items)
-    } catch (err) {
-      if (mountedRef.current && mutationId === mutationIdRef.current) {
-        setError(err instanceof Error ? err.message : '关联删除失败')
-      }
-    }
+  const add = (target: SearchResult) => {
+    void mutate(() => linkCreate(type, id, target.type, target.id), '关联创建失败')
+  }
+
+  const remove = (linkId: number) => {
+    void mutate(() => linkDelete(linkId), '关联删除失败')
   }
 
   const open = (target: { type: LinkableType; id: number }) => {

@@ -28,13 +28,14 @@ test('VirtualList 持续观察可见行尺寸并在 ref 卸载时断开 observer
   assert.match(source, /observe=\{observeRow\}/)
 })
 
-test('LinkPanel 卸载和并发 mutation 均由 mounted 与 latest-wins 保护', async () => {
+test('LinkPanel 卸载保护状态写入并串行提交 mutation', async () => {
   const source = await readSource('../src/components/links/LinkPanel.tsx')
 
   assert.match(source, /mountedRef\s*=\s*useRef\(false\)/)
-  assert.match(source, /mutationIdRef\s*=\s*useRef\(0\)/)
-  assert.match(source, /mountedRef\.current = true[\s\S]*?mountedRef\.current = false[\s\S]*?mutationIdRef\.current \+= 1/)
-  assert.equal(source.match(/const mutationId = \+\+mutationIdRef\.current/g)?.length, 3)
-  assert.equal(source.match(/mountedRef\.current && mutationId === mutationIdRef\.current/g)?.length, 6)
+  assert.match(source, /mutationQueueRef\s*=\s*useRef\(Promise\.resolve\(\)\)/)
+  assert.match(source, /mutationQueueRef\.current\.then/)
+  assert.match(source, /mutationQueueRef\.current = run/)
+  assert.equal(source.match(/void mutate\(/g)?.length, 2)
+  assert.match(source, /if \(mountedRef\.current\) \{[\s\S]*?setLinks\(items\)/)
   assert.doesNotMatch(source, /setLinks\(await refresh\(\)\)/)
 })
