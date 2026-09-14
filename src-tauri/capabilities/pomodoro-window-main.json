@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "pomodoro-window-main",
+  "description": "allows the main window to enter and leave Pomodoro mini mode",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:window:allow-set-size",
+    "core:window:allow-set-always-on-top"
+  ]
+}
