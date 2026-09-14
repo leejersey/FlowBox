@@ -4,7 +4,7 @@
  * 管理截图捕获 → AI 识别 → 用户选择 → 保存 的完整状态机
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import * as screenshotOcrService from '@/services/screenshotOcrService'
 import type { OcrResult } from '@/services/screenshotOcrService'
 import { showToast } from '@/store/useToastStore'
@@ -41,21 +41,26 @@ export function useScreenshotOcr(): UseScreenshotOcrReturn {
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const requestIdRef = useRef(0)
 
   // 从剪贴板捕获截图并识别
   const startCapture = useCallback(async () => {
+    const requestId = ++requestIdRef.current
     setError(null)
     setStep('capturing')
     setIsOpen(true)
 
     try {
       const imagePath = await screenshotOcrService.captureFromClipboard()
+      if (requestId !== requestIdRef.current) return
       setStep('recognizing')
 
       const result = await screenshotOcrService.recognizeScreenshot(imagePath)
+      if (requestId !== requestIdRef.current) return
       setOcrResult(result)
       setStep('result')
     } catch (err) {
+      if (requestId !== requestIdRef.current) return
       const msg = err instanceof Error ? err.message : '截图识别失败'
       setError(msg)
       setStep('idle')
@@ -65,15 +70,18 @@ export function useScreenshotOcr(): UseScreenshotOcrReturn {
 
   // 从已有图片路径开始识别
   const startFromImage = useCallback(async (imagePath: string) => {
+    const requestId = ++requestIdRef.current
     setError(null)
     setStep('recognizing')
     setIsOpen(true)
 
     try {
       const result = await screenshotOcrService.recognizeScreenshot(imagePath)
+      if (requestId !== requestIdRef.current) return
       setOcrResult(result)
       setStep('result')
     } catch (err) {
+      if (requestId !== requestIdRef.current) return
       const msg = err instanceof Error ? err.message : '图片识别失败'
       setError(msg)
       setStep('idle')
@@ -127,6 +135,7 @@ export function useScreenshotOcr(): UseScreenshotOcrReturn {
 
   // 关闭面板
   const close = useCallback(() => {
+    requestIdRef.current += 1
     setIsOpen(false)
     setStep('idle')
     setOcrResult(null)
@@ -152,7 +161,10 @@ export function useScreenshotOcr(): UseScreenshotOcrReturn {
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      requestIdRef.current += 1
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [startCapture])
 
   return {

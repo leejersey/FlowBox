@@ -10,13 +10,14 @@ export interface NormalizedOcrResult {
 export const ocrRoute = (provider: string): OcrRoute =>
   provider === 'openai' ? 'vision' : 'local-text'
 
-export function normalizeOcrResult(result: string): NormalizedOcrResult {
+export function normalizeOcrResult(result: string, fallbackRawText?: string): NormalizedOcrResult {
   const match = result.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const fallback = fallbackRawText?.trim() ? fallbackRawText : result
   try {
     const parsed = JSON.parse(match?.[1].trim() ?? result) as Partial<NormalizedOcrResult>
     const rawText = typeof parsed.rawText === 'string' && parsed.rawText.trim()
       ? parsed.rawText
-      : result
+      : fallback
     return {
       rawText,
       suggestedTitle: typeof parsed.suggestedTitle === 'string' && parsed.suggestedTitle.trim()
@@ -29,8 +30,8 @@ export function normalizeOcrResult(result: string): NormalizedOcrResult {
     }
   } catch {
     return {
-      rawText: result,
-      suggestedTitle: result.slice(0, 20).replace(/\n/g, ' '),
+      rawText: fallback,
+      suggestedTitle: fallback.slice(0, 20).replace(/\n/g, ' '),
       suggestedTags: [],
       suggestedType: 'idea',
     }

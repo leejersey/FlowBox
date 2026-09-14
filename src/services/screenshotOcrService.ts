@@ -64,6 +64,7 @@ const OCR_USER_PROMPT = '请识别这张截图中的文字内容，并按要求�
 export async function recognizeScreenshot(imagePath: string): Promise<OcrResult> {
   const provider = await aiService.getAiProvider()
   let result: string
+  let fallbackRawText: string | undefined
 
   if (ocrRoute(provider) === 'vision') {
     result = await aiService.chatWithVision({
@@ -75,6 +76,7 @@ export async function recognizeScreenshot(imagePath: string): Promise<OcrResult>
   } else {
     const recognizedText = await invoke<string>('ocr_recognize_text', { imagePath })
     if (!recognizedText.trim()) throw new Error('没有文本')
+    fallbackRawText = recognizedText
     try {
       result = await aiService.chatWithAssistant({
         input: recognizedText,
@@ -86,7 +88,7 @@ export async function recognizeScreenshot(imagePath: string): Promise<OcrResult>
     }
   }
 
-  return { ...normalizeOcrResult(result), imagePath }
+  return { ...normalizeOcrResult(result, fallbackRawText), imagePath }
 }
 
 // ─── 保存为灵感/待办 ──────────────────────────────
