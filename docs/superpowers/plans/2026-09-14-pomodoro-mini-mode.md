@@ -84,19 +84,27 @@ Use a fake adapter with call logging to cover:
 - exit restores geometry and flags, maximizing last when originally maximized;
 - every injected forward failure triggers best-effort reverse restoration;
 - rollback failures preserve the original error and include rollback context;
-- operations queued through the exported serializer do not interleave.
+- entering uses logical `340 × 160`, while snapshot restoration uses the exact physical size and position;
+- two queued enter intents are idempotent and never replace the original normal-window snapshot;
+- an exit/force-exit intent arriving during entry wins, leaving the final native/UI mode normal.
 
-The adapter interface should contain only methods needed by these tests:
+The adapter interface must make units explicit so Retina scaling cannot corrupt restoration:
 
 ```ts
+export interface PhysicalGeometry {
+  size: { width: number; height: number }
+  position: { x: number; y: number }
+}
+
 export interface MiniWindowAdapter {
-  innerSize(): Promise<{ width: number; height: number }>
-  outerPosition(): Promise<{ x: number; y: number }>
+  innerPhysicalSize(): Promise<PhysicalGeometry['size']>
+  outerPhysicalPosition(): Promise<PhysicalGeometry['position']>
   isResizable(): Promise<boolean>
   isAlwaysOnTop(): Promise<boolean>
   isMaximized(): Promise<boolean>
-  setSize(width: number, height: number): Promise<void>
-  setPosition(x: number, y: number): Promise<void>
+  setLogicalSize(width: number, height: number): Promise<void>
+  setPhysicalSize(size: PhysicalGeometry['size']): Promise<void>
+  setPhysicalPosition(position: PhysicalGeometry['position']): Promise<void>
   setResizable(value: boolean): Promise<void>
   setAlwaysOnTop(value: boolean): Promise<void>
   maximize(): Promise<void>
@@ -112,7 +120,7 @@ Expected: FAIL because the transaction module and four additional permissions do
 
 - [ ] **Step 3: Implement the minimum transaction module**
 
-Add `captureWindowSnapshot`, `enterMiniWindow`, `restoreWindow`, and a one-promise serializer. Keep snapshot and rollback logic in this pure module; do not import React. The Tauri adapter will convert physical size/position snapshots back through `PhysicalSize` and `PhysicalPosition`, avoiding display-scale loss.
+Add `captureWindowSnapshot`, `enterMiniWindow`, `restoreWindow`, and a serialized controller with internal native mode (`normal | entering | mini | exiting`), original snapshot, and monotonically increasing desired-mode generation. Keep snapshot and rollback logic in this pure module; do not import React. Queue execution must re-check the latest desired mode when it starts: duplicate enter is a no-op once entering/mini and must not capture again; exit requested during entry runs immediately after entry (or its rollback) and ends normal. The Tauri adapter uses `LogicalSize(340, 160)` only for entry, and restores snapshots with `PhysicalSize` / `PhysicalPosition`, preserving display scale exactly.
 
 Extend the main-only capability with:
 
@@ -153,7 +161,8 @@ Assert that:
 - `AppShellOutletContext` retains `triggerReview` and adds `isMini`, `enterMini`, and `exitMini`;
 - `AppShell` conditionally omits TitleBar, Sidebar, StatusBar, Butler, search, daily review, and OCR while Mini is active;
 - the Mini content container has no normal top padding or page padding;
-- `AppShell` watches `location.pathname` and force-exits Mini when it is not `/pomodoro`;
+- `AppShell` watches `location.pathname` and force-exits Mini when it is not `/pomodoro`, including when navigation happens while entry is pending;
+- duplicate rapid enter clicks do not capture Mini geometry as the normal snapshot;
 - `SuspendedOutlet` still forwards the complete typed context;
 - `PomodoroPage` no longer directly calls `getCurrentWindow`, `setSize`, or `setAlwaysOnTop` and instead consumes outlet actions;
 - Mini task name derives from `state.related_todo_id`;
@@ -167,7 +176,7 @@ Expected: FAIL because AppShell does not own Mini mode and its chrome remains re
 
 - [ ] **Step 3: Implement AppShell ownership**
 
-Create the Tauri adapter in `AppShell` from `getCurrentWindow()`. Maintain `isMini`, one snapshot ref, mounted ref, and serialized enter/exit callbacks. Commit `isMini=true` only after successful native entry. On manual exit, keep Mini UI if restore fails so the user can retry; on route/unmount forced cleanup, reveal the shell first and report restoration failure.
+Create the unit-explicit Tauri adapter in `AppShell` from `getCurrentWindow()`. Hold one controller ref whose desired/native mode and original snapshot live outside React render closures, plus mounted and current-path refs. `enterMini` requests desired mode `mini`; after native entry resolves, commit `isMini=true` only if the latest intent is still Mini and the route is still `/pomodoro`. A duplicate request while entering/mini is idempotent. Route change or unmount always requests desired mode `normal`; if it arrives during entry, the controller restores immediately after entry and stale completion cannot commit Mini UI. On manual exit, keep Mini UI if restore fails so the user can retry; on route/unmount forced cleanup, reveal the shell first and report restoration failure.
 
 Render one compact branch around the outlet:
 
