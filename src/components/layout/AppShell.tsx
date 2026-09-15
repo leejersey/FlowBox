@@ -14,6 +14,7 @@ import { useDailyReview } from '@/hooks/useDailyReview'
 import { useScreenshotOcr } from '@/hooks/useScreenshotOcr'
 import * as settingsService from '@/services/settingsService'
 import { showToast } from '@/store/useToastStore'
+import { supportsNativeSettingsMenu } from '@/services/settingsNavigationService'
 
 const DEFAULT_BUTLER_SHORTCUT = 'Shift+Space'
 const isTauriApp = isTauri()
@@ -150,7 +151,7 @@ export function AppShell() {
         else if (e.key === '4') { e.preventDefault(); navigate('/clipboard') }
         else if (e.key === '5') { e.preventDefault(); navigate('/voice') }
         else if (e.key === '8') { e.preventDefault(); navigate('/stats') }
-        else if (e.key === ',') { e.preventDefault(); navigate('/settings') }
+        else if (e.key === ',' && !supportsNativeSettingsMenu()) { e.preventDefault(); navigate('/settings') }
         else if (e.key.toLowerCase() === 'n') {
           // ⌘N 广播全局新建捕获事件
           e.preventDefault()

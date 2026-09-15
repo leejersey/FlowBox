@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Outlet, useOutletContext } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, useOutletContext, useNavigate } from 'react-router-dom'
 import { AppShell, type AppShellOutletContext } from './components/layout/AppShell'
 import { ButlerPage } from './pages/ButlerPage'
 import { useDatabase } from './hooks/useDatabase'
@@ -9,6 +9,7 @@ import { useClipboardPersistence } from './hooks/useClipboardWatcher'
 import { lazy, Suspense, useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { isTauri } from '@tauri-apps/api/core'
+import { settingsNavigation } from './services/settingsNavigationService'
 
 const TodoPage = lazy(() => import('./pages/TodoPage').then(module => ({ default: module.TodoPage })))
 const IdeaPage = lazy(() => import('./pages/IdeaPage').then(module => ({ default: module.IdeaPage })))
@@ -21,6 +22,12 @@ const TrendingPage = lazy(() => import('./pages/TrendingPage').then(module => ({
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(module => ({ default: module.SettingsPage })))
 
 const windowLabel = isTauri() ? getCurrentWindow().label : 'main'
+
+function SettingsNavigationBridge() {
+  const navigate = useNavigate()
+  useEffect(() => settingsNavigation.bind(() => navigate('/settings')), [navigate])
+  return null
+}
 
 function MainWindowEffects() {
   useClipboardPersistence()
@@ -56,6 +63,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      {windowLabel === 'main' && <SettingsNavigationBridge />}
       {windowLabel === 'main' && <MainWindowEffects />}
       <Routes>
         <Route path="/" element={<AppShell />}>
