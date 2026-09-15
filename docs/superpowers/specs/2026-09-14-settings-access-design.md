@@ -17,26 +17,28 @@
 ### macOS 原生菜单
 
 - 在应用菜单中增加标准“设置…”菜单项，快捷键为 `CmdOrCtrl+,`。
-- 点击后显示、取消最小化并聚焦 `main` 窗口，再向前端发送单一导航事件。
-- `AppShell` 监听该事件并调用现有 React Router `navigate('/settings')`。
+- 菜单项初始禁用。main webview 在进程级导航监听注册成功后调用一个固定的 readiness command 启用它，避免冷启动或数据库初始化期间丢失点击。
+- 点击后显示、取消最小化并聚焦 `main` 窗口，再向 main webview 发送单一导航事件。
+- 进程级监听在 React 路由尚未就绪时只缓存一次 pending 请求；Router 挂载后由一个轻量桥接组件消费请求并调用 `navigate('/settings')`。监听不随 `AppShell` 或 StrictMode 重挂载，避免 cleanup/setup 间隙。
 - 若当前处于 Pomodoro Mini 模式，现有离开 `/pomodoro` 的强制恢复流程负责还原窗口；菜单处理不复制 Mini 清理逻辑。
-- Butler 窗口触发菜单时同样打开并聚焦主窗口的设置页。
+- Butler 窗口触发菜单时同样打开并聚焦主窗口的设置页；Butler webview 不注册监听或启用菜单。
 
 ## 生命周期与错误
 
-- 前端事件监听器仅由 `AppShell` 注册，并在卸载时解除；异步监听注册晚到时也必须安全清理。
+- 前端进程级监听仅在 main webview 初始化一次；Router 桥接的 handler 注册和卸载不得销毁底层监听。开发热重载时 readiness 可重复调用且幂等。
+- readiness command 仅允许 `main` 窗口启用菜单项。
 - Rust 菜单事件只处理固定设置菜单 ID，其他系统菜单事件不受影响。
 - 找不到主窗口时记录错误，不创建重复主窗口。
 - 菜单安装失败应使应用启动明确失败，而不是静默缺少入口。
 
 ## 边界
 
-复用现有 `/settings` 路由、`Cmd+,` 前端快捷键和设置页面。不开新窗口、不新增 deep link、store 或 IPC command，不改变设置内容。
+复用现有 `/settings` 路由、`Cmd+,` 前端快捷键和设置页面。不开新窗口、不新增 deep link 或业务 store；仅新增启用原生菜单所需的一个 readiness command，不改变设置内容。
 
 ## 验收
 
 - Sidebar 中没有文字设置导航项，底部存在可访问的齿轮入口。
-- macOS 原生菜单存在“设置…”及 `CmdOrCtrl+,`。
+- macOS 原生菜单存在“设置…”及 `CmdOrCtrl+,`，监听 ready 前保持禁用。
 - 菜单事件能显示、取消最小化、聚焦主窗口并通知前端跳转。
-- AppShell 监听与清理导航事件，且不绕过 Mini 恢复。
+- 冷启动、延迟监听和 StrictMode 重放均不丢失已允许的设置导航；Router 桥接不绕过 Mini 恢复。
 - Node、TypeScript、触及文件 ESLint 和 Rust 检查通过；全仓既有失败单独记录。
