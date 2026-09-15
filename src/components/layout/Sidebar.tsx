@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   CheckSquare, Lightbulb, Timer, Clipboard, Mic, BarChart3,
-  Settings, FileType2, Search, Flame, ChevronLeft, ChevronRight
+  Settings, FileType2, Search, Flame, ChevronLeft, ChevronRight, type LucideIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
   path: string
-  icon: any
+  icon: LucideIcon
   label: string
   eng: string
 }
@@ -177,38 +177,17 @@ export function Sidebar({ onSearchClick }: SidebarProps) {
         {/* 设置 */}
         <NavLink
           to="/settings"
+          title="偏好设置 (⌘,)"
+          aria-label="打开偏好设置"
           className={({ isActive }) =>
             cn(
-              "rounded-xl transition-all duration-200 relative group flex items-center cursor-pointer",
-              collapsed
-                ? "p-2.5 justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/60"
-                : "px-3 py-2 gap-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest/50",
-              isActive && (
-                collapsed
-                  ? "text-primary bg-primary/15 shadow-xs"
-                  : "text-primary bg-primary/10 shadow-xs font-semibold"
-              )
+              'self-start p-2.5 rounded-xl text-on-surface-variant hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+              collapsed && 'self-center',
+              isActive && 'text-primary bg-primary/10',
             )
           }
         >
-          {({ isActive }) => (
-            <>
-              <Settings className="w-4 h-4 stroke-[2.2] shrink-0" />
-              {!collapsed && (
-                <span className="text-xs font-medium truncate flex-1 animate-fade-in">
-                  系统设置
-                </span>
-              )}
-              {isActive && collapsed && (
-                <div className="absolute -left-0.5 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-r-full shadow-xs" />
-              )}
-              {collapsed && (
-                <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-surface-container-highest text-on-surface text-xs font-semibold px-2.5 py-1 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-150 whitespace-nowrap pointer-events-none shadow-xl border border-outline-variant/30 z-50">
-                  系统设置
-                </span>
-              )}
-            </>
-          )}
+          <Settings className="w-4 h-4" aria-hidden="true" />
         </NavLink>
 
         {/* 展开 / 折叠切换控制 */}
