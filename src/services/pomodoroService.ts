@@ -35,12 +35,23 @@ let stopPromise: Promise<PomodoroSession> | null = null
 
 type TickCallback = (state: PomodoroState) => void
 type CompleteCallback = (session: PomodoroSession) => void
-let onTick: TickCallback | null = null
-let onComplete: CompleteCallback | null = null
+const tickCallbacks = new Set<TickCallback>()
+const completeCallbacks = new Set<CompleteCallback>()
 
 /** 注册回调 */
-export function pomodoroOnTick(cb: TickCallback) { onTick = cb }
-export function pomodoroOnComplete(cb: CompleteCallback) { onComplete = cb }
+export function pomodoroOnTick(cb: TickCallback) {
+  tickCallbacks.add(cb)
+  return () => {
+    tickCallbacks.delete(cb)
+  }
+}
+
+export function pomodoroOnComplete(cb: CompleteCallback) {
+  completeCallbacks.add(cb)
+  return () => {
+    completeCallbacks.delete(cb)
+  }
+}
 
 // ============ 7 个 Command ============
 
@@ -75,6 +86,7 @@ export async function pomodoroStart(payload: StartPomodoroPayload): Promise<Pomo
 
   // 启动每秒 tick
   timerInterval = setInterval(() => tick(), 1000)
+  notifyTick()
 
   return {
     id: currentSessionId,
@@ -101,6 +113,7 @@ export function pomodoroPause(): PomodoroState {
   }
   pausedAt = Date.now()
   timerState = { ...timerState, is_running: false }
+  notifyTick()
   return { ...timerState }
 }
 
@@ -115,6 +128,7 @@ export function pomodoroResume(): PomodoroState {
   pausedAt = null
   timerState = { ...timerState, is_running: true }
   timerInterval = setInterval(() => tick(), 1000)
+  notifyTick()
   return { ...timerState }
 }
 
@@ -179,6 +193,7 @@ async function stopCurrentPomodoro(interrupted: boolean): Promise<PomodoroSessio
     total_seconds: 0,
     related_todo_id: null,
   }
+  notifyTick()
 
   return session
 }
@@ -278,13 +293,25 @@ function tick() {
 
   refreshElapsed()
 
-  onTick?.({ ...timerState })
+  notifyTick()
 
   // 自然结束
   if (timerState.elapsed_seconds >= timerState.total_seconds) {
     pomodoroStop(false).then(session => {
-      onComplete?.(session)
+      notifyComplete(session)
     })
+  }
+}
+
+function notifyTick() {
+  for (const cb of [...tickCallbacks]) {
+    cb({ ...timerState })
+  }
+}
+
+function notifyComplete(session: PomodoroSession) {
+  for (const cb of [...completeCallbacks]) {
+    cb({ ...session })
   }
 }
 

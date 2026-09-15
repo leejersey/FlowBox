@@ -17,7 +17,7 @@ export function StatusBar() {
 
   useEffect(() => {
     // 订阅番茄钟状态更新
-    pomodoroOnTick((state) => {
+    return pomodoroOnTick((state) => {
       setPomodoroState(state)
     })
   }, [])
