@@ -1,17 +1,16 @@
-import { useState, useEffect, useCallback, memo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
   Play, Pause, Square, SkipForward, ChevronRight, ListChecks,
   Minimize2, Maximize2, Sparkles, X
 } from 'lucide-react'
 import { isTauri } from '@tauri-apps/api/core'
-import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
+import type { AppShellOutletContext } from '@/components/layout/AppShell'
 import { cn } from '@/lib/utils'
 import { Select } from '@/components/ui/Select'
 import * as pomodoroService from '@/services/pomodoroService'
 import { useTodos } from '@/hooks/useTodos'
 import { playPomodoroDoneSound } from '@/lib/soundEffects'
-import { showToast } from '@/store/useToastStore'
 import type { PomodoroType, PomodoroState, PomodoroSession } from '@/types/pomodoro'
 import { localDayBounds } from '@/lib/localDate'
 
@@ -29,30 +28,19 @@ function formatTime(totalSeconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
 
-/** 隔离高频 1Hz Tick 的独立表盘组件 */
+/** 普通/禅模式表盘消费页面 owner 的共享计时状态。 */
 const PomodoroDial = memo(function PomodoroDial({
   configMinutes,
-  onSessionComplete,
+  state,
 }: {
   configMinutes: number
-  onSessionComplete: () => void
+  state: PomodoroState
 }) {
-  const [state, setState] = useState<PomodoroState>(pomodoroService.pomodoroGetState())
-
-  useEffect(() => {
-    pomodoroService.pomodoroOnTick((s) => setState({ ...s }))
-    pomodoroService.pomodoroOnComplete(() => {
-      setState(pomodoroService.pomodoroGetState())
-      playPomodoroDoneSound()
-      onSessionComplete()
-    })
-  }, [onSessionComplete])
-
   const remaining = Math.max(0, state.total_seconds - state.elapsed_seconds)
   const progress = state.total_seconds > 0 ? state.elapsed_seconds / state.total_seconds : 0
   const circumference = 2 * Math.PI * 150
   const dashoffset = circumference * (1 - progress)
-  const isActive = state.is_running || state.elapsed_seconds > 0
+  const isActive = state.total_seconds > 0
 
   return (
     <div className="relative w-64 h-64 lg:w-80 lg:h-80 flex flex-col items-center justify-center shrink-0">
@@ -90,17 +78,18 @@ const PomodoroDial = memo(function PomodoroDial({
 
 export function PomodoroPage() {
   const navigate = useNavigate()
+  const { isMini, enterMini, exitMini } = useOutletContext<AppShellOutletContext>()
   const { todos } = useTodos()
   const [selectedType, setSelectedType] = useState<PomodoroType>('focus')
   const [selectedTodoId, setSelectedTodoId] = useState<number | null>(null)
   const [sessions, setSessions] = useState<PomodoroSession[]>([])
   const [todayStats, setTodayStats] = useState({ count: 0, minutes: 0, rate: 0 })
   const [state, setState] = useState<PomodoroState>(pomodoroService.pomodoroGetState())
-  const [isMiniWindow, setIsMiniWindow] = useState(false)
+  const mountedRef = useRef(false)
   const [isZenMode, setIsZenMode] = useState(false)
 
   const config = typeConfigs.find(c => c.type === selectedType) ?? typeConfigs[0]
-  const isActive = state.is_running || state.elapsed_seconds > 0
+  const isActive = state.total_seconds > 0
   const activeTodos = todos.filter(t => t.status !== 'done')
 
   const loadData = useCallback(async () => {
@@ -110,30 +99,29 @@ export function PomodoroPage() {
       pomodoroService.pomodoroListSessions({ date_from: startIso, date_to: endIso }),
       pomodoroService.pomodoroStats(startIso, endIso),
     ])
+    if (!mountedRef.current) return
     const rate = stats.session_count > 0 ? Math.round((stats.completed_count / stats.session_count) * 100) : 0
     setSessions(list)
     setTodayStats({ count: stats.completed_count, minutes: stats.total_focus_minutes, rate })
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      if (!isTauriApp) return
-      try {
-        const { startIso, endIso } = localDayBounds()
-        const [list, stats] = await Promise.all([
-          pomodoroService.pomodoroListSessions({ date_from: startIso, date_to: endIso }),
-          pomodoroService.pomodoroStats(startIso, endIso),
-        ])
-        if (cancelled) return
-        const rate = stats.session_count > 0 ? Math.round((stats.completed_count / stats.session_count) * 100) : 0
-        setSessions(list)
-        setTodayStats({ count: stats.completed_count, minutes: stats.total_focus_minutes, rate })
-      } catch {}
-    })()
-
-    return () => { cancelled = true }
-  }, [])
+    mountedRef.current = true
+    const refreshHistory = () => { void loadData().catch(() => {
+      // History is non-critical; unavailable data must not interrupt timer controls.
+    }) }
+    const unsubscribeTick = pomodoroService.pomodoroOnTick(s => setState(s))
+    const unsubscribeComplete = pomodoroService.pomodoroOnComplete(() => {
+      playPomodoroDoneSound()
+      refreshHistory()
+    })
+    refreshHistory()
+    return () => {
+      mountedRef.current = false
+      unsubscribeTick()
+      unsubscribeComplete()
+    }
+  }, [loadData])
 
   const handleStart = async () => {
     await pomodoroService.pomodoroStart({
@@ -141,7 +129,6 @@ export function PomodoroPage() {
       duration_minutes: config.minutes,
       related_todo_id: selectedTodoId || undefined
     })
-    setState(pomodoroService.pomodoroGetState())
   }
 
   const handlePauseResume = () => {
@@ -150,47 +137,22 @@ export function PomodoroPage() {
     } else {
       pomodoroService.pomodoroResume()
     }
-    setState(pomodoroService.pomodoroGetState())
   }
 
   const handleStop = async () => {
     await pomodoroService.pomodoroStop(true)
-    setState(pomodoroService.pomodoroGetState())
     await loadData()
   }
 
   const handleSkip = async () => {
     await pomodoroService.pomodoroStop(false)
-    setState(pomodoroService.pomodoroGetState())
     await loadData()
   }
 
-  // 迷你悬浮窗模式切换
-  const toggleMiniWindow = async () => {
-    if (!isTauriApp) {
-      showToast('浏览器预览模式不支持窗口尺寸收缩', 'info')
-      return
-    }
-    try {
-      const win = getCurrentWindow()
-      if (!isMiniWindow) {
-        await win.setSize(new LogicalSize(340, 160))
-        await win.setAlwaysOnTop(true)
-        setIsMiniWindow(true)
-      } else {
-        await win.setSize(new LogicalSize(1020, 720))
-        await win.setAlwaysOnTop(false)
-        setIsMiniWindow(false)
-      }
-    } catch (err) {
-      showToast(`切换小窗失败: ${String(err)}`, 'error')
-    }
-  }
-
   // 迷你小窗特化视图
-  if (isMiniWindow) {
+  if (isMini) {
     const remaining = Math.max(0, state.total_seconds - state.elapsed_seconds)
-    const taskName = activeTodos.find(t => t.id === selectedTodoId)?.title || '心流专注'
+    const taskName = todos.find(t => t.id === state.related_todo_id)?.title || '心流专注'
 
     return (
       <div className="h-screen w-screen bg-surface p-4 flex items-center justify-between select-none" data-tauri-drag-region>
@@ -216,7 +178,7 @@ export function PomodoroPage() {
             {state.is_running ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
           </button>
           <button
-            onClick={toggleMiniWindow}
+            onClick={exitMini}
             className="p-2.5 rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-all cursor-pointer"
             title="还原大窗口"
           >
@@ -251,7 +213,7 @@ export function PomodoroPage() {
 
           <PomodoroDial
             configMinutes={config.minutes}
-            onSessionComplete={loadData}
+            state={state}
           />
 
           <div className="flex items-center gap-6 mt-10">
@@ -302,7 +264,7 @@ export function PomodoroPage() {
               </button>
 
               <button
-                onClick={toggleMiniWindow}
+                onClick={enterMini}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-bold transition-all cursor-pointer"
                 title="缩小为置顶迷你胶囊窗"
               >
@@ -315,7 +277,7 @@ export function PomodoroPage() {
           {/* 独立表盘组件 */}
           <PomodoroDial
             configMinutes={config.minutes}
-            onSessionComplete={loadData}
+            state={state}
           />
 
           {/* Controls */}

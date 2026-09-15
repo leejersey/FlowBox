@@ -26,7 +26,7 @@ test('AppShell 是每日回顾的唯一 owner，并向 Settings 暴露 trigger',
   ])
 
   assert.equal(sources.join('\n').match(/=\s*useDailyReview\(\)/g)?.length, 1)
-  assert.match(appShell, /<Outlet\s+context=\{\{\s*triggerReview:\s*dailyReview\.triggerReview\s*\}\}\s*\/>/)
+  assert.match(appShell, /<Outlet\s+context=\{\{\s*triggerReview:\s*dailyReview\.triggerReview\s*(?:,[^{}]*)?\}\}\s*\/>/)
   assert.match(settings, /useOutletContext<[^>]*>/)
   assert.match(settings, /await triggerReview\(\)/)
   assert.doesNotMatch(settings, /useDailyReview/)
