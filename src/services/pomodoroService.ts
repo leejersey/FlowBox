@@ -15,6 +15,7 @@ import type {
 } from '../types/pomodoro'
 import { localDateKey } from '../lib/localDate'
 import { finishPomodoroFromElapsed, RECOVER_RUNNING_SESSIONS_SQL } from '../lib/pomodoroSession'
+import { notifySubscribers } from '../lib/notifySubscribers'
 
 // ============ 前端内存状态机 ============
 
@@ -304,15 +305,11 @@ function tick() {
 }
 
 function notifyTick() {
-  for (const cb of [...tickCallbacks]) {
-    cb({ ...timerState })
-  }
+  notifySubscribers(tickCallbacks, () => ({ ...timerState }))
 }
 
 function notifyComplete(session: PomodoroSession) {
-  for (const cb of [...completeCallbacks]) {
-    cb({ ...session })
-  }
+  notifySubscribers(completeCallbacks, () => ({ ...session }))
 }
 
 function refreshElapsed() {

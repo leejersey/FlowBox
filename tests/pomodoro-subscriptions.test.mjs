@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { notifySubscribers } from '../src/lib/notifySubscribers.ts'
 
 const [service, statusBar] = await Promise.all([
   readFile(new URL('../src/services/pomodoroService.ts', import.meta.url), 'utf8'),
@@ -15,6 +16,24 @@ function bodyBetween(start, end) {
   return service.slice(from, to)
 }
 
+test('订阅者抛错不阻断后续订阅者且通知不抛错', () => {
+  const received = []
+  const errors = []
+  const originalError = console.error
+  console.error = (...args) => errors.push(args)
+  try {
+    assert.doesNotThrow(() => notifySubscribers(new Set([
+      () => { throw new Error('boom') },
+      value => received.push(value),
+    ]), () => ({ elapsed_seconds: 1 })))
+  } finally {
+    console.error = originalError
+  }
+
+  assert.deepEqual(received, [{ elapsed_seconds: 1 }])
+  assert.equal(errors.length, 1)
+})
+
 test('tick 和 complete 注册为可解订的多订阅者', () => {
   assert.match(service, /const tickCallbacks = new Set<TickCallback>\(\)/)
   assert.match(service, /const completeCallbacks = new Set<CompleteCallback>\(\)/)
@@ -23,8 +42,8 @@ test('tick 和 complete 注册为可解订的多订阅者', () => {
 })
 
 test('通知遍历订阅者快照且每个 tick 回调获得独立 state 副本', () => {
-  assert.match(service, /for \(const cb of \[\.\.\.tickCallbacks\]\)\s*\{?\s*cb\(\{ \.\.\.timerState \}\)/)
-  assert.match(service, /for \(const cb of \[\.\.\.completeCallbacks\]\)/)
+  assert.match(service, /notifySubscribers\(tickCallbacks, \(\) => \(\{ \.\.\.timerState \}\)\)/)
+  assert.match(service, /notifySubscribers\(completeCallbacks, \(\) => \(\{ \.\.\.session \}\)\)/)
 })
 
 test('所有计时状态转换均通知且失败 stop 不发布重置状态', () => {
