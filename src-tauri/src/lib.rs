@@ -1,5 +1,6 @@
 pub mod services;
 pub mod commands;
+pub mod settings_menu;
 
 use tauri::Manager;
 use tauri_plugin_sql::{Builder as SqlBuilder, Migration, MigrationKind};
@@ -110,8 +111,10 @@ pub fn run() {
             commands::secrets::secret_set,
             commands::secrets::secret_exists,
             commands::ocr::ocr_recognize_text,
+            settings_menu::settings_menu_ready,
         ])
         .setup(move |app| {
+            settings_menu::install(app)?;
             services::butler_shortcut::register_initial_shortcut(
                 &app.handle().clone(),
                 app.state::<services::butler_shortcut::ButlerShortcutState>().inner(),
