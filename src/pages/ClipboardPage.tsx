@@ -18,6 +18,7 @@ import { ClipDiffModal } from '@/components/clipboard/ClipDiffModal'
 import { ClipDetailPanel } from '@/components/clipboard/ClipDetailPanel'
 import { ResizablePanel } from '@/components/ui/ResizablePanel'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ImageLightbox } from '@/components/ui/ImageLightbox'
@@ -205,13 +206,12 @@ function ClipCard({
                 >
                   <Pin className="w-3 h-3" />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onDelete(clip.id) }}
-                  className="p-1 hover:bg-red-500/10 hover:text-red-500 rounded text-on-surface-variant cursor-pointer"
+                <ConfirmIconButton
+                  onConfirm={() => onDelete(clip.id)}
+                  className="p-1 hover:bg-red-500/10 hover:text-red-500 rounded text-on-surface-variant"
+                  iconClassName="w-3 h-3"
                   title="删除"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                />
               </div>
             )}
           </div>

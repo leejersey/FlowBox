@@ -125,10 +125,12 @@ export async function getFocusTrend(days: number = 7): Promise<FocusTrend[]> {
   return trend
 }
 
-/** 获取今日应用使用分布（来自 app_usage 表的真实数据） */
-export async function getUsageDistribution(): Promise<UsageDistribution[]> {
+/** 获取指定天数内的应用使用分布（来自 app_usage 表的真实数据） */
+export async function getUsageDistribution(days: number = 1): Promise<UsageDistribution[]> {
   const db = await getDb()
-  const today = localDateKey()
+  const startDate = new Date()
+  startDate.setDate(startDate.getDate() - Math.max(1, days) + 1)
+  const startDateKey = localDateKey(startDate)
 
   const APP_COLORS = [
     '#4F46E5', // indigo
@@ -144,11 +146,11 @@ export async function getUsageDistribution(): Promise<UsageDistribution[]> {
   const rows = await db.select<{ app_name: string; total: number }[]>(
     `SELECT app_name, SUM(duration_seconds) as total
      FROM app_usage
-     WHERE recorded_date = $1
+     WHERE recorded_date >= $1
      GROUP BY app_name
      ORDER BY total DESC
      LIMIT 8`,
-    [today]
+    [startDateKey]
   )
 
   if (rows.length === 0) {

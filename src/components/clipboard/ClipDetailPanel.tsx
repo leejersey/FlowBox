@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  X, Pin, Copy, Check, Trash2, Clock, Code2, Type, Image as ImageIcon,
+  X, Pin, Copy, Check, Clock, Code2, Type, Image as ImageIcon,
   CheckSquare, Link2, Bot, ArrowUpRight, ExternalLink, Maximize2
 } from 'lucide-react'
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { LinkPanel } from '@/components/links/LinkPanel'
 import { showToast } from '@/store/useToastStore'
 import { todoCreate } from '@/services/todoService'
@@ -182,13 +183,12 @@ export function ClipDetailPanel({
           </button>
 
           {/* 删除 */}
-          <button
-            onClick={() => onDelete(clip.id)}
-            className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+          <ConfirmIconButton
+            onConfirm={() => void onDelete(clip.id)}
+            className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl"
+            iconClassName="w-4 h-4"
             title="删除此记录"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          />
 
           {/* 关闭 */}
           <button

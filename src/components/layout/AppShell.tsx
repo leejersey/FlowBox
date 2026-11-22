@@ -15,6 +15,7 @@ import { useScreenshotOcr } from '@/hooks/useScreenshotOcr'
 import * as settingsService from '@/services/settingsService'
 import { showToast } from '@/store/useToastStore'
 import { supportsNativeSettingsMenu } from '@/services/settingsNavigationService'
+import { useAppStore } from '@/stores/useAppStore'
 
 const DEFAULT_BUTLER_SHORTCUT = 'Shift+Space'
 const isTauriApp = isTauri()
@@ -29,15 +30,15 @@ export interface AppShellOutletContext {
 export function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [searchOpen, setSearchOpen] = useState(false)
   const [isMini, setIsMini] = useState(false)
   const controllerRef = useRef<ReturnType<typeof createMiniWindowController> | null>(null)
   const mountedRef = useRef(false)
   const currentPathRef = useRef(location.pathname)
   const dailyReview = useDailyReview()
   const screenshotOcr = useScreenshotOcr()
-
-  const toggleSearch = useCallback(() => setSearchOpen(v => !v), [])
+  const searchOpen = useAppStore(state => state.isSearchOpen)
+  const setSearchOpen = useAppStore(state => state.setSearchOpen)
+  const toggleSearch = useAppStore(state => state.toggleSearch)
 
   const forceExitMini = useCallback(async () => {
     if (mountedRef.current) setIsMini(false)
@@ -73,7 +74,7 @@ export function AppShell() {
     } catch (error) {
       if (mountedRef.current) showToast(`切换小窗失败: ${String(error)}`, 'error')
     }
-  }, [])
+  }, [setSearchOpen])
 
   const exitMini = useCallback(async () => {
     if (!mountedRef.current) return
@@ -143,13 +144,15 @@ export function AppShell() {
         return
       }
 
-      // ⌘1 ~ ⌘5, ⌘8, ⌘, 模块极速切换
+      // ⌘1 ~ ⌘8, ⌘, 模块极速切换
       if (isCmdOrCtrl && !e.shiftKey && !e.altKey) {
         if (e.key === '1') { e.preventDefault(); navigate('/') }
         else if (e.key === '2') { e.preventDefault(); navigate('/pomodoro') }
         else if (e.key === '3') { e.preventDefault(); navigate('/idea') }
         else if (e.key === '4') { e.preventDefault(); navigate('/clipboard') }
         else if (e.key === '5') { e.preventDefault(); navigate('/voice') }
+        else if (e.key === '6') { e.preventDefault(); navigate('/markdown') }
+        else if (e.key === '7') { e.preventDefault(); navigate('/trending') }
         else if (e.key === '8') { e.preventDefault(); navigate('/stats') }
         else if (e.key === ',' && !supportsNativeSettingsMenu()) { e.preventDefault(); navigate('/settings') }
         else if (e.key.toLowerCase() === 'n') {

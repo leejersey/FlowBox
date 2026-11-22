@@ -1,4 +1,4 @@
-import { Bot, ChevronDown } from 'lucide-react'
+import { Bot, ChevronDown, Square } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ButlerFooter } from './ButlerFooter'
@@ -60,7 +60,8 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
   const [skills, setSkills] = useState<ButlerSkill[]>([])
   const [showAllSkills, setShowAllSkills] = useState(false)
 
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const skillsPopoverRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // 加载技能列表
@@ -87,6 +88,36 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
+
+  // 自适应输入框高度
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`
+  }, [inputValue])
+
+  // 点击外部或按 Esc 关闭「更多技能」弹层
+  useEffect(() => {
+    if (!showAllSkills) return
+    const handlePointerDown = (e: MouseEvent) => {
+      if (skillsPopoverRef.current && !skillsPopoverRef.current.contains(e.target as Node)) {
+        setShowAllSkills(false)
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setShowAllSkills(false)
+      }
+    }
+    window.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showAllSkills])
 
   const quickSkills = useMemo(() => skills.slice(0, MAX_QUICK_SKILLS), [skills])
 
@@ -147,9 +178,18 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
     await submitRequest(request, { userBubbleContent })
   }, [inputValue, isLoading, messages, promptTemplate, selectedSkill, submitRequest])
 
+  const handleStop = useCallback(() => {
+    abortRef.current?.abort()
+  }, [])
+
   const handleQuickSkill = useCallback((skill: ButlerSkill) => {
     setSelectedSkill(skill)
-    setInputValue(skill.prompt_prefix)
+    setInputValue(prev => {
+      const trimmed = prev.trim()
+      if (!trimmed) return skill.prompt_prefix
+      if (trimmed.startsWith(skill.prompt_prefix.trim())) return prev
+      return `${skill.prompt_prefix}${prev}`
+    })
     // 如果技能有自定义 system prompt，自动切换
     if (skill.system_prompt?.trim()) {
       setActiveSkillId(skill.id)
@@ -188,8 +228,8 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
     await submitRequest(lastRequest)
   }, [isLoading, lastRequest, submitRequest])
 
-  const handleInputKeyDown = useCallback((e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleInputKeyDown = useCallback((e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       void handleSend()
     }
@@ -201,39 +241,49 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
       className
     )}>
       <div className="flex flex-col border-b border-surface-container-highest shrink-0 pt-6 px-6 pb-4 bg-surface/50 backdrop-blur-md z-20">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
             <Bot className="w-6 h-6 text-primary" />
           </div>
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
+            rows={1}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleInputKeyDown}
-            placeholder="问我任何事情，或拖入文本/代码..."
-            className="flex-1 bg-transparent border-none outline-none text-xl font-medium text-on-surface placeholder:text-on-surface-variant/40 placeholder:font-normal"
+            placeholder="问我任何事情，或粘贴文本/代码（Shift+Enter 换行）..."
+            className="flex-1 bg-transparent border-none outline-none text-lg leading-relaxed font-medium text-on-surface placeholder:text-on-surface-variant/40 placeholder:font-normal resize-none py-1.5 max-h-[140px]"
           />
-          <button
-            onClick={() => void handleSend()}
-            disabled={!canSend}
-            className={cn(
-              'flex items-center justify-center gap-2 px-4 py-2 rounded-xl transition-all shadow-sm font-medium',
-              canSend
-                ? 'bg-primary text-white hover:bg-primary/90 hover:shadow-md cursor-pointer'
-                : 'bg-surface-container-highest text-on-surface-variant/50 cursor-not-allowed'
-            )}
-          >
-            <span>{isLoading ? '处理中' : '发送'}</span>
-            <div className="flex items-center opacity-70">
-              <kbd className="font-sans text-[10px] mr-0.5">⌘</kbd>
-              <kbd className="font-sans text-[10px]">Enter</kbd>
-            </div>
-          </button>
+          {isLoading ? (
+            <button
+              type="button"
+              onClick={handleStop}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl transition-all shadow-sm font-medium bg-red-500/15 text-red-500 hover:bg-red-500/25 border border-red-500/25 cursor-pointer shrink-0 mt-0.5"
+              title="停止生成"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+              <span>停止</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleSend()}
+              disabled={!canSend}
+              className={cn(
+                'flex items-center justify-center gap-2 px-4 py-2 rounded-xl transition-all shadow-sm font-medium shrink-0 mt-0.5',
+                canSend
+                  ? 'bg-primary text-white hover:bg-primary/90 hover:shadow-md cursor-pointer'
+                  : 'bg-surface-container-highest text-on-surface-variant/50 cursor-not-allowed'
+              )}
+            >
+              <span>发送</span>
+              <kbd className="font-sans text-[10px] opacity-75">Enter</kbd>
+            </button>
+          )}
         </div>
 
         {/* 快捷技能栏 — 动态加载 */}
-        <div className="relative mt-5">
+        <div ref={skillsPopoverRef} className="relative mt-5">
           <div className="flex flex-row gap-2 overflow-x-auto pb-1 scrollbar-none mask-fade-edges">
             {quickSkills.map((skill) => {
               const Icon = getLucideIcon(skill.icon)

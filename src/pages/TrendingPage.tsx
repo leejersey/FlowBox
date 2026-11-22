@@ -1,17 +1,28 @@
 /**
- * TrendingPage — Dev Trending 页面
- * 展示 GitHub 热门仓库卡片列表，支持筛选、搜索、AI 摘要、收藏
+ * TrendingPage — Dev Trending v2 极客热榜工作台
+ * 支持今日飙升 / 每周高星 / 月度热榜、6 大板块分类独立排名、高星/热度/活跃排序、Master-Detail 项目速读
  */
 
 import { useState, useEffect, useRef } from 'react'
 import {
-  Flame, RefreshCw, Sparkles, ExternalLink, Lightbulb,
-  Search, ChevronDown, Loader2, Star, GitFork,
-  GitPullRequest, TrendingUp, Rocket
+  Flame, RefreshCw, Sparkles, Search, ChevronDown, Loader2,
+  Star, GitFork, GitPullRequest, TrendingUp, Rocket, ArrowUpDown,
+  BookOpen, Check
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTrending } from '@/hooks/useTrending'
+import { ResizablePanel } from '@/components/ui/ResizablePanel'
+import { TrendingDetailPanel } from '@/components/trending/TrendingDetailPanel'
 import type { TrendingRepo } from '@/types/trending'
+import {
+  getCategoryMeta,
+  parseJsonStringArray,
+  parseRepoDeepDive,
+  resolveRepoCategory,
+  TRENDING_CATEGORIES,
+  TRENDING_PERIODS,
+  TRENDING_SORTS,
+} from '@/lib/trendingCategory'
 
 // ─── GitHub 语言颜色映射 ────────────────────────
 
@@ -43,191 +54,129 @@ function getLangColor(lang: string): string {
   return LANG_COLORS[lang] ?? '#8b8b8b'
 }
 
-// ─── 排名徽章组件 ────────────────────────────────
+function formatNumber(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return String(n)
+}
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="text-2xl" title="#1">🥇</span>
-  if (rank === 2) return <span className="text-2xl" title="#2">🥈</span>
-  if (rank === 3) return <span className="text-2xl" title="#3">🥉</span>
-
-  if (rank <= 10) {
-    return (
-      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/15 text-primary text-sm font-bold">
-        {rank}
-      </span>
-    )
-  }
+  if (rank === 1) return <span className="text-lg leading-none" title="#1">🥇</span>
+  if (rank === 2) return <span className="text-lg leading-none" title="#2">🥈</span>
+  if (rank === 3) return <span className="text-lg leading-none" title="#3">🥉</span>
 
   return (
-    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant text-sm font-medium">
+    <span className={cn(
+      'inline-flex items-center justify-center w-6 h-6 rounded-lg text-[11px] font-mono font-bold shrink-0',
+      rank <= 10 ? 'bg-primary/15 text-primary' : 'bg-surface-container-highest text-on-surface-variant',
+    )}>
       {rank}
     </span>
   )
 }
 
-// ─── 统计数字格式化 ──────────────────────────────
+// ─── 左侧紧凑榜单卡片 ───────────────────────────
 
-function formatNumber(n: number): string {
-  if (n >= 10000) return `${(n / 1000).toFixed(1)}k`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
-  return String(n)
-}
-
-// ─── 仓库卡片组件 ────────────────────────────────
-
-function TrendingCard({
+function TrendingListCard({
   repo,
   rank,
-  onSaveToIdea,
+  isSelected,
+  isSaved,
+  onSelect,
 }: {
   repo: TrendingRepo
   rank: number
-  onSaveToIdea: (repo: TrendingRepo) => void
+  isSelected: boolean
+  isSaved: boolean
+  onSelect: (repo: TrendingRepo) => void
 }) {
-  const [saving, setSaving] = useState(false)
-
-  const handleSave = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setSaving(true)
-    await onSaveToIdea(repo)
-    setSaving(false)
-  }
-
-  const handleOpenGithub = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    window.open(`https://github.com/${repo.repo_name}`, '_blank')
-  }
-
-  // 解析贡献者
-  let contributors: string[] = []
-  try {
-    contributors = JSON.parse(repo.contributors || '[]')
-  } catch { /* ignore */ }
+  const categoryId = resolveRepoCategory(repo)
+  const categoryMeta = getCategoryMeta(categoryId)
+  const aiTags = parseJsonStringArray(repo.ai_tags)
+  const hasDeepDive = Boolean(parseRepoDeepDive(repo.ai_deep_dive))
 
   return (
-    <div className="group bg-surface-container hover:bg-surface-container-highest transition-all duration-300 rounded-3xl p-6 shadow-sm border border-transparent hover:border-white/10 hover:shadow-md">
-      {/* Header: 排名 + 仓库名 + 语言 */}
-      <div className="flex items-start gap-4 mb-4">
-        <div className="pt-0.5 shrink-0">
+    <div
+      onClick={() => onSelect(repo)}
+      className={cn(
+        'group relative flex flex-col p-3.5 rounded-2xl transition-all duration-200 border cursor-pointer select-none',
+        isSelected
+          ? 'border-primary/50 bg-primary/10 shadow-md ring-1 ring-primary/30'
+          : 'bg-surface-container hover:bg-surface-container-highest border-outline-variant/20 hover:border-outline-variant/40 shadow-xs',
+      )}
+    >
+      {/* 顶行：排名 + 仓库名 + 板块标签 */}
+      <div className="flex items-start gap-2.5 mb-1.5">
+        <div className="pt-0.5 shrink-0 w-6 flex justify-center">
           <RankBadge rank={rank} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3
-            className="text-lg font-display font-bold text-on-surface truncate cursor-pointer hover:text-primary transition-colors"
-            onClick={handleOpenGithub}
-            title={repo.repo_name}
-          >
-            {repo.repo_name}
-          </h3>
-          {repo.language && (
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <span
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: getLangColor(repo.language) }}
-              />
-              <span className="text-xs font-medium text-on-surface-variant">{repo.language}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-xs font-display font-bold text-on-surface truncate flex-1" title={repo.repo_name}>
+              {repo.repo_name}
+            </h3>
+            {isSaved && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold shrink-0">
+                <Check className="w-2.5 h-2.5" />
+                已藏
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-bold', categoryMeta.badgeClass)}>
+              {categoryMeta.emoji} {categoryMeta.shortLabel}
+            </span>
+            {repo.language && (
+              <span className="flex items-center gap-1 text-[10px] text-on-surface-variant font-medium">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getLangColor(repo.language) }} />
+                {repo.language}
+              </span>
+            )}
+            {hasDeepDive && (
+              <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">
+                已速读
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 描述 */}
-      {repo.description && (
-        <p className="text-sm text-on-surface-variant leading-relaxed mb-4 line-clamp-2">
-          {repo.description}
-        </p>
-      )}
+      {/* 一句话大白话定位 或 英文简介 */}
+      <p className={cn(
+        'text-xs leading-relaxed line-clamp-2 mt-1',
+        repo.ai_summary_zh ? 'text-on-surface font-medium' : 'text-on-surface-variant',
+      )}>
+        {repo.ai_summary_zh || repo.description || '暂无简介，点击查看 README 与 AI 速读'}
+      </p>
 
-      {/* AI 摘要 */}
-      {repo.ai_summary_zh ? (
-        <div className="bg-gradient-to-r from-primary/5 to-purple-500/5 rounded-2xl p-4 mb-4 border border-primary/10">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-bold text-primary">AI 摘要</span>
-          </div>
-          <p className="text-sm text-on-surface leading-relaxed">{repo.ai_summary_zh}</p>
-        </div>
-      ) : (
-        <div className="bg-surface-container-highest/50 rounded-2xl p-3 mb-4 border border-dashed border-on-surface-variant/10">
-          <p className="text-xs text-on-surface-variant/50 flex items-center gap-1.5">
-            <Sparkles className="w-3 h-3" />
-            点击上方「生成 AI 摘要」按钮
-          </p>
+      {/* AI 场景标签 */}
+      {aiTags.length > 0 && (
+        <div className="flex items-center gap-1 flex-wrap mt-2">
+          {aiTags.slice(0, 3).map(tag => (
+            <span key={tag} className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
+              #{tag}
+            </span>
+          ))}
         </div>
       )}
 
-      {/* 统计行 */}
-      <div className="flex items-center gap-4 text-xs text-on-surface-variant mb-4">
-        <span className="flex items-center gap-1" title="Stars">
-          <Star className="w-3.5 h-3.5 text-amber-500" />
-          <span className="font-medium">{formatNumber(repo.stars)}</span>
+      {/* 底部指标行 */}
+      <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-outline-variant/10 text-[11px] text-on-surface-variant">
+        <span className="flex items-center gap-1 font-semibold text-on-surface" title="周期新增 Stars">
+          <Star className="w-3 h-3 text-amber-500" />
+          +{formatNumber(repo.stars)}
         </span>
         <span className="flex items-center gap-1" title="Forks">
-          <GitFork className="w-3.5 h-3.5" />
-          <span className="font-medium">{formatNumber(repo.forks)}</span>
+          <GitFork className="w-3 h-3" />
+          {formatNumber(repo.forks)}
         </span>
         <span className="flex items-center gap-1" title="Pull Requests">
-          <GitPullRequest className="w-3.5 h-3.5" />
-          <span className="font-medium">{formatNumber(repo.pull_requests)}</span>
+          <GitPullRequest className="w-3 h-3" />
+          {formatNumber(repo.pull_requests)}
         </span>
-        <span className="flex items-center gap-1 ml-auto" title="Trending Score">
-          <TrendingUp className="w-3.5 h-3.5 text-primary" />
-          <span className="font-bold text-primary">{formatNumber(repo.total_score)}</span>
+        <span className="flex items-center gap-1 ml-auto text-primary font-bold" title="综合热度分">
+          <TrendingUp className="w-3 h-3" />
+          {formatNumber(repo.total_score)}
         </span>
-      </div>
-
-      {/* 贡献者 */}
-      {contributors.length > 0 && (
-        <div className="flex items-center gap-1.5 mb-4 text-xs text-on-surface-variant">
-          <span className="opacity-60">👥</span>
-          <span className="truncate">{contributors.slice(0, 5).join(', ')}</span>
-          {contributors.length > 5 && (
-            <span className="opacity-50">+{contributors.length - 5}</span>
-          )}
-        </div>
-      )}
-
-      {/* 操作栏 */}
-      <div className="flex items-center gap-2 pt-3 border-t border-surface-container-highest">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lightbulb className="w-3.5 h-3.5" />}
-          收藏到灵感
-        </button>
-        <button
-          onClick={handleOpenGithub}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-on-surface/5 transition-all ml-auto"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          GitHub
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ─── 骨架屏 ──────────────────────────────────────
-
-function SkeletonCard() {
-  return (
-    <div className="bg-surface-container rounded-3xl p-6 animate-pulse">
-      <div className="flex items-start gap-4 mb-4">
-        <div className="w-8 h-8 rounded-full bg-surface-container-highest" />
-        <div className="flex-1">
-          <div className="h-5 bg-surface-container-highest rounded-lg w-3/4 mb-2" />
-          <div className="h-3 bg-surface-container-highest rounded w-20" />
-        </div>
-      </div>
-      <div className="h-4 bg-surface-container-highest rounded-lg w-full mb-2" />
-      <div className="h-4 bg-surface-container-highest rounded-lg w-2/3 mb-4" />
-      <div className="h-16 bg-surface-container-highest/50 rounded-2xl mb-4" />
-      <div className="flex gap-4">
-        <div className="h-3 bg-surface-container-highest rounded w-12" />
-        <div className="h-3 bg-surface-container-highest rounded w-12" />
-        <div className="h-3 bg-surface-container-highest rounded w-12" />
       </div>
     </div>
   )
@@ -260,37 +209,39 @@ function LanguageFilter({
   return (
     <div className="relative" ref={ref}>
       <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container hover:bg-surface-container-highest text-sm font-medium text-on-surface-variant transition-all border border-transparent hover:border-white/10"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-highest text-xs font-medium text-on-surface-variant hover:text-on-surface transition-all border border-outline-variant/20 cursor-pointer"
       >
         {value === 'All' ? (
-          '所有语言'
+          '全部语言'
         ) : (
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getLangColor(value) }} />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLangColor(value) }} />
             {value}
           </span>
         )}
-        <ChevronDown className={cn("w-4 h-4 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 bg-surface rounded-xl shadow-lg border border-white/20 py-1 z-50 min-w-[160px] max-h-[300px] overflow-y-auto">
+        <div className="absolute right-0 top-full mt-1.5 bg-surface rounded-xl shadow-xl border border-outline-variant/30 py-1 z-50 min-w-[140px] max-h-[260px] overflow-y-auto animate-fade-in">
           {options.map(lang => (
             <button
+              type="button"
               key={lang}
               onClick={() => { onChange(lang); setOpen(false) }}
               className={cn(
-                "w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors",
+                'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors cursor-pointer text-left',
                 lang === value
-                  ? "text-primary bg-primary/10 font-medium"
-                  : "text-on-surface hover:bg-surface-container"
+                  ? 'text-primary bg-primary/10 font-semibold'
+                  : 'text-on-surface hover:bg-surface-container',
               )}
             >
               {lang !== 'All' && (
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getLangColor(lang) }} />
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getLangColor(lang) }} />
               )}
-              {lang === 'All' ? '所有语言' : lang}
+              {lang === 'All' ? '全部语言' : lang}
             </button>
           ))}
         </div>
@@ -303,11 +254,24 @@ function LanguageFilter({
 
 export function TrendingPage() {
   const {
+    period,
+    setPeriod,
+    sortBy,
+    setSortBy,
+    categoryFilter,
+    setCategoryFilter,
+    categoryCounts,
+    topCategoryBreakdown,
     repos,
     totalCount,
+    selectedRepo,
+    setSelectedRepoId,
     loading,
     refreshing,
     summarizing,
+    loadingOverviewId,
+    generatingDeepDiveId,
+    savedRepoIds,
     lastFetched,
     languageFilter,
     setLanguageFilter,
@@ -317,10 +281,11 @@ export function TrendingPage() {
     hasPendingSummaries,
     refresh,
     generateSummaries,
+    loadRepoOverview,
+    generateDeepDive,
     saveToIdea,
   } = useTrending()
 
-  // 搜索防抖
   const [searchInput, setSearchInput] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -331,142 +296,348 @@ export function TrendingPage() {
     return () => clearTimeout(debounceRef.current)
   }, [searchInput, setSearchKeyword])
 
-  // ─── 加载状态 ──────────────────────────────────
+  // 键盘 ↑↓ 快速切榜单项目 & Esc 关闭详情
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement
+      const isInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA'
+      if (isInput) return
 
-  if (loading) {
-    return (
-      <div className="flex flex-col h-full animate-fade-in w-full max-w-5xl mx-auto overflow-y-auto pb-10">
-        {/* Header Skeleton */}
-        <div className="mb-8">
-          <div className="h-8 bg-surface-container-highest rounded-lg w-48 mb-2 animate-pulse" />
-          <div className="h-4 bg-surface-container-highest rounded w-64 animate-pulse" />
-        </div>
-        {/* Cards Skeleton */}
-        <div className="grid gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      </div>
-    )
-  }
+      if (e.key === 'ArrowDown' && repos.length > 0) {
+        e.preventDefault()
+        if (!selectedRepo) {
+          setSelectedRepoId(repos[0].id)
+        } else {
+          const idx = repos.findIndex(r => r.id === selectedRepo.id)
+          if (idx < repos.length - 1) setSelectedRepoId(repos[idx + 1].id)
+        }
+      } else if (e.key === 'ArrowUp' && repos.length > 0) {
+        e.preventDefault()
+        if (!selectedRepo) {
+          setSelectedRepoId(repos[repos.length - 1].id)
+        } else {
+          const idx = repos.findIndex(r => r.id === selectedRepo.id)
+          if (idx > 0) setSelectedRepoId(repos[idx - 1].id)
+        }
+      } else if (e.key === 'Escape' && selectedRepo) {
+        setSelectedRepoId(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [repos, selectedRepo, setSelectedRepoId])
 
-  // ─── 主内容 ────────────────────────────────────
+  const currentPeriodMeta = TRENDING_PERIODS.find(p => p.id === period) ?? TRENDING_PERIODS[1]
+  const selectedRank = selectedRepo ? repos.findIndex(r => r.id === selectedRepo.id) + 1 : 0
 
   return (
-    <div className="flex flex-col h-full animate-fade-in w-full max-w-5xl mx-auto overflow-y-auto overflow-x-hidden pb-10">
-      {/* 页面头部 */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Flame className="w-7 h-7 text-orange-500" />
-          <h1 className="text-2xl font-display font-bold text-on-surface">Dev Trending</h1>
-          {!loading && totalCount > 0 && (
-            <span className="text-xs font-bold text-on-surface bg-surface-container-highest px-3 py-1 rounded-full">
-              {totalCount} 项
-            </span>
-          )}
-        </div>
-        <p className="text-sm text-on-surface-variant">
-          本周 GitHub 热门开源项目
-          {lastFetched && (
-            <span className="ml-2 opacity-60">· 数据日期: {lastFetched}</span>
-          )}
-        </p>
-      </div>
+    <div className="flex flex-col lg:flex-row h-full gap-6 w-full min-w-0 overflow-hidden animate-fade-in">
+      {/* ── 左栏 Master：多维度排行榜 + 板块分类 ── */}
+      <ResizablePanel
+        id="trending"
+        defaultWidth={430}
+        minWidth={340}
+        maxWidth={580}
+        className={cn(selectedRepo ? 'hidden lg:flex' : 'flex')}
+      >
+        <div className="flex flex-col h-full min-h-0 gap-3 pr-1">
+          {/* 顶部标题 + 刷新 & AI 摘要 */}
+          <div className="flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <Flame className="w-5 h-5 text-orange-500 shrink-0" />
+              <h1 className="text-lg font-display font-bold text-on-surface truncate">GitHub 热点榜</h1>
+              {!loading && totalCount > 0 && (
+                <span className="text-[11px] font-bold text-on-surface-variant bg-surface-container-highest px-2 py-0.5 rounded-full shrink-0">
+                  {repos.length}/{totalCount}
+                </span>
+              )}
+            </div>
 
-      {/* 工具栏 */}
-      <div className="flex items-center gap-3 mb-8 flex-wrap">
-        {/* 搜索 */}
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50" />
-          <input
-            type="text"
-            placeholder="搜索仓库名或描述..."
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            className="w-full bg-surface-container pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none text-on-surface placeholder:text-on-surface-variant/50 focus:bg-surface-container-highest focus:ring-2 focus:ring-primary/20 transition-all border border-transparent hover:border-white/10"
-          />
-        </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {hasPendingSummaries && (
+                <button
+                  type="button"
+                  onClick={generateSummaries}
+                  disabled={summarizing}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl primary-gradient-button text-xs font-bold cursor-pointer disabled:opacity-50"
+                  title="批量生成 AI 中文定位与精准板块分类"
+                >
+                  {summarizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  <span>{summarizing ? '分析中' : 'AI 速览'}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={refreshing}
+                className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+                title="刷新当前榜单"
+              >
+                <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+              </button>
+            </div>
+          </div>
 
-        {/* 语言筛选 */}
-        <LanguageFilter
-          value={languageFilter}
-          options={availableLanguages}
-          onChange={setLanguageFilter}
-        />
+          {/* 周期分段切换：今日飙升 / 每周高星 / 月度热榜 */}
+          <div className="flex items-center justify-between gap-2 shrink-0">
+            <div className="flex-1 grid grid-cols-3 p-1 rounded-xl bg-surface-container border border-outline-variant/20">
+              {TRENDING_PERIODS.map(item => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => setPeriod(item.id)}
+                  className={cn(
+                    'py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                    period === item.id
+                      ? 'bg-surface text-primary shadow-xs'
+                      : 'text-on-surface-variant hover:text-on-surface',
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* 刷新按钮 */}
-        <button
-          onClick={refresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-highest text-sm font-medium text-on-surface-variant hover:text-on-surface transition-all disabled:opacity-50 border border-transparent hover:border-white/10"
-        >
-          <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-          {refreshing ? '刷新中...' : '刷新数据'}
-        </button>
+          {/* 板块分类胶囊 Tab（板块内独立排名） */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 shrink-0">
+            {TRENDING_CATEGORIES.map(cat => {
+              const count = categoryCounts[cat.id]
+              if (cat.id !== 'all' && count === 0) return null
+              const active = categoryFilter === cat.id
+              return (
+                <button
+                  type="button"
+                  key={cat.id}
+                  onClick={() => setCategoryFilter(cat.id)}
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer border',
+                    active
+                      ? 'bg-primary text-white border-primary shadow-xs'
+                      : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container border-outline-variant/20',
+                  )}
+                >
+                  <span>{cat.emoji}</span>
+                  <span>{cat.shortLabel}</span>
+                  <span className={cn('text-[10px] font-mono', active ? 'text-white/80' : 'text-on-surface-variant/60')}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
 
-        {/* AI 摘要按钮 */}
-        {hasPendingSummaries && (
-          <button
-            onClick={generateSummaries}
-            disabled={summarizing}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl primary-gradient-button text-sm font-bold disabled:opacity-50"
-          >
-            {summarizing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+          {/* 搜索 + 排序 + 语言 */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-on-surface-variant/50" />
+              <input
+                type="text"
+                placeholder="搜仓库 / 描述 / 标签..."
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                className="w-full bg-surface-container pl-8 pr-3 py-1.5 rounded-xl text-xs outline-none text-on-surface placeholder:text-on-surface-variant/50 focus:bg-surface-container-highest focus:ring-2 focus:ring-primary/20 transition-all border border-outline-variant/20"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const idx = TRENDING_SORTS.findIndex(s => s.id === sortBy)
+                const next = TRENDING_SORTS[(idx + 1) % TRENDING_SORTS.length]
+                setSortBy(next.id)
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-highest text-xs font-medium text-on-surface-variant hover:text-on-surface transition-all border border-outline-variant/20 shrink-0 cursor-pointer"
+              title="切换排序方式（高星飙升 / 综合热度 / 社区活跃）"
+            >
+              <ArrowUpDown className="w-3 h-3 text-primary" />
+              <span>{TRENDING_SORTS.find(s => s.id === sortBy)?.label}</span>
+            </button>
+
+            <LanguageFilter
+              value={languageFilter}
+              options={availableLanguages}
+              onChange={setLanguageFilter}
+            />
+          </div>
+
+          {/* 列表区 */}
+          <div className="flex-1 overflow-y-auto space-y-2.5 pb-4 pr-0.5 custom-scrollbar">
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-surface-container rounded-2xl p-4 animate-pulse space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-surface-container-highest" />
+                    <div className="h-4 bg-surface-container-highest rounded w-2/3" />
+                  </div>
+                  <div className="h-3 bg-surface-container-highest rounded w-full" />
+                  <div className="h-3 bg-surface-container-highest rounded w-3/4" />
+                </div>
+              ))
+            ) : repos.length > 0 ? (
+              <>
+                {repos.map((repo, i) => (
+                  <TrendingListCard
+                    key={repo.id}
+                    repo={repo}
+                    rank={i + 1}
+                    isSelected={selectedRepo?.id === repo.id}
+                    isSaved={savedRepoIds.has(repo.repo_id)}
+                    onSelect={item => setSelectedRepoId(item.id)}
+                  />
+                ))}
+                <div className="text-center text-[11px] text-on-surface-variant/50 py-3 font-medium">
+                  {lastFetched ? `更新于 ${lastFetched} · ` : ''}数据来源: OSS Insight & GitHub
+                </div>
+              </>
             ) : (
-              <Sparkles className="w-4 h-4" />
+              <div className="text-center py-14 px-4 bg-surface-container-low rounded-2xl border border-dashed border-outline-variant/30">
+                <Rocket className="w-10 h-10 mx-auto mb-3 text-primary/35" />
+                <p className="text-sm font-bold text-on-surface mb-1">
+                  {searchKeyword || languageFilter !== 'All' || categoryFilter !== 'all'
+                    ? '没有匹配的开源项目'
+                    : '暂无榜单数据'}
+                </p>
+                <p className="text-xs text-on-surface-variant mb-4">
+                  {searchKeyword || languageFilter !== 'All' || categoryFilter !== 'all'
+                    ? '试试切换板块或清空搜索词'
+                    : '点击刷新获取最新 GitHub 热点榜'}
+                </p>
+                {!searchKeyword && languageFilter === 'All' && categoryFilter === 'all' && (
+                  <button
+                    type="button"
+                    onClick={refresh}
+                    disabled={refreshing}
+                    className="primary-gradient-button px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+                    获取榜单
+                  </button>
+                )}
+              </div>
             )}
-            {summarizing ? '生成中...' : '生成 AI 摘要'}
-          </button>
+          </div>
+        </div>
+      </ResizablePanel>
+
+      {/* ── 右栏 Detail：项目速读工作台 / 热点概览看板 ── */}
+      <div className={cn(
+        'flex-1 h-full min-w-0 flex-col overflow-hidden transition-all duration-300',
+        selectedRepo ? 'flex' : 'hidden lg:flex',
+      )}>
+        {selectedRepo ? (
+          <TrendingDetailPanel
+            key={selectedRepo.id}
+            repo={selectedRepo}
+            rank={selectedRank > 0 ? selectedRank : 1}
+            isSaved={savedRepoIds.has(selectedRepo.repo_id)}
+            isLoadingOverview={loadingOverviewId === selectedRepo.id}
+            isGeneratingDeepDive={generatingDeepDiveId === selectedRepo.id}
+            onClose={() => setSelectedRepoId(null)}
+            onSaveToIdea={saveToIdea}
+            onLoadOverview={loadRepoOverview}
+            onGenerateDeepDive={generateDeepDive}
+          />
+        ) : (
+          <div className="h-full flex flex-col justify-between p-8 bg-surface-container/30 border border-outline-variant/20 rounded-3xl backdrop-blur-xl animate-fade-in overflow-y-auto custom-scrollbar">
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center gap-2 text-primary mb-2">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-xs font-bold tracking-wider uppercase">{currentPeriodMeta.label} · 热点洞察</span>
+                </div>
+                <h2 className="text-2xl font-display font-bold text-on-surface">
+                  选中左侧项目，10 秒看懂它做了什么
+                </h2>
+                <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed max-w-lg">
+                  {currentPeriodMeta.description}。点击任意项目可直接在应用内阅读 README，或生成 AI 结构化速读卡（核心痛点、3 大亮点、上手门槛与同类对比）。
+                </p>
+              </div>
+
+              {/* 板块分布概览 */}
+              {topCategoryBreakdown.length > 0 && (
+                <div className="p-5 rounded-2xl bg-surface-container-low/80 border border-outline-variant/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-on-surface">本期板块分布（点击直达板块排名）</span>
+                    <span className="text-[11px] text-on-surface-variant font-mono">共 {totalCount} 个项目</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {topCategoryBreakdown.map(cat => {
+                      const pct = totalCount > 0 ? Math.round((cat.count / totalCount) * 100) : 0
+                      return (
+                        <button
+                          type="button"
+                          key={cat.id}
+                          onClick={() => setCategoryFilter(cat.id)}
+                          className="w-full text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="font-semibold text-on-surface group-hover:text-primary transition-colors">
+                              {cat.emoji} {cat.label}
+                            </span>
+                            <span className="font-mono text-on-surface-variant">
+                              {cat.count} 项 ({pct}%)
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-surface-container-highest overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-primary/70 group-hover:bg-primary transition-all duration-300"
+                              style={{ width: `${Math.max(pct, 4)}%` }}
+                            />
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 本期 Top 3 高星快览 */}
+              {repos.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                    当前榜单 Top 3
+                  </div>
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {repos.slice(0, 3).map((repo, idx) => (
+                      <button
+                        type="button"
+                        key={repo.id}
+                        onClick={() => setSelectedRepoId(repo.id)}
+                        className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-surface-container-low/80 hover:bg-surface-container border border-outline-variant/20 hover:border-primary/30 transition-all text-left cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <RankBadge rank={idx + 1} />
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate">
+                              {repo.repo_name}
+                            </div>
+                            <div className="text-[11px] text-on-surface-variant truncate mt-0.5">
+                              {repo.ai_summary_zh || repo.description || '点击查看项目速读'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 text-xs font-mono font-bold text-amber-500">
+                          <Star className="w-3.5 h-3.5" />
+                          +{formatNumber(repo.stars)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-on-surface-variant/60 pt-6 border-t border-outline-variant/15 mt-6">
+              <span className="flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" />
+                支持 <kbd className="px-1.5 py-0.5 rounded bg-surface-container border border-outline-variant/30 font-mono">↑</kbd> <kbd className="px-1.5 py-0.5 rounded bg-surface-container border border-outline-variant/30 font-mono">↓</kbd> 键盘切项目
+              </span>
+              <span>点击「AI 速览」可一次性为榜单生成中文定位与板块分类</span>
+            </div>
+          </div>
         )}
       </div>
-
-      {/* 卡片列表 */}
-      {repos.length > 0 ? (
-        <>
-          <div className="grid gap-5">
-            {repos.map((repo, i) => (
-              <TrendingCard
-                key={repo.id}
-                repo={repo}
-                rank={i + 1}
-                onSaveToIdea={saveToIdea}
-              />
-            ))}
-          </div>
-
-          {/* 底部状态栏 */}
-          <div className="text-center text-xs text-on-surface-variant/50 mt-8 font-medium">
-            显示 {repos.length} / {totalCount} 条 · 数据来源: OSS Insight
-          </div>
-        </>
-      ) : (
-        /* 空状态 */
-        <div className="text-center py-20 bg-surface-container-low rounded-3xl border border-dashed border-on-surface-variant/20">
-          <Rocket className="w-14 h-14 mx-auto mb-4 text-primary/30" />
-          <p className="text-lg mb-2 font-display font-bold text-on-surface">
-            {searchKeyword || languageFilter !== 'All'
-              ? '没有匹配的仓库'
-              : '暂无热门仓库数据'}
-          </p>
-          <p className="text-sm text-on-surface-variant mb-6">
-            {searchKeyword || languageFilter !== 'All'
-              ? '尝试调整筛选条件'
-              : '点击下方按钮获取本周 GitHub 热门项目'}
-          </p>
-          {!searchKeyword && languageFilter === 'All' && (
-            <button
-              onClick={refresh}
-              disabled={refreshing}
-              className="primary-gradient-button px-6 py-2.5 rounded-full font-bold text-sm inline-flex items-center gap-2 disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-              {refreshing ? '获取中...' : '获取热门仓库'}
-            </button>
-          )}
-        </div>
-      )}
     </div>
   )
 }

@@ -24,7 +24,7 @@
 - 支持手动输入、语音录入、剪贴板捕获三种来源
 
 ### 🍅 番茄专注
-- 25/5 分钟番茄钟，可关联待办任务
+- 25/5/15 分钟番茄钟，可关联待办任务，支持 Mini 置顶小窗与禅模式（`Esc` 快速退出）
 - 自动记录每次专注时长
 
 ### 📎 智能剪贴板
@@ -40,24 +40,24 @@
 - **智能摘要**：DeepSeek / OpenAI 自动提取摘要和待办事项
 - 原声回放，导出文本
 
-### 🔥 Dev Trending
-- **每日自动获取** GitHub 一周热门开源仓库（数据源：OSS Insight API）
-- **AI 中文摘要**：一键生成 batch 摘要（DeepSeek / OpenAI），节省 ~95% token 开销
-- **语言筛选 + 关键词搜索**：实时过滤，快速定位感兴趣的项目
-- **一键收藏到灵感**：仓库名 + 描述 + AI 摘要 + GitHub 链接自动归档
-- 本地 SQLite 缓存，支持离线浏览，7 天自动清理
+### 🔥 Dev Trending（GitHub 热点榜）
+- **多周期排行榜**：支持「今日飙升 / 每周高星 / 月度热榜」切换（数据源：OSS Insight API + GitHub），并支持按高星飙升、综合热度、社区活跃排序
+- **板块分类独立排名**：内置 6 大领域板块（AI & Agent、开发工具 & CLI、前端 & UI、后端 & 基础设施、桌面 & 效率、安全 & 网络），规则初筛秒出结果，结合 AI 批量速览精准归类，支持板块内独立排名与语言/关键词组合过滤
+- **Master-Detail 项目速读工作台**：无需跳转浏览器即可在右侧面板预览仓库 README 原文，或一键生成 **AI 结构化项目速读卡**（一句话说透、核心痛点、3 大亮点、上手门槛、同类对比）
+- **一键收藏到灵感**：自动整理仓库定位、核心亮点与链接并标记已收藏状态
+- 本地 SQLite 分周期独立缓存，支持离线浏览，14 天自动清理
 
 ### 📊 效率分析看板
-- 今日专注时长、本周番茄数、待办完成率、灵感总数
+- 今日专注时长、本周番茄数、待办完成率、灵感总数，支持天 / 周 / 月周期联动切换
 - 专注时长趋势折线图（Recharts）
 - **应用使用追踪**：每 5 秒采样前台应用，按周期增量写入使用时长，饼图展示使用分布
 - 每日专注时段热力图
 - AI 周报生成（占位）
 
-### 🔍 全局搜索
-- `Cmd+/` 唤出毛玻璃浮层，跨待办 / 灵感 / 语音 / 剪贴板实时模糊搜索
-- 结果按模块分组高亮，键盘 `↑↓` 导航，`Enter` 一键跳转
-- 250ms 防抖，丝滑搜索体验
+### 🔍 全局搜索与快捷心流
+- `Cmd+/` 唤出毛玻璃命令面板，跨待办 / 灵感 / 语音 / 剪贴板实时模糊搜索并执行快捷指令
+- 结果按模块分组高亮，键盘 `↑↓` 自动跟随滚动导航，`Enter` 一键跳转；支持 `Cmd+1~8` 极速切换主模块
+- 与 AI Butler 浮层原子互斥，删除/清空等破坏性操作均带轻确认防误触
 
 ### 🧲 跨模块智能关联
 - 通用 `item_links` 多对多关联表，待办、灵感、语音、剪贴板四类入口均可双向查看、跳转、删除关联
@@ -77,7 +77,7 @@
 
 ### 🤖 AI Butler（全局智能管家）
 - `Shift + Space` 全局呼出（可在设置中自定义），`Cmd + K` 应用内唤起
-- **多轮对话**：基于 DeepSeek / OpenAI 的实时 AI 对话，上下文自动携带
+- **多轮对话与流式控制**：自适应多行输入（`Enter` 发送 / `Shift+Enter` 换行），流式输出支持随时点击停止中断
 - **技能系统**：8 个内置技能（润色、翻译、摘要、修复代码、分析截图、解释代码、写周报、头脑风暴）
 - **自定义技能**：在设置→Butler 技能中创建/编辑自定义 Prompt 模板，支持专属 System Prompt
 - **Prompt 选择器联动**：Butler 底栏可切换技能的 System Prompt 作为全局上下文
@@ -198,8 +198,12 @@ FlowBox/
 │   │   ├── screenshot/           # 截图 OCR 组件
 │   │   │   └── ScreenshotOcrPanel.tsx # 截图识别面板
 │   │   ├── todo/                 # 待办子组件
+│   │   │   ├── TodoDetailPanel.tsx   # 待办右侧详情工作台
 │   │   │   └── TodoDetailModal.tsx   # 待办详情弹窗（含关联）
+│   │   ├── trending/             # GitHub 热点组件
+│   │   │   └── TrendingDetailPanel.tsx # 项目速读卡与 README 预览工作台
 │   │   └── ui/                   # 通用 UI 组件
+│   │       ├── ConfirmIconButton.tsx # 二次轻确认删除按钮
 │   │       ├── DatePicker.tsx       # 日期选择器
 │   │       ├── Select.tsx           # 下拉选择
 │   │       └── ToastContainer.tsx   # Toast 通知
@@ -241,6 +245,7 @@ FlowBox/
 │   │   └── database.ts           # SQLite 连接单例
 │   ├── lib/                      # 工具库
 │   │   ├── utils.ts              # 通用工具（cn 等）
+│   │   ├── trendingCategory.ts   # GitHub 热点板块分类与排序引擎
 │   │   └── icons.ts              # Lucide 图标动态映射
 │   ├── stores/                   # Zustand 全局状态
 │   │   ├── useAppStore.ts        # 应用级状态（Butler 开关等）
@@ -268,14 +273,15 @@ FlowBox/
 │   │       ├── voice_transcribe.rs    # 火山引擎 ASR 转写
 │   │       ├── ocr.rs                 # Vision 文字识别
 │   │       └── secrets.rs             # Keychain 读写
-│   ├── migrations/               # 数据库迁移（10 个）
+│   ├── migrations/               # 数据库迁移（11 个）
 │   │   ├── 001_init.sql          # 核心表结构
 │   │   ├── 002_error_logs.sql    # 错误日志表
 │   │   ├── 003_butler_messages.sql # Butler 对话持久化表
 │   │   ├── 004_cross_link.sql    # 跨模块关联表
 │   │   ├── 005_butler_skills.sql # Butler 技能管理表
 │   │   ├── 006_trending.sql      # Dev Trending 热门仓库缓存表
-│   │   └── 007–010               # 番茄恢复、usage 去重、关联规范化与清理
+│   │   ├── 007–010               # 番茄恢复、usage 去重、关联规范化与清理
+│   │   └── 011_trending_v2.sql   # 热点多周期索引、板块分类、AI 速读与 README 缓存
 │   ├── capabilities/             # Tauri 安全能力声明
 │   └── tauri.conf.json           # 窗口 / CSP / 权限配置
 ├── docs/                         # 架构与功能文档
@@ -334,7 +340,8 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 - [x] 剪贴板批量拼接 + Diff 对比
 - [x] Rust 原生录音 + 火山引擎 ASR 转写
 - [x] Butler Skills 技能管理系统（8 预设 + 自定义 Prompt 模板）
-- [x] Dev Trending — GitHub 热门仓库 + AI 中文摘要 + 一键收藏
+- [x] Dev Trending v2 — 日/周/月多周期榜单 + 6 大板块分类排名 + 应用内 README 预览与 AI 项目速读卡
+- [x] 桌面端 UI/交互全面打磨（过渡动效、防误触轻确认、浮层互斥、Butler 多行输入与流式停止）
 - [ ] Obsidian Vault 自动导出集成
 - [ ] AI 周报自动生成（基于效率分析数据）
 - [ ] Flow 模式（沉浸式心流引擎 + 应用偏离提醒）

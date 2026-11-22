@@ -123,6 +123,19 @@ export function PomodoroPage() {
     }
   }, [loadData])
 
+  // 禅模式下按 Esc 退出
+  useEffect(() => {
+    if (!isZenMode) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setIsZenMode(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isZenMode])
+
   const handleStart = async () => {
     await pomodoroService.pomodoroStart({
       type: selectedType,

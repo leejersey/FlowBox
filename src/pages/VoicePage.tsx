@@ -14,6 +14,7 @@ import { useVoiceTranscribe } from '@/hooks/useVoiceTranscribe'
 import { localDateKey } from '@/lib/localDate'
 import { ResizablePanel } from '@/components/ui/ResizablePanel'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { LinkPanel } from '@/components/links/LinkPanel'
@@ -103,13 +104,12 @@ function VoiceCard({
           )}
         </div>
 
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(record.id) }}
-          className="p-1 hover:bg-red-500/10 hover:text-red-500 rounded text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        <ConfirmIconButton
+          onConfirm={() => onDelete(record.id)}
+          className="p-1 hover:bg-red-500/10 hover:text-red-500 rounded text-on-surface-variant opacity-0 group-hover:opacity-100"
+          iconClassName="w-3 h-3"
           title="删除录音"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
+        />
       </div>
     </div>
   )

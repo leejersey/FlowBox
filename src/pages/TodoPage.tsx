@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Search, Mic, Clipboard as ClipboardIcon, Check,
@@ -13,6 +13,7 @@ import { SkeletonList } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ResizablePanel } from '@/components/ui/ResizablePanel'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { TodoDetailPanel } from '@/components/todo/TodoDetailPanel'
 import type { Todo, TodoListQuery } from '@/types/todo'
 import { ensureLinkedTarget, linkedTargetFor, linkedTargetId } from '@/lib/itemLink'
@@ -112,13 +113,11 @@ function TodoCard({
         </div>
       </div>
 
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(todo.id); }}
-        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/10 text-on-surface-variant hover:text-red-500 transition-all cursor-pointer"
+      <ConfirmIconButton
+        onConfirm={() => onDelete(todo.id)}
+        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/10 text-on-surface-variant hover:text-red-500"
         title="删除"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+      />
     </div>
   )
 }
@@ -202,13 +201,13 @@ export function TodoPage() {
   const inProgressTodos = displayFilter === 'all' ? visibleTodos.filter(t => t.status === 'in_progress') : []
   const doneTodos = displayFilter === 'all' ? visibleTodos.filter(t => t.status === 'done') : visibleTodos.filter(t => t.status === 'done')
 
-  const handleToggle = async (todo: Todo) => {
+  const handleToggle = useCallback(async (todo: Todo) => {
     const nextStatus = todo.status === 'done' ? 'pending' : 'done'
     if (nextStatus === 'done') {
       playTaskCompleteSound()
     }
     await update({ id: todo.id, status: nextStatus })
-  }
+  }, [update])
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return
@@ -268,7 +267,7 @@ export function TodoPage() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('flowbox:quick_create', handleQuickCreate)
     }
-  }, [visibleTodos, selectedTodo, showInput])
+  }, [visibleTodos, selectedTodo, showInput, handleToggle])
 
   const activeTodoForPanel = visibleSelectedTodo
 
@@ -341,7 +340,7 @@ export function TodoPage() {
         }
       }
     ]
-  }, [contextMenu, selectedTodo, navigate, update, remove])
+  }, [contextMenu, selectedTodo, navigate, update, remove, handleToggle])
 
   return (
     <div className="flex flex-col lg:flex-row h-full gap-6 w-full min-w-0 overflow-hidden animate-fade-in">
@@ -537,6 +536,7 @@ export function TodoPage() {
       )}>
         {activeTodoForPanel ? (
           <TodoDetailPanel
+            key={activeTodoForPanel.id}
             todo={activeTodoForPanel}
             onClose={() => setSelectedTodo(null)}
             onUpdate={async (payload) => {

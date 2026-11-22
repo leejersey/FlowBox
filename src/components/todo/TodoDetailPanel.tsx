@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   X, Calendar, Tag as TagIcon, Flag, Clock, Mic,
-  Clipboard as ClipboardIcon, Link2, Trash2,
-  CheckCircle2, Circle, Play, ArrowUpRight
+  Clipboard as ClipboardIcon, Link2,
+  CheckCircle2, Circle, Play, ArrowUpRight, Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { LinkPanel } from '@/components/links/LinkPanel'
 import * as pomodoroService from '@/services/pomodoroService'
 import { showToast } from '@/store/useToastStore'
@@ -17,8 +18,16 @@ import type { Todo, UpdateTodoPayload } from '@/types/todo'
 interface TodoDetailPanelProps {
   todo: Todo
   onClose: () => void
-  onUpdate: (payload: UpdateTodoPayload) => Promise<any>
-  onDelete: (id: number) => Promise<any>
+  onUpdate: (payload: UpdateTodoPayload) => Promise<unknown> | void
+  onDelete: (id: number) => Promise<unknown> | void
+}
+
+function parseTodoTags(raw: string | null): string[] {
+  try {
+    return JSON.parse(raw || '[]')
+  } catch {
+    return []
+  }
 }
 
 const priorityLabels: Record<number, string> = { 0: '无优先级', 1: '低优先级', 2: '中优先级', 3: '高优先级' }
@@ -38,47 +47,58 @@ export function TodoDetailPanel({ todo, onClose, onUpdate, onDelete }: TodoDetai
   const [dueDate, setDueDate] = useState(todo.due_date || '')
   
   // 标签处理
-  const initialTags: string[] = JSON.parse(todo.tags || '[]')
-  const [tags, setTags] = useState<string[]>(initialTags)
+  const [tags, setTags] = useState<string[]>(() => parseTodoTags(todo.tags))
   const [tagInput, setTagInput] = useState('')
   const [showLinks, setShowLinks] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
 
-  // 当外部传入的 todo 切换时，重置内部表单状态
-  useEffect(() => {
-    setTitle(todo.title)
-    setContent(todo.content || '')
-    setPriority(todo.priority)
-    setStatus(todo.status)
-    setDueDate(todo.due_date || '')
-    try {
-      setTags(JSON.parse(todo.tags || '[]'))
-    } catch {
-      setTags([])
-    }
-  }, [todo])
-
-  // 自动同步更新
+  // 自动同步更新（组件卸载前 flush 挂起改动，避免快速切换丢失草稿）
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingPayloadRef = useRef<UpdateTodoPayload | null>(null)
+  const onUpdateRef = useRef(onUpdate)
+
+  useEffect(() => {
+    onUpdateRef.current = onUpdate
+  }, [onUpdate])
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      if (savedResetTimerRef.current) clearTimeout(savedResetTimerRef.current)
+      if (pendingPayloadRef.current) {
+        void onUpdateRef.current(pendingPayloadRef.current)
+        pendingPayloadRef.current = null
+      }
+    }
+  }, [])
 
   const triggerUpdate = useCallback((partial: Partial<UpdateTodoPayload>) => {
+    const payload: UpdateTodoPayload = {
+      id: todo.id,
+      title: (partial.title ?? title).trim() || todo.title,
+      content: (partial.content ?? content).trim(),
+      priority: partial.priority ?? priority,
+      status: partial.status ?? status,
+      due_date: partial.due_date !== undefined ? partial.due_date : (dueDate || null),
+      tags: partial.tags ?? tags,
+    }
+    pendingPayloadRef.current = payload
+    setSaveState('saving')
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
-      onUpdate({
-        id: todo.id,
-        title: title.trim() || todo.title,
-        content: content.trim(),
-        priority,
-        status,
-        due_date: dueDate || null,
-        tags,
-        ...partial,
+      pendingPayloadRef.current = null
+      void Promise.resolve(onUpdateRef.current(payload)).finally(() => {
+        setSaveState('saved')
+        if (savedResetTimerRef.current) clearTimeout(savedResetTimerRef.current)
+        savedResetTimerRef.current = setTimeout(() => setSaveState('idle'), 1500)
       })
     }, 300)
-  }, [todo.id, todo.title, title, content, priority, status, dueDate, tags, onUpdate])
+  }, [todo.id, todo.title, title, content, priority, status, dueDate, tags])
 
-  // 状态快速翻转
-  const handleToggleStatus = () => {
-    const nextStatus = status === 'done' ? 'pending' : 'done'
+  // 状态三态循环：待处理 -> 进行中 -> 已完成 -> 待处理
+  const handleCycleStatus = () => {
+    const nextStatus = status === 'pending' ? 'in_progress' : status === 'in_progress' ? 'done' : 'pending'
     setStatus(nextStatus)
     triggerUpdate({ status: nextStatus })
   }
@@ -137,7 +157,8 @@ export function TodoDetailPanel({ todo, onClose, onUpdate, onDelete }: TodoDetai
       <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20 bg-surface/50 shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={handleToggleStatus}
+            onClick={handleCycleStatus}
+            title="点击切换状态（待处理 / 进行中 / 已完成）"
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm",
               status === 'done' 
@@ -151,6 +172,11 @@ export function TodoDetailPanel({ todo, onClose, onUpdate, onDelete }: TodoDetai
               <>
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 <span>已完成</span>
+              </>
+            ) : status === 'in_progress' ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 text-amber-500" />
+                <span>进行中</span>
               </>
             ) : (
               <>
@@ -172,16 +198,20 @@ export function TodoDetailPanel({ todo, onClose, onUpdate, onDelete }: TodoDetai
           </Button>
 
           <span className="text-xs text-on-surface-variant/50 font-mono">#{todo.id}</span>
+          {saveState !== 'idle' && (
+            <span className="text-[11px] font-medium text-on-surface-variant/70 animate-fade-in">
+              {saveState === 'saving' ? '保存中...' : '已自动保存'}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => onDelete(todo.id)}
-            className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+          <ConfirmIconButton
+            onConfirm={() => void onDelete(todo.id)}
+            className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl"
+            iconClassName="w-4 h-4"
             title="删除任务"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          />
           <button
             onClick={onClose}
             className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl transition-colors cursor-pointer"
@@ -199,8 +229,11 @@ export function TodoDetailPanel({ todo, onClose, onUpdate, onDelete }: TodoDetai
           <input
             type="text"
             value={title}
-            onChange={e => setTitle(e.target.value)}
-            onBlur={() => triggerUpdate({ title })}
+            onChange={e => {
+              const nextTitle = e.target.value
+              setTitle(nextTitle)
+              triggerUpdate({ title: nextTitle })
+            }}
             placeholder="任务标题..."
             className="w-full text-2xl font-display font-bold bg-transparent text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none border-b border-transparent focus:border-outline-variant/30 pb-2 transition-colors"
           />
@@ -275,9 +308,12 @@ export function TodoDetailPanel({ todo, onClose, onUpdate, onDelete }: TodoDetai
           </label>
           <textarea
             value={content}
-            onChange={e => setContent(e.target.value)}
-            onBlur={() => triggerUpdate({ content })}
-            placeholder="在此添加详细步骤、相关链接或任务备注（失焦自动保存）..."
+            onChange={e => {
+              const nextContent = e.target.value
+              setContent(nextContent)
+              triggerUpdate({ content: nextContent })
+            }}
+            placeholder="在此添加详细步骤、相关链接或任务备注（自动保存）..."
             className="flex-1 w-full min-h-[200px] bg-surface-container-low/80 border border-outline-variant/20 focus:border-primary/40 rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none resize-none leading-relaxed transition-colors"
           />
         </div>

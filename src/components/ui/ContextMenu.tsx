@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useLayoutEffect, useState } from 'react'
+import React, { useEffect, useRef, useLayoutEffect } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface ContextMenuItem {
@@ -21,12 +21,12 @@ interface ContextMenuProps {
 
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
-  const [coords, setCoords] = useState({ left: x, top: y })
 
-  // 视口边界碰撞检测与位置修正
+  // 视口边界碰撞检测与位置修正（直接写 DOM 样式，避免 effect 内触发二次渲染）
   useLayoutEffect(() => {
-    if (!menuRef.current) return
-    const rect = menuRef.current.getBoundingClientRect()
+    const el = menuRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
     const padding = 12
     let nextLeft = x
     let nextTop = y
@@ -38,7 +38,8 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       nextTop = Math.max(padding, y - rect.height)
     }
 
-    setCoords({ left: nextLeft, top: nextTop })
+    el.style.left = `${nextLeft}px`
+    el.style.top = `${nextTop}px`
   }, [x, y])
 
   // 点击外部与按 Esc 键关闭
@@ -74,7 +75,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   return (
     <div
       ref={menuRef}
-      style={{ left: `${coords.left}px`, top: `${coords.top}px` }}
+      style={{ left: `${x}px`, top: `${y}px` }}
       className="fixed z-50 min-w-[180px] bg-surface/95 dark:bg-surface-container/95 backdrop-blur-2xl border border-outline-variant/30 shadow-2xl rounded-2xl p-1.5 flex flex-col gap-0.5 text-xs animate-fade-in select-none"
       onClick={e => e.stopPropagation()}
       onContextMenu={e => e.preventDefault()}

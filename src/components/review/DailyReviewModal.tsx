@@ -5,7 +5,8 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { X, Sparkles, Save, AlertTriangle, CheckCircle2, Moon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { X, Sparkles, Save, AlertTriangle, CheckCircle2, Moon, ArrowUpRight } from 'lucide-react'
 import type { DailyReviewData } from '@/services/dailyReviewService'
 import './DailyReviewModal.css'
 
@@ -39,6 +40,7 @@ export function DailyReviewModal({
   onSave,
   isSaved,
 }: DailyReviewModalProps) {
+  const navigate = useNavigate()
   const cardRef = useRef<HTMLDivElement>(null)
 
   // ESC 关闭
@@ -159,11 +161,20 @@ export function DailyReviewModal({
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {data.stalledTodos.map((todo) => (
-                    <div key={todo.id} className="flex items-center gap-2 text-sm text-amber-200/80">
+                    <button
+                      type="button"
+                      key={todo.id}
+                      onClick={() => {
+                        onClose()
+                        navigate(`/?highlight=todo-${todo.id}`)
+                      }}
+                      className="w-full flex items-center gap-2 text-sm text-amber-200/80 hover:text-amber-100 hover:bg-amber-500/10 px-2 py-1 rounded-lg transition-colors text-left cursor-pointer group"
+                    >
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                       <span className="truncate flex-1">{todo.title}</span>
                       <span className="text-xs text-amber-400/70 shrink-0">{todo.days}天</span>
-                    </div>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-amber-300/60 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -192,9 +203,21 @@ export function DailyReviewModal({
                 )}
 
                 {!aiSummary && !isLoadingAi && (
-                  <p className="text-sm text-slate-400 leading-relaxed">
-                    未配置 AI API Key，无法生成 AI 洞察。请前往设置 → AI 模型配置中填写。
-                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-slate-400 leading-relaxed">
+                      未配置 AI API Key，无法生成 AI 洞察。请前往设置 → AI 模型配置中填写。
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        navigate('/settings')
+                      }}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      前往设置
+                    </button>
+                  </div>
                 )}
 
                 {aiSummary && (

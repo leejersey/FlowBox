@@ -39,7 +39,7 @@ function SuspendedOutlet() {
   const context = useOutletContext<AppShellOutletContext>()
 
   return (
-    <Suspense fallback={<div style={{ padding: 20 }}>加载中...</div>}>
+    <Suspense fallback={<div className="flex-1 h-full w-full flex items-center justify-center text-xs font-medium text-on-surface-variant/70 animate-pulse">加载中...</div>}>
       <Outlet context={context} />
     </Suspense>
   )
@@ -54,11 +54,23 @@ function App() {
   }, [initTheme])
 
   if (error) {
-    return <div style={{ padding: 20, color: 'red' }}>数据库初始化失败: {error}</div>
+    return (
+      <div className="h-screen w-screen bg-surface text-on-surface flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-3xl bg-surface-container border border-red-500/30 p-6 shadow-xl">
+          <h1 className="text-base font-bold text-red-500 mb-2">数据库初始化失败</h1>
+          <p className="text-xs text-on-surface-variant leading-relaxed break-words">{error}</p>
+        </div>
+      </div>
+    )
   }
 
   if (!ready) {
-    return <div style={{ padding: 20 }}>正在初始化数据库...</div>
+    return (
+      <div className="h-screen w-screen bg-surface text-on-surface flex flex-col items-center justify-center gap-3 select-none">
+        <div className="w-8 h-8 rounded-full border-2 border-primary/25 border-t-primary animate-spin" />
+        <span className="text-xs font-medium text-on-surface-variant/80">正在初始化本地工作区...</span>
+      </div>
+    )
   }
 
   return (

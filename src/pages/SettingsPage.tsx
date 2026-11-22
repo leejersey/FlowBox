@@ -29,10 +29,11 @@ const menuItems = [
 const DEFAULT_BUTLER_SHORTCUT = 'Shift+Space'
 
 const shortcutList = [
-  { action: '记录新全局灵感 / 待办', mac: '⇧ ⌘ N', win: 'Shift Ctrl N' },
-  { action: '新建组件页内的记录', mac: '⌘ Enter', win: 'Ctrl Enter' },
-  { action: '开始/停止番茄钟', mac: '⌘ P', win: 'Ctrl P' },
-  { action: '打开剪贴板历史', mac: '⇧ ⌘ V', win: 'Shift Ctrl V' },
+  { action: '打开全局搜索与命令面板', mac: '⌘ /', win: 'Ctrl /' },
+  { action: '切换应用内 AI Butler 浮层', mac: '⌘ K', win: 'Ctrl K' },
+  { action: '当前页面快速新建（待办 / 灵感）', mac: '⌘ N', win: 'Ctrl N' },
+  { action: '极速切换主功能模块', mac: '⌘ 1~8', win: 'Ctrl 1~8' },
+  { action: '打开系统偏好设置', mac: '⌘ ,', win: 'Ctrl ,' },
 ]
 
 const isTauriApp = isTauri()
@@ -63,7 +64,7 @@ function Kbd({ children }: { children: React.ReactNode }) {
 }
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('ai')
+  const [activeTab, setActiveTab] = useState('general')
   const [localApiKey, setLocalApiKey] = useState('')
   const [butlerShortcutOverride, setButlerShortcutOverride] = useState<string | null>(null)
   const [volcAppId, setVolcAppId] = useState('')

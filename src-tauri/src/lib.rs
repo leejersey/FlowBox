@@ -70,6 +70,12 @@ pub fn run() {
             sql: include_str!("../migrations/010_item_link_cleanup.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 11,
+            description: "trending_v2",
+            sql: include_str!("../migrations/011_trending_v2.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

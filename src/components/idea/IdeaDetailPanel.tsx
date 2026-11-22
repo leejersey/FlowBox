@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  X, CheckSquare, Trash2, Archive, Link2, Tag, Copy, Check,
+  X, CheckSquare, Archive, Link2, Tag, Copy, Check,
   Clock, ArrowUpRight, Sparkles, Mic, Clipboard as ClipboardIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { LinkPanel } from '@/components/links/LinkPanel'
 import { todoCreate } from '@/services/todoService'
 import { showToast } from '@/store/useToastStore'
@@ -43,22 +44,45 @@ export function IdeaDetailPanel({
   const [copied, setCopied] = useState(false)
   const [showLinks, setShowLinks] = useState(false)
   const [converting, setConverting] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSaveRef = useRef<{ id: number; content: string; tags: string[] } | null>(null)
+  const onUpdateRef = useRef(onUpdate)
 
   useEffect(() => {
-    setContent(idea.content)
-    setTags(parseIdeaTags(idea.tags))
-  }, [idea])
+    onUpdateRef.current = onUpdate
+  }, [onUpdate])
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      if (savedResetTimerRef.current) clearTimeout(savedResetTimerRef.current)
+      if (pendingSaveRef.current) {
+        const pending = pendingSaveRef.current
+        pendingSaveRef.current = null
+        void onUpdateRef.current(pending.id, { content: pending.content, tags: pending.tags })
+      }
+    }
+  }, [])
 
   const triggerAutoSave = useCallback((newContent: string, newTags: string[]) => {
+    const trimmed = newContent.trim()
+    pendingSaveRef.current = { id: idea.id, content: trimmed, tags: newTags }
+    setSaveState('saving')
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
-      onUpdate(idea.id, {
-        content: newContent.trim(),
+      pendingSaveRef.current = null
+      void Promise.resolve(onUpdateRef.current(idea.id, {
+        content: trimmed,
         tags: newTags,
+      })).finally(() => {
+        setSaveState('saved')
+        if (savedResetTimerRef.current) clearTimeout(savedResetTimerRef.current)
+        savedResetTimerRef.current = setTimeout(() => setSaveState('idle'), 1500)
       })
     }, 350)
-  }, [idea.id, onUpdate])
+  }, [idea.id])
 
   const handleContentChange = (val: string) => {
     setContent(val)
@@ -144,6 +168,11 @@ export function IdeaDetailPanel({
           </Button>
 
           <span className="text-xs text-on-surface-variant/50 font-mono">#{idea.id}</span>
+          {saveState !== 'idle' && (
+            <span className="text-[11px] font-medium text-on-surface-variant/70 animate-fade-in">
+              {saveState === 'saving' ? '保存中...' : '已自动保存'}
+            </span>
+          )}
         </div>
 
         {/* 右侧操作按钮组 */}
@@ -172,13 +201,12 @@ export function IdeaDetailPanel({
           </button>
 
           {/* 删除 */}
-          <button
-            onClick={() => onDelete(idea.id)}
-            className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+          <ConfirmIconButton
+            onConfirm={() => void onDelete(idea.id)}
+            className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl"
+            iconClassName="w-4 h-4"
             title="删除灵感"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          />
 
           {/* 关闭 */}
           <button

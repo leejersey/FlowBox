@@ -20,6 +20,10 @@ export function StatsPage() {
   const [usage, setUsage] = useState<UsageDistribution[]>([])
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day')
 
+  const trendDays = period === 'day' ? 7 : period === 'week' ? 14 : 30
+  const usageDays = period === 'day' ? 1 : period === 'week' ? 7 : 30
+  const periodLabel = period === 'day' ? '今日' : period === 'week' ? '近 7 天' : '近 30 天'
+
   useEffect(() => {
     if (!isTauri) return
     let cancelled = false
@@ -27,8 +31,8 @@ export function StatsPage() {
     void Promise.all([
       statsService.getDashboardStats(),
       statsService.getHourlyFocus(),
-      statsService.getFocusTrend(7),
-      statsService.getUsageDistribution(),
+      statsService.getFocusTrend(trendDays),
+      statsService.getUsageDistribution(usageDays),
     ]).then(([nextStats, nextHourly, nextTrend, nextUsage]) => {
       if (cancelled) return
       setStats(nextStats)
@@ -38,7 +42,7 @@ export function StatsPage() {
     }).catch(() => { /* browser fallback */ })
 
     return () => { cancelled = true }
-  }, [])
+  }, [trendDays, usageDays])
 
   const focusHours = Math.floor(stats.today_focus_minutes / 60)
   const focusMins = stats.today_focus_minutes % 60
@@ -123,6 +127,7 @@ export function StatsPage() {
             <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" /> 专注时长趋势
             </h2>
+            <span className="text-xs font-medium text-on-surface-variant">近 {trendDays} 天</span>
           </div>
           <div className="flex-1 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
@@ -151,6 +156,7 @@ export function StatsPage() {
         <div className="bg-surface-container-low border border-white/20 rounded-3xl p-6 h-80 flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-base font-bold text-on-surface">应用使用分布</h2>
+            <span className="text-xs font-medium text-on-surface-variant">{periodLabel}</span>
           </div>
           <div className="flex-1 w-full flex items-center justify-center relative">
             {usage.length > 0 ? (

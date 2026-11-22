@@ -540,32 +540,35 @@ export function MarkdownPage() {
           <div className="w-[1px] h-6 bg-surface-container-highest mx-1"></div>
           <button 
             onClick={handleClear}
-            className="px-4 py-2 text-sm font-semibold text-outline hover:text-on-surface hover:bg-surface-container-high rounded-full transition-all flex items-center gap-2"
+            className="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full transition-all flex items-center gap-2 cursor-pointer"
           >
             <Trash2 className="w-4 h-4" /> 清空
           </button>
           <button 
-            className="px-5 py-2 text-sm font-bold text-on-primary bg-primary rounded-full shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+            type="button"
+            disabled
+            title="AI 智能还原功能正在开发中"
+            className="px-5 py-2 text-sm font-bold text-white/80 bg-primary/50 rounded-full flex items-center gap-2 cursor-not-allowed"
           >
             <Sparkles className={cn("w-4 h-4", isProcessing && "animate-spin")} />
-            ✨ AI 智能还原 (即将上线)
+            AI 智能还原 (即将上线)
           </button>
         </div>
       </section>
 
       {/* Split Pane Area */}
-      <div className="flex-1 px-6 pb-4 flex flex-col 2xl:flex-row gap-6 min-h-[850px] 2xl:min-h-[500px] shrink-0">
+      <div className="flex-1 px-6 pb-4 flex flex-col lg:flex-row gap-6 min-h-[760px] lg:min-h-[500px] shrink-0">
         
         {/* Left Pane (Source) */}
-        <div className="flex-1 w-full 2xl:w-[calc(50%-12px)] flex flex-col gap-3 h-[400px] 2xl:h-full shrink-0">
+        <div className="flex-1 w-full lg:w-[calc(50%-12px)] flex flex-col gap-3 h-[380px] lg:h-full shrink-0">
           <div className="flex items-center justify-between px-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-outline">
+            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
               {mode === 'html2md' ? 'Rich Text / HTML Source' : 'Markdown Source'}
             </label>
-            <span className="text-[10px] text-outline-variant">{isProcessing ? 'Processing...' : (mode === 'html2md' ? 'Auto-detecting format...' : 'Edit Markdown...')}</span>
+            <span className="text-[10px] text-on-surface-variant/70">{isProcessing ? 'Processing...' : (mode === 'html2md' ? 'Auto-detecting format...' : 'Edit Markdown...')}</span>
           </div>
           
-          <div className="flex-1 bg-surface-container-low rounded-2xl p-5 relative group overflow-hidden border border-white/40 shadow-sm flex flex-col">
+          <div className="flex-1 bg-surface-container-low rounded-2xl p-5 relative group overflow-hidden border border-outline-variant/25 shadow-sm flex flex-col">
             {mode === 'html2md' ? (
               <div 
                 ref={editorRef}
@@ -588,12 +591,12 @@ export function MarkdownPage() {
         </div>
 
         {/* Vertical Divider Decorative */}
-        <div className="w-[1px] auto bg-surface-container-highest/50 self-stretch hidden 2xl:block"></div>
+        <div className="w-[1px] auto bg-surface-container-highest/50 self-stretch hidden lg:block"></div>
 
         {/* Right Pane (Markdown Output) */}
-        <div className="flex-1 w-full 2xl:w-[calc(50%-12px)] flex flex-col gap-3 h-[400px] 2xl:h-full shrink-0">
+        <div className="flex-1 w-full lg:w-[calc(50%-12px)] flex flex-col gap-3 h-[380px] lg:h-full shrink-0">
           <div className="flex items-center justify-between px-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-outline">
+            <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
               {mode === 'html2md' ? 'Markdown Output' : 'Rich Text Preview'}
             </label>
             <div className="flex items-center gap-2">
@@ -602,9 +605,9 @@ export function MarkdownPage() {
                   <button
                     onClick={() => handleChangeCodeTheme('light')}
                     className={cn(
-                      'px-3 py-1.5 rounded-full transition-colors',
+                      'px-3 py-1.5 rounded-full transition-colors cursor-pointer',
                       codeThemeName === 'light'
-                        ? 'bg-primary text-on-primary'
+                        ? 'bg-primary text-white'
                         : 'text-on-surface-variant hover:text-on-surface'
                     )}
                   >
@@ -613,9 +616,9 @@ export function MarkdownPage() {
                   <button
                     onClick={() => handleChangeCodeTheme('dark')}
                     className={cn(
-                      'px-3 py-1.5 rounded-full transition-colors',
+                      'px-3 py-1.5 rounded-full transition-colors cursor-pointer',
                       codeThemeName === 'dark'
-                        ? 'bg-primary text-on-primary'
+                        ? 'bg-primary text-white'
                         : 'text-on-surface-variant hover:text-on-surface'
                     )}
                   >
@@ -625,7 +628,7 @@ export function MarkdownPage() {
               )}
               <button 
                 onClick={mode === 'html2md' ? handleCopyMarkdown : handleCopyRichText}
-                className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-container transition-colors p-1 rounded-md hover:bg-primary/10"
+                className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-container transition-colors p-1 rounded-md hover:bg-primary/10 cursor-pointer"
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 {copied ? '已复制' : (mode === 'html2md' ? '复制 Markdown' : '复制富文本')}
@@ -634,7 +637,7 @@ export function MarkdownPage() {
           </div>
           
           {mode === 'html2md' ? (
-            <div className="flex-1 bg-surface-container-highest/30 rounded-2xl p-5 border border-white/20 shadow-inner font-mono text-[13px] leading-relaxed text-on-surface overflow-hidden relative group">
+            <div className="flex-1 bg-surface-container-highest/30 rounded-2xl p-5 border border-outline-variant/25 shadow-inner font-mono text-[13px] leading-relaxed text-on-surface overflow-hidden relative group">
               <pre className="h-full w-full overflow-y-auto custom-scrollbar break-words whitespace-pre-wrap">
                 <code className="text-primary/90">
                   {markdownText || (
@@ -647,7 +650,7 @@ export function MarkdownPage() {
               </pre>
             </div>
           ) : (
-            <div className="flex-1 bg-surface-container-lowest/80 rounded-2xl p-6 border border-white/20 shadow-inner overflow-hidden relative group flex flex-col">
+            <div className="flex-1 bg-surface/80 rounded-2xl p-6 border border-outline-variant/25 shadow-inner overflow-hidden relative group flex flex-col">
               <div className="h-full w-full overflow-y-auto custom-scrollbar">
                 {markdownText ? (
                   <div ref={previewRef} className="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:font-display prose-a:text-primary">
@@ -667,7 +670,7 @@ export function MarkdownPage() {
 
       {/* Bottom Action Bar (Obsidian Bridge) */}
       {mode === 'html2md' && (
-      <footer className="mx-6 mt-2 mb-6 p-6 bg-surface-container-low rounded-[24px] shadow-lg shadow-surface-tint/5 border border-white/40 shrink-0">
+      <footer className="mx-6 mt-2 mb-6 p-6 bg-surface-container-low rounded-[24px] shadow-lg border border-outline-variant/25 shrink-0">
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -679,19 +682,20 @@ export function MarkdownPage() {
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
             <div className="lg:col-span-5 flex flex-col gap-2">
-              <label className="text-xs font-bold text-outline-variant ml-1">Obsidian 库路径 (Vault Path)</label>
+              <label className="text-xs font-bold text-on-surface-variant ml-1">Obsidian 库路径 (Vault Path)</label>
               <div className="relative">
                 <input 
                   type="text" 
                   value={vaultPath}
                   onChange={e => setVaultPath(e.target.value)}
                   placeholder="/Users/my_name/Documents/MyVault"
-                  className="w-full h-11 bg-surface border hover:border-primary/30 border-transparent rounded-xl text-sm px-4 focus:ring-2 focus:ring-primary/20 text-on-surface-variant font-mono transition-colors" 
+                  className="w-full h-11 bg-surface border hover:border-primary/30 border-outline-variant/20 rounded-xl text-sm px-4 pr-10 focus:ring-2 focus:ring-primary/20 text-on-surface font-mono transition-colors" 
                 />
                 <button 
-                  onClick={() => showToast('请手动填入绝对路径该功能暂仅支持前端 Mock', 'info')}
-                  className="absolute right-3 top-2.5 text-outline hover:text-primary transition-colors"
-                  title="浏览文件夹"
+                  type="button"
+                  onClick={() => showToast('请直接输入或粘贴本地 Obsidian Vault 绝对路径', 'info')}
+                  className="absolute right-3 top-2.5 text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                  title="查看路径填写说明"
                 >
                   <FolderOpen className="w-5 h-5" />
                 </button>
@@ -699,7 +703,7 @@ export function MarkdownPage() {
             </div>
             
             <div className="lg:col-span-4 flex flex-col gap-2">
-              <label className="text-xs font-bold text-outline-variant ml-1">文件名 (Filename)</label>
+              <label className="text-xs font-bold text-on-surface-variant ml-1">文件名 (Filename)</label>
                     <input 
                       type="text" 
                       value={fileName}
@@ -708,14 +712,14 @@ export function MarkdownPage() {
                         setIsFileNameCustomized(true)
                       }}
                       placeholder="FlowBox_Memo.md"
-                      className="w-full h-11 bg-surface border hover:border-primary/30 border-transparent rounded-xl text-sm px-4 focus:ring-2 focus:ring-primary/20 text-on-surface-variant font-mono transition-colors" 
+                      className="w-full h-11 bg-surface border hover:border-primary/30 border-outline-variant/20 rounded-xl text-sm px-4 focus:ring-2 focus:ring-primary/20 text-on-surface font-mono transition-colors" 
                     />
             </div>
             
             <div className="lg:col-span-3 pb-0.5">
               <button 
                 onClick={handleExportToObsidian}
-                className="w-full h-11 bg-on-surface text-surface rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary hover:text-on-primary transition-all active:scale-[0.98] shadow-lg shadow-on-surface/5"
+                className="w-full h-11 bg-on-surface text-surface rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all active:scale-[0.98] shadow-lg shadow-on-surface/5 cursor-pointer"
               >
                 <UploadCloud className="w-5 h-5" />
                 确认导出
@@ -730,10 +734,10 @@ export function MarkdownPage() {
       <style>{`
         [contentEditable=true]:empty:before {
           content: attr(data-placeholder);
-          color: var(--on-surface-variant);
+          color: var(--color-on-surface-variant);
           opacity: 0.5;
           pointer-events: none;
-          display: block; // For Firefox
+          display: block;
         }
       `}</style>
     </div>

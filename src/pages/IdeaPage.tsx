@@ -9,6 +9,7 @@ import type { Idea } from '@/types/idea'
 import { useIdeas } from '@/hooks/useIdeas'
 import { ResizablePanel } from '@/components/ui/ResizablePanel'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { IdeaDetailPanel } from '@/components/idea/IdeaDetailPanel'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LinkPanel } from '@/components/links/LinkPanel'
@@ -101,13 +102,12 @@ function IdeaCard({
           >
             <Archive className="w-3 h-3" />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(idea.id) }}
+          <ConfirmIconButton
+            onConfirm={() => onDelete(idea.id)}
             className="p-1 hover:bg-red-500/10 hover:text-red-500 rounded text-on-surface-variant"
+            iconClassName="w-3 h-3"
             title="删除"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
+          />
         </div>
       </div>
     </div>
@@ -425,6 +425,7 @@ export function IdeaPage() {
       )}>
         {selectedIdea && (
           <IdeaDetailPanel
+            key={selectedIdea.id}
             idea={selectedIdea}
             onClose={() => setSelectedIdea(null)}
             onUpdate={updateIdea}

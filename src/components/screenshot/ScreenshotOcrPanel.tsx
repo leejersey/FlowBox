@@ -8,7 +8,7 @@ import { X, Lightbulb, ListTodo, ScanSearch, CheckCircle2, Camera, Pencil } from
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core'
 import type { OcrStep } from '@/hooks/useScreenshotOcr'
 import type { OcrResult } from '@/services/screenshotOcrService'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './ScreenshotOcrPanel.css'
 
 interface ScreenshotOcrPanelProps {
@@ -43,6 +43,22 @@ export function ScreenshotOcrPanel({
 }: ScreenshotOcrPanelProps) {
   const [isEditingText, setIsEditingText] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (isEditingTitle) {
+        setIsEditingTitle(false)
+      } else if (isEditingText) {
+        setIsEditingText(false)
+      } else {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, isEditingTitle, isEditingText, onClose])
 
   if (!isOpen) return null
 
@@ -176,7 +192,13 @@ export function ScreenshotOcrPanel({
                   className="w-full h-9 bg-white/5 rounded-lg px-3 text-sm text-white border border-white/10 focus:border-primary/50 focus:outline-none transition-all"
                 />
               ) : (
-                <p className="text-sm font-bold text-white">{ocrResult.suggestedTitle}</p>
+                <p
+                  onClick={() => setIsEditingTitle(true)}
+                  title="点击编辑标题"
+                  className="text-sm font-bold text-white cursor-text hover:text-cyan-200 transition-colors"
+                >
+                  {ocrResult.suggestedTitle}
+                </p>
               )}
             </div>
 
@@ -201,7 +223,11 @@ export function ScreenshotOcrPanel({
                   className="w-full bg-white/5 rounded-lg p-3 text-sm text-slate-200 border border-white/10 focus:border-primary/50 focus:outline-none transition-all resize-none leading-relaxed"
                 />
               ) : (
-                <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                <div
+                  onClick={() => setIsEditingText(true)}
+                  title="点击编辑识别文本"
+                  className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 cursor-text transition-colors"
+                >
                   <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto">
                     {ocrResult.rawText}
                   </p>

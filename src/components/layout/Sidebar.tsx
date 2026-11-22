@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   CheckSquare, Lightbulb, Timer, Clipboard, Mic, BarChart3,
   Settings, FileType2, Search, Flame, ChevronLeft, ChevronRight, type LucideIcon
@@ -49,6 +49,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onSearchClick }: SidebarProps) {
+  const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true'
   })
@@ -65,10 +66,15 @@ export function Sidebar({ onSearchClick }: SidebarProps) {
       )}
     >
       {/* 顶部 Logo 与应用名称 */}
-      <div className={cn(
-        "flex items-center gap-3 mb-4 cursor-pointer group",
-        collapsed ? "justify-center" : "px-2"
-      )}>
+      <button
+        type="button"
+        onClick={() => navigate('/')}
+        title="返回首页"
+        className={cn(
+          "flex items-center gap-3 mb-4 cursor-pointer group text-left rounded-xl outline-none",
+          collapsed ? "justify-center" : "px-2"
+        )}
+      >
         <div className="w-9 h-9 rounded-xl overflow-hidden shadow-md shadow-black/30 border border-white/10 shrink-0 group-hover:scale-105 transition-transform relative">
           <img src="/logo.png" alt="FlowBox" className="w-full h-full object-cover pointer-events-none" />
           <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors pointer-events-none" />
@@ -79,7 +85,7 @@ export function Sidebar({ onSearchClick }: SidebarProps) {
             <span className="text-[10px] text-on-surface-variant/70 font-mono">Workspace</span>
           </div>
         )}
-      </div>
+      </button>
 
       {/* 全局搜索触发按钮 */}
       {collapsed ? (
@@ -109,7 +115,12 @@ export function Sidebar({ onSearchClick }: SidebarProps) {
       )}
 
       {/* 中部导航分类列表 */}
-      <nav className="flex-1 flex flex-col gap-4 w-full overflow-y-auto overflow-x-hidden no-scrollbar py-1">
+      <nav
+        className={cn(
+          "flex-1 flex flex-col gap-4 w-full py-1",
+          collapsed ? "overflow-visible" : "overflow-y-auto overflow-x-hidden no-scrollbar"
+        )}
+      >
         {navSections.map((section, sIdx) => (
           <div key={section.title} className="flex flex-col gap-1 w-full">
             {/* 分组标识 */}
@@ -181,7 +192,7 @@ export function Sidebar({ onSearchClick }: SidebarProps) {
           aria-label="打开偏好设置"
           className={({ isActive }) =>
             cn(
-              'self-start p-2.5 rounded-xl text-on-surface-variant hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+              'self-start p-2.5 rounded-xl text-on-surface-variant hover:text-primary hover:bg-surface-container-highest/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
               collapsed && 'self-center',
               isActive && 'text-primary bg-primary/10',
             )

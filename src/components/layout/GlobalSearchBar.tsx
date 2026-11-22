@@ -44,7 +44,9 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(0)
+  const [confirmingActionId, setConfirmingActionId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const navigate = useNavigate()
 
   // 系统预置快捷动作
@@ -72,7 +74,9 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
         try {
           await pomodoroService.pomodoroStart({ type: 'focus', duration_minutes: 25 })
           showToast('已开启 25min 专注番茄', 'success')
-        } catch {}
+        } catch {
+          // 忽略浏览器预览或已有会话冲突
+        }
         nav('/pomodoro')
       }
     },
@@ -86,7 +90,9 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
         try {
           await pomodoroService.pomodoroStart({ type: 'short_break', duration_minutes: 5 })
           showToast('已开启 5min 休息', 'info')
-        } catch {}
+        } catch {
+          // 忽略浏览器预览或已有会话冲突
+        }
         nav('/pomodoro')
       }
     },
@@ -142,6 +148,7 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
       title: '格式转换器',
       subtitle: '网页与富文本一键转 Markdown',
       icon: FileType2,
+      shortcut: '⌘6',
       keywords: ['markdown', '转换', 'converter', 'zh'],
       run: (nav) => nav('/markdown')
     },
@@ -150,6 +157,7 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
       title: '极客热榜',
       subtitle: '浏览 GitHub 与科技热门动态',
       icon: Flame,
+      shortcut: '⌘7',
       keywords: ['热榜', 'trending', 'github', 'rb'],
       run: (nav) => nav('/trending')
     },
@@ -181,9 +189,16 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
       setQuery('')
       setResults([])
       setSelectedIdx(0)
+      setConfirmingActionId(null)
       setTimeout(() => inputRef.current?.focus(), 80)
     }
   }, [isOpen])
+
+  // 键盘上下移动时自动滚动保持选中项在可视区
+  useEffect(() => {
+    if (!isOpen) return
+    itemRefs.current[selectedIdx]?.scrollIntoView({ block: 'nearest' })
+  }, [selectedIdx, isOpen])
 
   // 防抖内容搜索
   useEffect(() => {
@@ -218,13 +233,19 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
 
   const handleExecuteItem = useCallback((item: PaletteItem) => {
     if (item.kind === 'action') {
+      if (item.data.id === 'action_clear_clipboard' && confirmingActionId !== item.data.id) {
+        setConfirmingActionId(item.data.id)
+        return
+      }
+      setConfirmingActionId(null)
       item.data.run(navigate)
     } else {
+      setConfirmingActionId(null)
       const config = typeConfig[item.data.type]
       navigate(`${config.path}?highlight=${item.data.type}-${item.data.id}`)
     }
     onClose()
-  }, [navigate, onClose])
+  }, [confirmingActionId, navigate, onClose])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -297,15 +318,19 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
                   const currentIdx = runningIdx
                   const Icon = action.icon
                   const isSelected = currentIdx === selectedIdx
+                  const isConfirming = confirmingActionId === action.id
 
                   return (
                     <button
                       key={action.id}
+                      ref={(el) => { itemRefs.current[currentIdx] = el }}
                       onClick={() => handleExecuteItem({ kind: 'action', data: action })}
                       onMouseEnter={() => setSelectedIdx(currentIdx)}
                       className={cn(
                         "w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-left transition-all cursor-pointer group",
-                        isSelected
+                        isConfirming
+                          ? "bg-red-500/15 text-red-600 dark:text-red-400 font-semibold ring-1 ring-red-500/40"
+                          : isSelected
                           ? "bg-primary/15 text-primary font-semibold shadow-xs"
                           : "text-on-surface hover:bg-surface-container"
                       )}
@@ -313,17 +338,23 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={cn(
                           "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                          isSelected ? "bg-primary text-white" : "bg-surface-container-highest text-on-surface-variant group-hover:text-on-surface"
+                          isConfirming
+                            ? "bg-red-500 text-white"
+                            : isSelected ? "bg-primary text-white" : "bg-surface-container-highest text-on-surface-variant group-hover:text-on-surface"
                         )}>
                           <Icon className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs font-semibold truncate">{action.title}</div>
-                          <div className="text-[10px] text-on-surface-variant/70 truncate">{action.subtitle}</div>
+                          <div className="text-xs font-semibold truncate">
+                            {isConfirming ? `再次确认：${action.title}` : action.title}
+                          </div>
+                          <div className="text-[10px] text-on-surface-variant/70 truncate">
+                            {isConfirming ? '再次按回车或点击以执行清空，按 Esc 取消' : action.subtitle}
+                          </div>
                         </div>
                       </div>
 
-                      {action.shortcut && (
+                      {action.shortcut && !isConfirming && (
                         <kbd className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant/70 border border-outline-variant/30">
                           {action.shortcut}
                         </kbd>
@@ -353,6 +384,7 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
                   return (
                     <button
                       key={`${item.type}-${item.id}`}
+                      ref={(el) => { itemRefs.current[currentIdx] = el }}
                       onClick={() => handleExecuteItem({ kind: 'result', data: item })}
                       onMouseEnter={() => setSelectedIdx(currentIdx)}
                       className={cn(

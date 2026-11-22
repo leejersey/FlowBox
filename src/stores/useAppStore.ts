@@ -7,6 +7,10 @@ interface AppState {
   toggleSidebar: () => void
   isButlerActive: boolean
   toggleButler: () => void
+  setButlerActive: (active: boolean) => void
+  isSearchOpen: boolean
+  setSearchOpen: (open: boolean) => void
+  toggleSearch: () => void
 }
 
 export const useAppStore = create<AppState>()((set) => ({
@@ -15,5 +19,21 @@ export const useAppStore = create<AppState>()((set) => ({
   isSidebarOpen: true,
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   isButlerActive: false,
-  toggleButler: () => set((state) => ({ isButlerActive: !state.isButlerActive })),
+  toggleButler: () => set((state) => ({
+    isButlerActive: !state.isButlerActive,
+    isSearchOpen: !state.isButlerActive ? false : state.isSearchOpen,
+  })),
+  setButlerActive: (active) => set((state) => ({
+    isButlerActive: active,
+    isSearchOpen: active ? false : state.isSearchOpen,
+  })),
+  isSearchOpen: false,
+  setSearchOpen: (open) => set((state) => ({
+    isSearchOpen: open,
+    isButlerActive: open ? false : state.isButlerActive,
+  })),
+  toggleSearch: () => set((state) => ({
+    isSearchOpen: !state.isSearchOpen,
+    isButlerActive: !state.isSearchOpen ? false : state.isButlerActive,
+  })),
 }))
