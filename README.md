@@ -1,6 +1,6 @@
 # 🧊 FlowBox — AI 桌面效率工具
 
-![Version](https://img.shields.io/badge/version-v0.5.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-v0.6.0-blue?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 ![Tech](https://img.shields.io/badge/stack-Tauri%20v2%20%2B%20React%2019-purple?style=flat-square)

@@ -16,12 +16,12 @@ const pkg = JSON.parse(packageSource)
 const packageLock = JSON.parse(packageLockSource)
 const tauri = JSON.parse(tauriSource)
 
-test('npm、Cargo 与 Tauri 发布版本统一为 0.5.0', () => {
-  assert.equal(pkg.version, '0.5.0')
-  assert.equal(packageLock.packages[''].version, '0.5.0')
-  assert.match(cargo, /^\[package\]\s+name = "flowbox"\s+version = "0\.5\.0"/m)
-  assert.match(cargoLock, /\[\[package\]\]\s+name = "flowbox"\s+version = "0\.5\.0"/m)
-  assert.equal(tauri.version, '0.5.0')
+test('npm、Cargo 与 Tauri 发布版本统一为 0.6.0', () => {
+  assert.equal(pkg.version, '0.6.0')
+  assert.equal(packageLock.packages[''].version, '0.6.0')
+  assert.match(cargo, /^\[package\]\s+name = "flowbox"\s+version = "0\.6\.0"/m)
+  assert.match(cargoLock, /\[\[package\]\]\s+name = "flowbox"\s+version = "0\.6\.0"/m)
+  assert.equal(tauri.version, '0.6.0')
 })
 
 test('React Router 保持 major 7 并采用修复后的兼容版本范围', () => {

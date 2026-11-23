@@ -34,7 +34,7 @@ let pendingUpdate: Update | null = null
 
 export const useUpdaterStore = create<UpdaterStore>((set, get) => ({
   status: 'idle',
-  currentVersion: '0.5.0',
+  currentVersion: '0.6.0',
   availableVersion: null,
   releaseNotes: null,
   releaseDate: null,

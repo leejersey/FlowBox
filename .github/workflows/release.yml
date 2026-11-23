@@ -44,6 +44,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'FlowBox v__VERSION__'
           releaseBody: '查看本次更新内容，桌面端用户可直接在「设置 → 关于 FlowBox」中一键自动更新。'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
