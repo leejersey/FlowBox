@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ShieldCheck, Play, Timer } from 'lucide-react'
+import { ShieldCheck, Play, Timer, ArrowUpCircle } from 'lucide-react'
 import { pomodoroGetState, pomodoroOnTick } from '@/services/pomodoroService'
+import { useUpdaterStore } from '@/store/useUpdaterStore'
 import type { PomodoroState } from '@/types/pomodoro'
 
 function formatTime(seconds: number): string {
@@ -14,6 +15,9 @@ export function StatusBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [pomodoroState, setPomodoroState] = useState<PomodoroState>(() => pomodoroGetState())
+  const updaterStatus = useUpdaterStore(state => state.status)
+  const availableVersion = useUpdaterStore(state => state.availableVersion)
+  const updateProgress = useUpdaterStore(state => state.progress)
 
   useEffect(() => {
     // 订阅番茄钟状态更新
@@ -27,10 +31,29 @@ export function StatusBar() {
 
   return (
     <footer className="h-6 w-full shrink-0 border-t border-outline-variant/15 bg-surface/80 backdrop-blur-xl px-4 flex items-center justify-between text-[11px] text-on-surface-variant/70 select-none z-30 font-medium">
-      {/* 左侧：本地数据离线安全状态 */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-        <span className="text-[10px] hidden sm:inline text-on-surface-variant/80 font-mono">SQLite 离线存储已就绪</span>
+      {/* 左侧：本地数据离线安全状态 + 新版本提醒 */}
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          <span className="text-[10px] hidden sm:inline text-on-surface-variant/80 font-mono">SQLite 离线存储已就绪</span>
+        </div>
+        {(updaterStatus === 'available' || updaterStatus === 'downloading' || updaterStatus === 'ready') && (
+          <button
+            type="button"
+            onClick={() => navigate('/settings?tab=about')}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/12 hover:bg-primary/20 text-primary text-[10px] font-bold transition-colors cursor-pointer"
+            title="点击查看更新详情"
+          >
+            <ArrowUpCircle className="w-3 h-3" />
+            <span>
+              {updaterStatus === 'downloading'
+                ? `更新下载中 ${updateProgress}%`
+                : updaterStatus === 'ready'
+                ? '更新已就绪 · 点击重启'
+                : `新版本 v${availableVersion}`}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* 中间：运行中的番茄钟心流胶囊 */}

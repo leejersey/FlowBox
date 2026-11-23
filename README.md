@@ -153,11 +153,18 @@ npm run tauri dev
 
 > 首次运行会编译 Rust 依赖，可能需要 3-5 分钟。后续增量编译极快。
 
-### 构建生产包
+### 构建生产包与自动发布
 
 ```bash
+# 本地构建生产包
 npm run tauri build
+
+# 触发 GitHub Actions 自动构建、Ed25519 签名并发布 Release（支持应用内自动更新）
+git tag v0.6.0
+git push origin v0.6.0
 ```
+
+> 桌面端内置 `tauri-plugin-updater`：启动后静默检测 GitHub Releases 的 `latest.json`，支持在 **设置 → 关于 FlowBox** 中一键下载更新包、验签并自动重启生效，无需每次手动下载 DMG。
 
 ---
 
@@ -335,6 +342,7 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 - [x] Butler Skills 技能管理系统（8 预设 + 自定义 Prompt 模板）
 - [x] Dev Trending v2/v3 — 日/周/月/新秀黑马四榜 + 6 大板块排名 + 技术雷达 + 应用内 README 预览与 AI 项目速读卡 + 一键转待办/问 Butler/导出 Obsidian 周报
 - [x] AI Butler v2（Local Agent）— `@剪贴板/@待办/@灵感/@热榜/@本周` 上下文挂载 + 可执行动作卡片 + 多会话历史管理
+- [x] 应用内自动更新（`tauri-plugin-updater` + GitHub Releases 自动签名发版，原地更新重启生效）
 - [x] 桌面端 UI/交互全面打磨（1280×820 窗口适配、过渡动效、防误触轻确认、浮层互斥、Butler 多行输入与流式停止）
 - [ ] Obsidian Vault 自动导出集成
 - [ ] AI 周报自动生成（基于效率分析数据）

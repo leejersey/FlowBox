@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useOutletContext } from 'react-router-dom'
-import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus, Moon, Play, Puzzle } from 'lucide-react'
+import { useOutletContext, useSearchParams } from 'react-router-dom'
+import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus, Moon, Play, Puzzle, RefreshCw, RotateCw, CheckCircle2 } from 'lucide-react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import * as autostart from '@tauri-apps/plugin-autostart'
 import { cn } from '@/lib/utils'
 import { getLucideIcon } from '@/lib/icons'
 import { useThemeStore } from '@/store/useThemeStore'
+import { useUpdaterStore } from '@/store/useUpdaterStore'
 import { useSettings } from '@/hooks/useSettings'
 import { showToast } from '@/store/useToastStore'
 import * as skillService from '@/services/skillService'
@@ -64,7 +65,12 @@ function Kbd({ children }: { children: React.ReactNode }) {
 }
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('general')
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(
+    initialTab && menuItems.some(m => m.id === initialTab) ? initialTab : 'general',
+  )
+  const updater = useUpdaterStore()
   const [localApiKey, setLocalApiKey] = useState('')
   const [butlerShortcutOverride, setButlerShortcutOverride] = useState<string | null>(null)
   const [volcAppId, setVolcAppId] = useState('')
@@ -749,18 +755,106 @@ export function SettingsPage() {
             )}
 
             {activeTab === 'about' && (
-              <div className="animate-fade-in">
-                <h2 className="text-2xl font-display font-bold text-on-surface mb-2">关于 FlowBox</h2>
-                <div className="mt-8 space-y-4 text-sm text-on-surface-variant">
-                  <p><strong className="text-on-surface block mb-1">当前版本</strong> 0.1.0 (Alpha 构建版)</p>
-                  <p><strong className="text-on-surface block mb-1">构建时间</strong> 2024.10.25</p>
-                  <p><strong className="text-on-surface block mt-6 mb-1">开源组件与许可</strong> 本软件使用 Rust 构建后端，并应用了 Tauri 2.0 框架。前端由 React 驱动。代码由 MIT 许可授权。</p>
+              <div className="animate-fade-in space-y-6">
+                <div>
+                  <h2 className="text-2xl font-display font-bold text-on-surface mb-2">关于 FlowBox</h2>
+                  <p className="text-sm text-on-surface-variant">Local-First · AI-Powered · macOS 桌面效率工作台</p>
                 </div>
 
-                <div className="mt-12 pt-8 border-t border-white/10 flex items-center justify-center gap-6">
-                  <a href="#" className="text-sm font-medium text-primary hover:underline">官网主页</a>
-                  <a href="#" className="text-sm font-medium text-primary hover:underline">提交 Issue</a>
-                  <a href="#" className="text-sm font-medium text-primary hover:underline">使用条款</a>
+                {/* 自动更新卡片 */}
+                <div className="p-5 rounded-2xl bg-surface border border-outline-variant/20 space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-on-surface">当前版本 v{updater.currentVersion}</span>
+                        {updater.status === 'up_to_date' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> 已是最新
+                          </span>
+                        )}
+                        {updater.status === 'available' && updater.availableVersion && (
+                          <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary text-xs font-bold">
+                            发现新版本 v{updater.availableVersion}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-on-surface-variant mt-1">
+                        支持通过 GitHub Releases 应用内自动下载、签名校验并原地更新，无需手动下载 DMG。
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {updater.status === 'ready' ? (
+                        <button
+                          type="button"
+                          onClick={() => void updater.relaunchNow()}
+                          className="px-4 py-2 rounded-xl primary-gradient-button text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RotateCw className="w-3.5 h-3.5" />
+                          立即重启生效
+                        </button>
+                      ) : updater.status === 'available' ? (
+                        <button
+                          type="button"
+                          onClick={() => void updater.downloadAndInstall()}
+                          className="px-4 py-2 rounded-xl primary-gradient-button text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          下载并安装更新
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void updater.checkForUpdate({ silent: false })}
+                          disabled={updater.status === 'checking' || updater.status === 'downloading'}
+                          className="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-highest text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw className={cn('w-3.5 h-3.5', updater.status === 'checking' && 'animate-spin')} />
+                          {updater.status === 'checking' ? '检查中...' : '检查更新'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {updater.status === 'downloading' && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs text-on-surface-variant font-mono">
+                        <span>正在下载更新包...</span>
+                        <span>
+                          {updater.progress}%
+                          {updater.totalBytes > 0 && ` (${(updater.downloadedBytes / 1048576).toFixed(1)} / ${(updater.totalBytes / 1048576).toFixed(1)} MB)`}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-surface-container-highest overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all duration-200"
+                          style={{ width: `${updater.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {updater.releaseNotes && (updater.status === 'available' || updater.status === 'downloading' || updater.status === 'ready') && (
+                    <div className="p-3.5 rounded-xl bg-surface-container-low text-xs text-on-surface-variant whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
+                      {updater.releaseNotes}
+                    </div>
+                  )}
+
+                  {updater.status === 'error' && updater.error && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-500">
+                      更新检查出错：{updater.error}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4 text-sm text-on-surface-variant">
+                  <p><strong className="text-on-surface block mb-1">开源组件与许可</strong> 本软件使用 Rust 构建后端，并应用了 Tauri 2.0 框架。前端由 React 19 驱动。代码由 MIT 许可授权。</p>
+                </div>
+
+                <div className="pt-6 border-t border-white/10 flex items-center justify-center gap-6">
+                  <button type="button" onClick={() => window.open('https://github.com/leejersey/FlowBox', '_blank')} className="text-sm font-medium text-primary hover:underline cursor-pointer">GitHub 仓库</button>
+                  <button type="button" onClick={() => window.open('https://github.com/leejersey/FlowBox/releases', '_blank')} className="text-sm font-medium text-primary hover:underline cursor-pointer">版本发布页</button>
+                  <button type="button" onClick={() => window.open('https://github.com/leejersey/FlowBox/issues', '_blank')} className="text-sm font-medium text-primary hover:underline cursor-pointer">提交 Issue</button>
                 </div>
               </div>
             )}

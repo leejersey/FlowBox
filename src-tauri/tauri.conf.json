@@ -50,6 +50,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "macOS": {
       "infoPlist": "Info.plist"
     },
@@ -61,5 +62,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc3RjBERkJBRTYzNEVBQTEKUldTaDZqVG11dC93ZCs3UW5BTnZHNFdvd3dHK21nZCtOR2hZeTRicmVNR2tPT1duT05nZ2I4bFMK",
+      "endpoints": [
+        "https://github.com/leejersey/FlowBox/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

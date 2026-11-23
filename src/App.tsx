@@ -4,6 +4,7 @@ import { ButlerPage } from './pages/ButlerPage'
 import { useDatabase } from './hooks/useDatabase'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { useThemeStore } from './store/useThemeStore'
+import { useUpdaterStore } from './store/useUpdaterStore'
 import { useAppUsageTracker } from './hooks/useAppUsageTracker'
 import { useClipboardPersistence } from './hooks/useClipboardWatcher'
 import { lazy, Suspense, useEffect } from 'react'
@@ -31,6 +32,16 @@ function SettingsNavigationBridge() {
 function MainWindowEffects() {
   useClipboardPersistence()
   useAppUsageTracker()
+
+  useEffect(() => {
+    const store = useUpdaterStore.getState()
+    void store.loadCurrentVersion()
+    const timer = window.setTimeout(() => {
+      void store.checkForUpdate({ silent: true })
+    }, 4500)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   return null
 }
 

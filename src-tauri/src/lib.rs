@@ -86,6 +86,8 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(
             SqlBuilder::default()
                 .add_migrations("sqlite:flowbox.db", migrations)
