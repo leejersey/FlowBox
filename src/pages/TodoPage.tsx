@@ -17,6 +17,7 @@ import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { TodoDetailPanel } from '@/components/todo/TodoDetailPanel'
 import type { Todo, TodoListQuery } from '@/types/todo'
 import { ensureLinkedTarget, linkedTargetFor, linkedTargetId } from '@/lib/itemLink'
+import { localDateKey } from '@/lib/localDate'
 import { todoGet } from '@/services/todoService'
 import * as pomodoroService from '@/services/pomodoroService'
 import { showToast } from '@/store/useToastStore'
@@ -122,9 +123,10 @@ function TodoCard({
   )
 }
 
-type FilterKey = 'all' | 'pending' | 'in_progress' | 'done' | 'high'
+type FilterKey = 'today' | 'all' | 'pending' | 'in_progress' | 'done' | 'high'
 const filters: { key: FilterKey; label: string }[] = [
   { key: 'all', label: '全部' },
+  { key: 'today', label: '今日聚焦' },
   { key: 'pending', label: '待处理' },
   { key: 'in_progress', label: '进行中' },
   { key: 'done', label: '已完成' },
@@ -162,9 +164,20 @@ export function TodoPage() {
   const visibleTodos = useMemo(
     () => {
       const currentLinkedTodo = linkedTargetFor(highlightId, linkedTodo)
-      return currentLinkedTodo && !todos.some(todo => todo.id === currentLinkedTodo.id) ? [...todos, currentLinkedTodo] : todos
+      const base = currentLinkedTodo && !todos.some(todo => todo.id === currentLinkedTodo.id)
+        ? [...todos, currentLinkedTodo]
+        : todos
+      if (displayFilter !== 'today') return base
+      const todayKey = localDateKey()
+      return base.filter(t => {
+        if (t.status === 'done') return false
+        if (t.status === 'in_progress') return true
+        if (t.priority === 3) return true
+        if (t.due_date && t.due_date <= todayKey) return true
+        return false
+      })
     },
-    [todos, highlightId, linkedTodo],
+    [todos, highlightId, linkedTodo, displayFilter],
   )
   const visibleSelectedTodo = highlightId ? linkedTargetFor(highlightId, selectedTodo) : selectedTodo
 

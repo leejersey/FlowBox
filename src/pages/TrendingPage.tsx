@@ -7,12 +7,16 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Flame, RefreshCw, Sparkles, Search, ChevronDown, Loader2,
   Star, GitFork, GitPullRequest, TrendingUp, Rocket, ArrowUpDown,
-  BookOpen, Check, Radar, UploadCloud, Plus, X
+  BookOpen, Check, Radar, UploadCloud, Plus, X, Scale, Copy, CheckSquare, Square
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { useTrending } from '@/hooks/useTrending'
 import { ResizablePanel } from '@/components/ui/ResizablePanel'
+import { Modal } from '@/components/ui/Modal'
 import { TrendingDetailPanel } from '@/components/trending/TrendingDetailPanel'
+import { showToast } from '@/store/useToastStore'
 import type { TrendingRepo } from '@/types/trending'
 import {
   getCategoryMeta,
@@ -81,6 +85,8 @@ function TrendingListCard({
   repo,
   rank,
   radarHits,
+  compareMode,
+  compareChecked,
   isSelected,
   isSaved,
   onSelect,
@@ -88,6 +94,8 @@ function TrendingListCard({
   repo: TrendingRepo
   rank: number
   radarHits: string[]
+  compareMode: boolean
+  compareChecked: boolean
   isSelected: boolean
   isSaved: boolean
   onSelect: (repo: TrendingRepo) => void
@@ -102,7 +110,9 @@ function TrendingListCard({
       onClick={() => onSelect(repo)}
       className={cn(
         'group relative flex flex-col p-3.5 rounded-2xl transition-all duration-200 border cursor-pointer select-none',
-        isSelected
+        compareMode && compareChecked
+          ? 'border-primary/60 bg-primary/12 shadow-md ring-1 ring-primary/30'
+          : isSelected
           ? 'border-primary/50 bg-primary/10 shadow-md ring-1 ring-primary/30'
           : radarHits.length > 0
           ? 'bg-surface-container hover:bg-surface-container-highest border-orange-500/35 hover:border-orange-500/60 shadow-xs'
@@ -112,7 +122,15 @@ function TrendingListCard({
       {/* 顶行：排名 + 仓库名 + 板块标签 */}
       <div className="flex items-start gap-2.5 mb-1.5">
         <div className="pt-0.5 shrink-0 w-6 flex justify-center">
-          <RankBadge rank={rank} />
+          {compareMode ? (
+            compareChecked ? (
+              <CheckSquare className="w-4 h-4 text-primary" />
+            ) : (
+              <Square className="w-4 h-4 text-on-surface-variant/45" />
+            )
+          ) : (
+            <RankBadge rank={rank} />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -280,6 +298,15 @@ export function TrendingPage() {
     removeRadarKeyword,
     exportingDigest,
     exportDigest,
+    compareMode,
+    setCompareMode,
+    compareIds,
+    setCompareIds,
+    toggleCompareId,
+    comparing,
+    compareResult,
+    setCompareResult,
+    runCompare,
     repos,
     totalCount,
     selectedRepo,
@@ -390,6 +417,22 @@ export function TrendingPage() {
               )}
               <button
                 type="button"
+                onClick={() => {
+                  setCompareMode(v => !v)
+                  setCompareIds([])
+                }}
+                className={cn(
+                  'p-2 rounded-xl transition-colors cursor-pointer',
+                  compareMode
+                    ? 'bg-primary/15 text-primary'
+                    : 'bg-surface-container hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface',
+                )}
+                title="多项目 AI 横向对比（勾选 2~3 个项目）"
+              >
+                <Scale className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowRadarEditor(v => !v)}
                 className={cn(
                   'p-2 rounded-xl transition-colors cursor-pointer',
@@ -479,6 +522,34 @@ export function TrendingPage() {
                   添加
                 </button>
               </form>
+            </div>
+          )}
+
+          {/* 对比模式操作条 */}
+          {compareMode && (
+            <div className="px-3 py-2 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-between gap-2 text-xs animate-fade-in shrink-0">
+              <span className="font-semibold text-primary">
+                已勾选 {compareIds.length} / 3 个项目
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => void runCompare()}
+                  disabled={compareIds.length < 2 || comparing}
+                  className="px-3 py-1 rounded-lg primary-gradient-button text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  {comparing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Scale className="w-3 h-3" />}
+                  {comparing ? '对比中...' : 'AI 横向对比'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setCompareMode(false); setCompareIds([]) }}
+                  className="p-1 rounded-lg hover:bg-primary/15 text-primary cursor-pointer"
+                  title="退出对比模式"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           )}
 
@@ -586,9 +657,17 @@ export function TrendingPage() {
                     repo={repo}
                     rank={i + 1}
                     radarHits={matchRadarKeywords(repo, radarKeywords)}
-                    isSelected={selectedRepo?.id === repo.id}
+                    compareMode={compareMode}
+                    compareChecked={compareIds.includes(repo.id)}
+                    isSelected={!compareMode && selectedRepo?.id === repo.id}
                     isSaved={savedRepoIds.has(repo.repo_id)}
-                    onSelect={item => setSelectedRepoId(item.id)}
+                    onSelect={item => {
+                      if (compareMode) {
+                        toggleCompareId(item.id)
+                      } else {
+                        setSelectedRepoId(item.id)
+                      }
+                    }}
                   />
                 ))}
                 <div className="text-center text-[11px] text-on-surface-variant/50 py-3 font-medium">
@@ -745,6 +824,35 @@ export function TrendingPage() {
           </div>
         )}
       </div>
+
+      {/* 多项目 AI 横向对比报告弹窗 */}
+      <Modal
+        isOpen={Boolean(compareResult)}
+        onClose={() => setCompareResult(null)}
+        title="AI 多项目横向技术对比"
+        description="基于项目核心定位、技术栈、README 与社区热度生成选型建议"
+        maxWidth="lg"
+        footer={
+          <button
+            type="button"
+            onClick={async () => {
+              if (!compareResult) return
+              await navigator.clipboard.writeText(compareResult)
+              showToast('对比报告已复制到剪贴板', 'success')
+            }}
+            className="px-4 py-2 rounded-xl primary-gradient-button text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            复制对比报告
+          </button>
+        }
+      >
+        {compareResult && (
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-display select-text">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{compareResult}</ReactMarkdown>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

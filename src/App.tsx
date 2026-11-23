@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Outlet, useOutletContext, useNavigate } from 'react-router-dom'
 import { AppShell, type AppShellOutletContext } from './components/layout/AppShell'
 import { ButlerPage } from './pages/ButlerPage'
+import { ClipboardPickerPage } from './pages/ClipboardPickerPage'
 import { useDatabase } from './hooks/useDatabase'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { useThemeStore } from './store/useThemeStore'
@@ -102,6 +103,8 @@ function App() {
         </Route>
         {/* Butler 独立窗口路由 — 不包裹 AppShell */}
         <Route path="/butler" element={<ButlerPage />} />
+        {/* 全局剪贴板快选浮窗路由（⇧⌘V） */}
+        <Route path="/clipboard-picker" element={<ClipboardPickerPage />} />
       </Routes>
       <ToastContainer />
     </BrowserRouter>

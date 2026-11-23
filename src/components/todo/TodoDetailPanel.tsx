@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   X, Calendar, Tag as TagIcon, Flag, Clock, Mic,
   Clipboard as ClipboardIcon, Link2,
-  CheckCircle2, Circle, Play, ArrowUpRight, Loader2
+  CheckCircle2, Circle, Play, ArrowUpRight, Loader2, Sparkles, CheckSquare, Square
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DatePicker } from '@/components/ui/DatePicker'
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton'
 import { LinkPanel } from '@/components/links/LinkPanel'
 import * as pomodoroService from '@/services/pomodoroService'
+import * as aiService from '@/services/aiService'
 import { showToast } from '@/store/useToastStore'
 import type { Todo, UpdateTodoPayload } from '@/types/todo'
 
@@ -51,6 +52,59 @@ export function TodoDetailPanel({ todo, onClose, onUpdate, onDelete }: TodoDetai
   const [tagInput, setTagInput] = useState('')
   const [showLinks, setShowLinks] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [breakingDown, setBreakingDown] = useState(false)
+
+  // 从备忘内容中解析 Markdown Checklist (- [ ] / - [x])
+  const checklistItems = content
+    .split('\n')
+    .map((line, lineIdx) => {
+      const match = line.match(/^\s*-\s+\[([ xX])\]\s+(.+)$/)
+      if (!match) return null
+      return { lineIdx, checked: match[1].toLowerCase() === 'x', text: match[2].trim() }
+    })
+    .filter((item): item is { lineIdx: number; checked: boolean; text: string } => item !== null)
+
+  const handleToggleChecklistItem = (lineIdx: number) => {
+    const lines = content.split('\n')
+    const line = lines[lineIdx]
+    if (!line) return
+    lines[lineIdx] = /^\s*-\s+\[[xX]\]/.test(line)
+      ? line.replace(/-\s+\[[xX]\]/, '- [ ]')
+      : line.replace(/-\s+\[ \]/, '- [x]')
+    const nextContent = lines.join('\n')
+    setContent(nextContent)
+    triggerUpdate({ content: nextContent })
+  }
+
+  const handleAiBreakdown = async () => {
+    if (breakingDown) return
+    setBreakingDown(true)
+    try {
+      const result = await aiService.chatWithAssistant({
+        input: `请将以下待办任务拆解为 4~6 个具体、可立即执行的子步骤，严格以 Markdown Checklist 格式输出（每行以 "- [ ] " 开头，不要额外解释）：\n\n任务标题：${title}\n补充说明：${content || '无'}`,
+        temperature: 0.3,
+      })
+      const steps = result
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => /^-\s+\[[ xX]\]\s+/.test(l))
+      if (steps.length === 0) {
+        showToast('AI 未返回有效子步骤，请重试', 'error')
+        return
+      }
+      const nextContent = content.trim()
+        ? `${content.trim()}\n\n${steps.join('\n')}`
+        : steps.join('\n')
+      setContent(nextContent)
+      triggerUpdate({ content: nextContent })
+      showToast(`已拆解 ${steps.length} 个可执行子步骤`, 'success')
+    } catch (err) {
+      const msg = String(err)
+      showToast(msg.includes('API Key') ? '请先在设置中配置 AI API Key' : `拆解失败: ${msg}`, 'error')
+    } finally {
+      setBreakingDown(false)
+    }
+  }
 
   // 自动同步更新（组件卸载前 flush 挂起改动，避免快速切换丢失草稿）
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -301,11 +355,60 @@ export function TodoDetailPanel({ todo, onClose, onUpdate, onDelete }: TodoDetai
           </div>
         </div>
 
+        {/* 交互式子任务 Checklist（从备忘中的 - [ ] 行自动渲染） */}
+        {checklistItems.length > 0 && (
+          <div className="bg-surface-container-low/80 rounded-2xl p-3.5 border border-outline-variant/20 space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+                <CheckSquare className="w-3.5 h-3.5 text-primary" />
+                子任务步骤 ({checklistItems.filter(i => i.checked).length}/{checklistItems.length})
+              </span>
+              <div className="w-24 h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${Math.round((checklistItems.filter(i => i.checked).length / checklistItems.length) * 100)}%` }}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              {checklistItems.map(item => (
+                <button
+                  type="button"
+                  key={item.lineIdx}
+                  onClick={() => handleToggleChecklistItem(item.lineIdx)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-surface-container text-left transition-colors cursor-pointer"
+                >
+                  {item.checked ? (
+                    <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
+                  ) : (
+                    <Square className="w-3.5 h-3.5 text-on-surface-variant/50 shrink-0" />
+                  )}
+                  <span className={cn('text-xs flex-1', item.checked ? 'line-through text-on-surface-variant/50' : 'text-on-surface')}>
+                    {item.text}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 详细描述与笔记区 */}
         <div className="flex flex-col gap-2 flex-1 min-h-[220px]">
-          <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5 px-1">
-            <Clock className="w-3.5 h-3.5 text-primary" /> 详细备忘与执行说明
-          </label>
+          <div className="flex items-center justify-between px-1">
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-primary" /> 详细备忘与执行说明
+            </label>
+            <button
+              type="button"
+              onClick={() => void handleAiBreakdown()}
+              disabled={breakingDown}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+              title="让 AI 把此任务拆解为可执行子步骤 Checklist"
+            >
+              {breakingDown ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {breakingDown ? '拆解中...' : 'AI 拆解步骤'}
+            </button>
+          </div>
           <textarea
             value={content}
             onChange={e => {

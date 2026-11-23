@@ -33,6 +33,7 @@ const GITHUB_API_BASE = 'https://api.github.com/repos'
 const GITHUB_SEARCH_API = 'https://api.github.com/search/repositories'
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com'
 const SETTINGS_KEY_RADAR = 'trending.radar_keywords'
+const SETTINGS_KEY_SAVED = 'trending.saved_repo_ids'
 
 function lastFetchedKey(period: TrendingPeriod): string {
   return `trending.last_fetched.${period}`
@@ -614,6 +615,64 @@ export async function saveRadarKeywords(keywords: string[]): Promise<string[]> {
   const cleaned = Array.from(new Set(keywords.map(k => k.trim()).filter(Boolean))).slice(0, 20)
   await settingsService.settingsSet(SETTINGS_KEY_RADAR, JSON.stringify(cleaned))
   return cleaned
+}
+
+// ─── 持久化收藏状态 ────────────────────────────────
+
+export async function loadSavedRepoIds(): Promise<string[]> {
+  try {
+    const raw = await settingsService.settingsGet(SETTINGS_KEY_SAVED)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.map(v => String(v)) : []
+  } catch {
+    return []
+  }
+}
+
+export async function markRepoSaved(repoId: string): Promise<string[]> {
+  const existing = await loadSavedRepoIds()
+  const next = Array.from(new Set([...existing, repoId])).slice(-200)
+  await settingsService.settingsSet(SETTINGS_KEY_SAVED, JSON.stringify(next))
+  return next
+}
+
+// ─── 多项目 AI 横向对比 ────────────────────────────
+
+export async function compareTrendingRepos(repos: TrendingRepo[]): Promise<string> {
+  if (repos.length < 2) {
+    throw new Error('请至少选择 2 个项目进行对比')
+  }
+
+  const profiles = repos.slice(0, 3).map((r, idx) => {
+    const deepDive = parseRepoDeepDive(r.ai_deep_dive)
+    return [
+      `### 项目 ${idx + 1}: ${r.repo_name}`,
+      `- 语言：${r.language || '未知'} | Stars：+${r.stars} | Forks：${r.forks} | PRs：${r.pull_requests}`,
+      `- 简介：${r.description || '无'}`,
+      deepDive
+        ? `- AI 定位：${deepDive.one_liner}\n- 痛点：${deepDive.problem}\n- 亮点：${deepDive.highlights.join('；')}\n- 上手：${deepDive.quickstart}`
+        : r.ai_summary_zh
+        ? `- AI 摘要：${r.ai_summary_zh}`
+        : '',
+      r.readme_excerpt ? `- README 节选：${r.readme_excerpt.slice(0, 1000)}` : '',
+    ].filter(Boolean).join('\n')
+  }).join('\n\n')
+
+  const prompt = `你是一位资深技术架构师。请对以下 ${Math.min(repos.length, 3)} 个 GitHub 热门开源项目进行深度横向对比，帮助开发者快速做技术选型。
+
+请使用清晰的中文 Markdown 输出，包含：
+1. **核心维度对比表**（Markdown 表格：核心定位、技术栈/语言、最大优势、主要局限、适合人群）
+2. **关键差异剖析**（3 条要点，说清它们各自的设计哲学差异）
+3. **选型建议**（用「如果你需要 X，优先选 A；如果你需要 Y，优先选 B」的句式给出明确结论）
+
+项目信息：
+${profiles}`
+
+  return aiService.chatWithAssistant({
+    input: prompt,
+    temperature: 0.3,
+  })
 }
 
 // ─── 导出热点周报（Obsidian / 剪贴板） ─────────────

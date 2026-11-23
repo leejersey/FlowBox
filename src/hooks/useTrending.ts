@@ -44,6 +44,10 @@ export function useTrending() {
   const [savedRepoIds, setSavedRepoIds] = useState<Set<string>>(() => new Set())
   const [radarKeywords, setRadarKeywords] = useState<string[]>(DEFAULT_RADAR_KEYWORDS)
   const [exportingDigest, setExportingDigest] = useState(false)
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareIds, setCompareIds] = useState<number[]>([])
+  const [comparing, setComparing] = useState(false)
+  const [compareResult, setCompareResult] = useState<string | null>(null)
   const [lastFetched, setLastFetched] = useState<string | null>(null)
   const activePeriodRef = useRef<TrendingPeriod>(period)
 
@@ -54,6 +58,7 @@ export function useTrending() {
   useEffect(() => {
     if (!isTauriApp) return
     void trendingService.loadRadarKeywords().then(setRadarKeywords).catch(() => {})
+    void trendingService.loadSavedRepoIds().then(ids => setSavedRepoIds(new Set(ids))).catch(() => {})
   }, [])
 
   // ─── 按周期加载数据 ────────────────────────────
@@ -185,11 +190,47 @@ export function useTrending() {
     try {
       await trendingService.saveToIdea(repo)
       setSavedRepoIds(prev => new Set(prev).add(repo.repo_id))
+      if (isTauriApp) {
+        await trendingService.markRepoSaved(repo.repo_id).catch(() => {})
+      }
       showToast('已收藏到灵感便签', 'success')
     } catch (err) {
       showToast(`收藏失败: ${String(err)}`, 'error')
     }
   }, [])
+
+  const toggleCompareId = useCallback((id: number) => {
+    setCompareIds(prev => {
+      if (prev.includes(id)) return prev.filter(item => item !== id)
+      if (prev.length >= 3) {
+        showToast('最多同时对比 3 个项目', 'info')
+        return prev
+      }
+      return [...prev, id]
+    })
+  }, [])
+
+  const runCompare = useCallback(async () => {
+    const targetRepos = repos.filter(r => compareIds.includes(r.id))
+    if (targetRepos.length < 2) {
+      showToast('请至少勾选 2 个项目进行横向对比', 'info')
+      return
+    }
+    setComparing(true)
+    try {
+      const report = await trendingService.compareTrendingRepos(targetRepos)
+      setCompareResult(report)
+    } catch (err) {
+      const msg = String(err)
+      if (msg.includes('API Key')) {
+        showToast('请先在设置中配置 AI API Key', 'error')
+      } else {
+        showToast(`横向对比失败: ${msg}`, 'error')
+      }
+    } finally {
+      setComparing(false)
+    }
+  }, [compareIds, repos])
 
   const saveToTodo = useCallback(async (repo: TrendingRepo) => {
     try {
@@ -352,6 +393,15 @@ export function useTrending() {
     removeRadarKeyword,
     exportingDigest,
     exportDigest,
+    compareMode,
+    setCompareMode,
+    compareIds,
+    setCompareIds,
+    toggleCompareId,
+    comparing,
+    compareResult,
+    setCompareResult,
+    runCompare,
     repos: filteredRepos,
     allRepos: repos,
     totalCount: repos.length,

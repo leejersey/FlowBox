@@ -1,10 +1,14 @@
 pub mod services;
 pub mod commands;
 pub mod settings_menu;
+pub mod tray;
 
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_sql::{Builder as SqlBuilder, Migration, MigrationKind};
 use tauri_plugin_autostart::MacosLauncher;
+
+const CLIPBOARD_PICKER_SHORTCUT: &str = "CommandOrControl+Shift+V";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -101,15 +105,32 @@ pub fn run() {
                         let shortcut_state = app.state::<services::butler_shortcut::ButlerShortcutState>();
                         if services::butler_shortcut::matches_current_shortcut(shortcut_state.inner(), shortcut) {
                             commands::butler::toggle_butler(app.clone());
+                            return;
+                        }
+                        if let Ok(clip_shortcut) = CLIPBOARD_PICKER_SHORTCUT.parse::<Shortcut>() {
+                            if clip_shortcut == *shortcut {
+                                commands::clipboard::toggle_clipboard_picker(app.clone());
+                            }
                         }
                     }
                 })
                 .build(),
         )
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .manage(services::voice_recorder::VoiceRecorderState::default())
         .invoke_handler(tauri::generate_handler![
             commands::clipboard::clipboard_set_watch,
             commands::clipboard::clipboard_is_watching,
+            commands::clipboard::toggle_clipboard_picker,
+            commands::clipboard::hide_clipboard_picker,
+            commands::clipboard::clipboard_write_text,
             commands::butler::toggle_butler,
             commands::butler::hide_butler,
             commands::butler::show_butler,
@@ -126,14 +147,21 @@ pub fn run() {
             commands::secrets::secret_exists,
             commands::ocr::ocr_recognize_text,
             settings_menu::settings_menu_ready,
+            tray::tray_set_title,
         ])
         .setup(move |app| {
             settings_menu::install(app)?;
+            tray::install(app)?;
             services::butler_shortcut::register_initial_shortcut(
                 &app.handle().clone(),
                 app.state::<services::butler_shortcut::ButlerShortcutState>().inner(),
             )
             .map_err(std::io::Error::other)?;
+            if let Ok(clip_shortcut) = CLIPBOARD_PICKER_SHORTCUT.parse::<Shortcut>() {
+                if let Err(err) = app.handle().global_shortcut().register(clip_shortcut) {
+                    log::warn!("failed to register clipboard picker shortcut ({CLIPBOARD_PICKER_SHORTCUT}): {err}");
+                }
+            }
             log::info!(
                 "registered global shortcut: {}",
                 services::butler_shortcut::DEFAULT_BUTLER_SHORTCUT

@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react'
-import { ChevronRight, ArrowUpRight, TrendingUp, Sparkles } from 'lucide-react'
+import { ChevronRight, ArrowUpRight, TrendingUp, Sparkles, Loader2, Copy, UploadCloud, Check } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import * as statsService from '@/services/statsService'
 import type { DashboardStats, HourlyFocus, FocusTrend, UsageDistribution } from '@/services/statsService'
+import { generateWeeklyReport, exportWeeklyReport, type WeeklyReportStyle } from '@/services/weeklyReportService'
+import { Modal } from '@/components/ui/Modal'
+import { showToast } from '@/store/useToastStore'
 import {
   LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -19,6 +24,50 @@ export function StatsPage() {
   const [trend, setTrend] = useState<FocusTrend[]>([])
   const [usage, setUsage] = useState<UsageDistribution[]>([])
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day')
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportStyle, setReportStyle] = useState<WeeklyReportStyle>('work')
+  const [reportContent, setReportContent] = useState('')
+  const [generatingReport, setGeneratingReport] = useState(false)
+  const [copiedReport, setCopiedReport] = useState(false)
+
+  const handleGenerateReport = async (style: WeeklyReportStyle = reportStyle) => {
+    setReportOpen(true)
+    setGeneratingReport(true)
+    try {
+      const md = await generateWeeklyReport(style)
+      setReportContent(md)
+    } catch (err) {
+      const msg = String(err)
+      if (msg.includes('API Key')) {
+        showToast('请先在设置中配置 AI API Key', 'error')
+      } else {
+        showToast(`生成周报失败: ${msg}`, 'error')
+      }
+    } finally {
+      setGeneratingReport(false)
+    }
+  }
+
+  const handleCopyReport = async () => {
+    if (!reportContent) return
+    await navigator.clipboard.writeText(reportContent)
+    setCopiedReport(true)
+    showToast('周报已复制到剪贴板', 'success')
+    window.setTimeout(() => setCopiedReport(false), 1800)
+  }
+
+  const handleExportReport = async () => {
+    if (!reportContent) return
+    try {
+      const target = await exportWeeklyReport(reportContent)
+      showToast(
+        target === 'obsidian' ? '周报已导出到 Obsidian Inbox' : '未配置 Obsidian 路径，已复制到剪贴板',
+        'success',
+      )
+    } catch (err) {
+      showToast(`导出失败: ${String(err)}`, 'error')
+    }
+  }
 
   const trendDays = period === 'day' ? 7 : period === 'week' ? 14 : 30
   const usageDays = period === 'day' ? 1 : period === 'week' ? 7 : 30
@@ -242,11 +291,87 @@ export function StatsPage() {
               已收集 {stats.idea_count} 条灵感
             </p>
           </div>
-          <button className="mt-4 primary-gradient-button px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 relative z-10">
-            生成完整周报 <ChevronRight className="w-4 h-4" />
+          <button
+            type="button"
+            onClick={() => void handleGenerateReport(reportStyle)}
+            disabled={generatingReport}
+            className="mt-4 primary-gradient-button px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 relative z-10 cursor-pointer disabled:opacity-50"
+          >
+            {generatingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {generatingReport ? '正在生成周报...' : '生成完整 AI 周报'}
+            {!generatingReport && <ChevronRight className="w-4 h-4" />}
           </button>
         </div>
       </div>
+
+      <Modal
+        isOpen={reportOpen}
+        onClose={() => setReportOpen(false)}
+        title="本周 AI 效率周报"
+        description="基于你本周真实的待办完成记录、番茄专注时长、灵感与 GitHub 热点自动聚合生成"
+        maxWidth="lg"
+        footer={
+          <div className="flex items-center justify-between w-full gap-3">
+            <div className="inline-flex p-1 rounded-xl bg-surface-container border border-outline-variant/20">
+              {([
+                { id: 'work', label: '职场周报' },
+                { id: 'obsidian', label: '个人复盘' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    setReportStyle(opt.id)
+                    void handleGenerateReport(opt.id)
+                  }}
+                  className={cn(
+                    'px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                    reportStyle === opt.id ? 'bg-surface text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleCopyReport()}
+                disabled={!reportContent || generatingReport}
+                className="px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-highest text-xs font-semibold text-on-surface flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {copiedReport ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedReport ? '已复制' : '复制 Markdown'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleExportReport()}
+                disabled={!reportContent || generatingReport}
+                className="px-4 py-2 rounded-xl primary-gradient-button text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                导出到 Obsidian
+              </button>
+            </div>
+          </div>
+        }
+      >
+        {generatingReport ? (
+          <div className="py-16 flex flex-col items-center gap-3 text-on-surface-variant">
+            <Loader2 className="w-7 h-7 text-primary animate-spin" />
+            <span className="text-xs font-medium">正在汇总本周数据并撰写周报...</span>
+          </div>
+        ) : reportContent ? (
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-display select-text">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportContent}</ReactMarkdown>
+          </div>
+        ) : (
+          <div className="py-12 text-center text-xs text-on-surface-variant">
+            点击下方切换风格或重新生成周报
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

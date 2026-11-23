@@ -32,6 +32,7 @@ const DEFAULT_BUTLER_SHORTCUT = 'Shift+Space'
 const shortcutList = [
   { action: '打开全局搜索与命令面板', mac: '⌘ /', win: 'Ctrl /' },
   { action: '切换应用内 AI Butler 浮层', mac: '⌘ K', win: 'Ctrl K' },
+  { action: '呼出全局剪贴板快选浮窗', mac: '⇧ ⌘ V', win: 'Shift Ctrl V' },
   { action: '当前页面快速新建（待办 / 灵感）', mac: '⌘ N', win: 'Ctrl N' },
   { action: '极速切换主功能模块', mac: '⌘ 1~7', win: 'Ctrl 1~7' },
   { action: '打开系统偏好设置', mac: '⌘ ,', win: 'Ctrl ,' },

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "FlowBox",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "identifier": "com.flowbox.app",
   "build": {
     "frontendDist": "../dist",
@@ -28,6 +28,20 @@
         "url": "/butler",
         "width": 680,
         "height": 460,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "center": true,
+        "visible": false,
+        "skipTaskbar": true
+      },
+      {
+        "label": "clipboard-picker",
+        "title": "Clipboard Picker",
+        "url": "/clipboard-picker",
+        "width": 580,
+        "height": 480,
         "resizable": false,
         "decorations": false,
         "transparent": true,

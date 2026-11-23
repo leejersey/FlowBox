@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { invoke, isTauri } from '@tauri-apps/api/core'
 import { ShieldCheck, Play, Timer, ArrowUpCircle } from 'lucide-react'
 import { pomodoroGetState, pomodoroOnTick } from '@/services/pomodoroService'
 import { useUpdaterStore } from '@/store/useUpdaterStore'
 import type { PomodoroState } from '@/types/pomodoro'
+
+const isTauriApp = isTauri()
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -28,6 +31,18 @@ export function StatusBar() {
 
   const remainingSeconds = Math.max(0, pomodoroState.total_seconds - pomodoroState.elapsed_seconds)
   const isPomodoroRunning = pomodoroState.is_running && remainingSeconds > 0
+  const lastTrayTitleRef = useRef<string | null>(null)
+
+  // 将番茄倒计时实时同步到 macOS 顶部菜单栏托盘标题
+  useEffect(() => {
+    if (!isTauriApp) return
+    const nextTitle = isPomodoroRunning
+      ? ` ${pomodoroState.type === 'focus' ? '🍅' : '☕'} ${formatTime(remainingSeconds)}`
+      : ''
+    if (lastTrayTitleRef.current === nextTitle) return
+    lastTrayTitleRef.current = nextTitle
+    void invoke('tray_set_title', { title: nextTitle }).catch(() => {})
+  }, [isPomodoroRunning, pomodoroState.type, remainingSeconds])
 
   return (
     <footer className="h-6 w-full shrink-0 border-t border-outline-variant/15 bg-surface/80 backdrop-blur-xl px-4 flex items-center justify-between text-[11px] text-on-surface-variant/70 select-none z-30 font-medium">
