@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Search, X, CheckSquare, Lightbulb, Mic, Clipboard, ArrowRight,
-  Timer, Trash2, Settings, BarChart3, FileType2, Flame, Command, Sparkles
+  Timer, Trash2, Settings, BarChart3, Flame, Command, Sparkles
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { globalSearch, type SearchResult, type SearchResultType } from '@/services/searchService'
@@ -135,31 +135,22 @@ export function GlobalSearchBar({ isOpen, onClose }: GlobalSearchBarProps) {
       run: (nav) => nav('/voice')
     },
     {
+      id: 'action_nav_trending',
+      title: 'GitHub 热点榜',
+      subtitle: '浏览 GitHub 日/周/月高星与板块分类排名',
+      icon: Flame,
+      shortcut: '⌘6',
+      keywords: ['热榜', '热点', 'trending', 'github', 'rb'],
+      run: (nav) => nav('/trending')
+    },
+    {
       id: 'action_nav_stats',
       title: '查看效能看板',
       subtitle: '专注时长与任务完成趋势',
       icon: BarChart3,
-      shortcut: '⌘8',
+      shortcut: '⌘7',
       keywords: ['统计', '看板', 'stats', 'report', 'tj'],
       run: (nav) => nav('/stats')
-    },
-    {
-      id: 'action_nav_markdown',
-      title: '格式转换器',
-      subtitle: '网页与富文本一键转 Markdown',
-      icon: FileType2,
-      shortcut: '⌘6',
-      keywords: ['markdown', '转换', 'converter', 'zh'],
-      run: (nav) => nav('/markdown')
-    },
-    {
-      id: 'action_nav_trending',
-      title: '极客热榜',
-      subtitle: '浏览 GitHub 与科技热门动态',
-      icon: Flame,
-      shortcut: '⌘7',
-      keywords: ['热榜', 'trending', 'github', 'rb'],
-      run: (nav) => nav('/trending')
     },
     {
       id: 'action_nav_settings',

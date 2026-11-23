@@ -2,12 +2,13 @@
  * Dev Trending 数据类型 — 对应 006_trending.sql & 011_trending_v2.sql
  */
 
-export type TrendingPeriod = 'past_24_hours' | 'past_week' | 'past_month'
+export type TrendingPeriod = 'past_24_hours' | 'past_week' | 'past_month' | 'rising_stars'
 
 export type TrendingSortBy = 'stars' | 'score' | 'activity'
 
 export type TrendingCategoryId =
   | 'all'
+  | 'radar'
   | 'ai'
   | 'devtools'
   | 'frontend'

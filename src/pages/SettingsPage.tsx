@@ -32,7 +32,7 @@ const shortcutList = [
   { action: '打开全局搜索与命令面板', mac: '⌘ /', win: 'Ctrl /' },
   { action: '切换应用内 AI Butler 浮层', mac: '⌘ K', win: 'Ctrl K' },
   { action: '当前页面快速新建（待办 / 灵感）', mac: '⌘ N', win: 'Ctrl N' },
-  { action: '极速切换主功能模块', mac: '⌘ 1~8', win: 'Ctrl 1~8' },
+  { action: '极速切换主功能模块', mac: '⌘ 1~7', win: 'Ctrl 1~7' },
   { action: '打开系统偏好设置', mac: '⌘ ,', win: 'Ctrl ,' },
 ]
 
@@ -177,7 +177,7 @@ export function SettingsPage() {
   const aiProvider = settings['ai.provider'] ?? 'deepseek'
 
   return (
-    <div className="flex flex-col h-full animate-fade-in w-full max-w-5xl mx-auto pb-10">
+    <div className="flex flex-col h-full min-h-0 animate-fade-in w-full max-w-7xl mx-auto pb-2 overflow-hidden">
 
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-display font-bold text-on-surface">偏好设置</h1>
@@ -188,7 +188,7 @@ export function SettingsPage() {
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6 md:gap-8 flex-1 overflow-y-auto md:overflow-hidden pb-10 md:pb-0">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8 flex-1 min-h-0 overflow-y-auto md:overflow-hidden pb-6 md:pb-0">
 
         {/* Left Menu */}
         <aside className="w-full md:w-64 shrink-0 flex flex-col gap-2">

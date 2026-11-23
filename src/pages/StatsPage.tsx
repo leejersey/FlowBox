@@ -49,7 +49,7 @@ export function StatsPage() {
   const maxMinutes = Math.max(...hourly.map(h => h.minutes), 1)
 
   return (
-    <div className="flex flex-col h-full animate-fade-in w-full max-w-5xl mx-auto pb-10 overflow-y-auto overflow-x-hidden">
+    <div className="flex flex-col h-full min-h-0 animate-fade-in w-full max-w-7xl mx-auto pb-6 overflow-y-auto overflow-x-hidden">
 
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-display font-bold text-on-surface">分析与洞察</h1>

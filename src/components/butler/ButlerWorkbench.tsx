@@ -1,4 +1,4 @@
-import { Bot, ChevronDown, Square } from 'lucide-react'
+import { Bot, ChevronDown, Square, AtSign, X, Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ButlerFooter } from './ButlerFooter'
@@ -12,8 +12,17 @@ import {
   getButlerModelLabel,
   sendButlerMessageStream,
 } from '@/services/butlerService'
+import {
+  buildLocalContextPrompt,
+  BUTLER_CONTEXT_OPTIONS,
+} from '@/services/butlerContextService'
 import * as skillService from '@/services/skillService'
-import type { ButlerHistoryMessage, ButlerRequestContext, ChatMessage } from '@/types/butler'
+import type {
+  ButlerContextSourceId,
+  ButlerHistoryMessage,
+  ButlerRequestContext,
+  ChatMessage,
+} from '@/types/butler'
 import type { ButlerSkill } from '@/types/skill'
 
 interface ButlerWorkbenchProps {
@@ -38,6 +47,11 @@ function buildHistory(messages: ChatMessage[]): ButlerHistoryMessage[] {
 export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
   const {
     messages,
+    sessions,
+    activeSessionId,
+    createSession,
+    switchSession,
+    deleteSession,
     addMessage,
     addMessageWithId,
     appendToMessage,
@@ -53,12 +67,15 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
     setModel,
     setActiveSkillId,
     initFromDb,
+    draftContext,
+    setDraftContext,
   } = useButlerStore()
   const abortRef = useRef<AbortController | null>(null)
-  const [inputValue, setInputValue] = useState('')
+  const [inputValue, setInputValue] = useState(() => draftContext?.suggestedPrompt ?? '')
   const [selectedSkill, setSelectedSkill] = useState<ButlerSkill | null>(null)
   const [skills, setSkills] = useState<ButlerSkill[]>([])
   const [showAllSkills, setShowAllSkills] = useState(false)
+  const [activeContexts, setActiveContexts] = useState<ButlerContextSourceId[]>([])
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const skillsPopoverRef = useRef<HTMLDivElement>(null)
@@ -159,9 +176,17 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
 
   const canSend = useMemo(() => Boolean(inputValue.trim()) && !isLoading, [inputValue, isLoading])
 
+  const toggleContextSource = useCallback((id: ButlerContextSourceId) => {
+    setActiveContexts(prev => (prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]))
+  }, [])
+
   const handleSend = useCallback(async () => {
     const rawInput = inputValue.trim()
     if (!rawInput || isLoading) return
+
+    const localContext = (activeContexts.length > 0 || draftContext)
+      ? await buildLocalContextPrompt(activeContexts, draftContext)
+      : undefined
 
     const request: ButlerRequestContext = {
       input: rawInput,
@@ -169,14 +194,24 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
       promptPrefix: selectedSkill?.prompt_prefix ?? '',
       promptTemplate,
       skillSystemPrompt: selectedSkill?.system_prompt ?? '',
+      localContext,
       history: buildHistory(messages),
     }
 
-    const userBubbleContent = composeButlerPrompt(rawInput, selectedSkill)
+    const contextLabels = [
+      ...(draftContext ? [`[${draftContext.title}]`] : []),
+      ...activeContexts.map(id => BUTLER_CONTEXT_OPTIONS.find(o => o.id === id)?.label ?? `@${id}`),
+    ]
+    const baseBubble = composeButlerPrompt(rawInput, selectedSkill)
+    const userBubbleContent = contextLabels.length > 0
+      ? `${contextLabels.join(' ')}\n${baseBubble}`
+      : baseBubble
+
     setInputValue('')
     setSelectedSkill(null)
+    if (draftContext) setDraftContext(null)
     await submitRequest(request, { userBubbleContent })
-  }, [inputValue, isLoading, messages, promptTemplate, selectedSkill, submitRequest])
+  }, [activeContexts, draftContext, inputValue, isLoading, messages, promptTemplate, selectedSkill, setDraftContext, submitRequest])
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort()
@@ -240,7 +275,25 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
       'bg-surface/95 backdrop-blur-3xl w-full max-w-3xl max-h-full h-[80vh] flex flex-col rounded-3xl shadow-[0_32px_80px_-20px_rgba(0,0,0,0.5)] border border-white/20 ring-1 ring-black/5 overflow-hidden',
       className
     )}>
-      <div className="flex flex-col border-b border-surface-container-highest shrink-0 pt-6 px-6 pb-4 bg-surface/50 backdrop-blur-md z-20">
+      <div className="flex flex-col border-b border-surface-container-highest shrink-0 pt-5 px-6 pb-4 bg-surface/50 backdrop-blur-md z-20">
+        {/* 外部模块一键挂载的上下文横幅（如 GitHub 热点项目） */}
+        {draftContext && (
+          <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/25 text-xs animate-fade-in">
+            <div className="flex items-center gap-2 min-w-0 text-primary font-semibold">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">已挂载上下文：{draftContext.title}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDraftContext(null)}
+              className="p-0.5 rounded-lg hover:bg-primary/15 text-primary transition-colors cursor-pointer shrink-0"
+              title="移除挂载上下文"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
             <Bot className="w-6 h-6 text-primary" />
@@ -282,8 +335,35 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
           )}
         </div>
 
+        {/* 本地工作区上下文挂载条（@剪贴板 / @待办 / @灵感 / @热榜 / @本周） */}
+        <div className="flex items-center gap-1.5 flex-wrap mt-3">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant/70 mr-1">
+            <AtSign className="w-3 h-3 text-primary" />
+            挂载本地数据:
+          </span>
+          {BUTLER_CONTEXT_OPTIONS.map((opt) => {
+            const active = activeContexts.includes(opt.id)
+            return (
+              <button
+                type="button"
+                key={opt.id}
+                onClick={() => toggleContextSource(opt.id)}
+                title={opt.hint}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border',
+                  active
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container border-outline-variant/25',
+                )}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+
         {/* 快捷技能栏 — 动态加载 */}
-        <div ref={skillsPopoverRef} className="relative mt-5">
+        <div ref={skillsPopoverRef} className="relative mt-3">
           <div className="flex flex-row gap-2 overflow-x-auto pb-1 scrollbar-none mask-fade-edges">
             {quickSkills.map((skill) => {
               const Icon = getLucideIcon(skill.icon)
@@ -388,6 +468,11 @@ export function ButlerWorkbench({ className }: ButlerWorkbenchProps) {
         skills={skills}
         activeSkillId={activeSkillId}
         onSkillSelect={(id) => setActiveSkillId(id)}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onNewSession={createSession}
+        onSelectSession={(id) => void switchSession(id)}
+        onDeleteSession={(id) => void deleteSession(id)}
       />
     </div>
   )

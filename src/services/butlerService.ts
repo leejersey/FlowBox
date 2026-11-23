@@ -10,9 +10,19 @@ const DEFAULT_SYSTEM_PROMPT = `你是 FlowBox 的 AI Butler。
 2. 语言默认使用中文，除非用户明确要求别的语言。
 3. 如果是改写、翻译、摘要、修复代码，直接给结果。
 4. 如果信息不足，明确说明缺什么，不要编造。
-5. 输出保持简洁、可执行。`
+5. 输出保持简洁、可执行。
 
-function buildSystemPrompt(promptTemplate: string, skillSystemPrompt?: string): string {
+本地动作协议（仅当用户明确要求创建待办、保存灵感或开启专注番茄时使用，普通问答不要输出）：
+你可以在回复末尾附加一个 \`\`\`flowbox-action 代码块（JSON 对象或数组），系统会将其渲染为一键确认执行的卡片：
+- 创建待办：{"type":"create_todo","title":"任务标题","content":"可选说明","priority":0|1|2|3,"due_date":"YYYY-MM-DD(可选)","tags":["标签"]}
+- 保存灵感：{"type":"create_idea","content":"灵感正文","tags":["标签"]}
+- 开启番茄钟：{"type":"start_pomodoro","duration_minutes":25,"mode":"focus"|"short_break"|"long_break","label":"可选说明"}`
+
+function buildSystemPrompt(
+  promptTemplate: string,
+  skillSystemPrompt?: string,
+  localContext?: string,
+): string {
   let base = DEFAULT_SYSTEM_PROMPT
 
   // 技能专属 system prompt 优先
@@ -22,6 +32,10 @@ function buildSystemPrompt(promptTemplate: string, skillSystemPrompt?: string): 
 
   if (promptTemplate && promptTemplate !== '默认助手') {
     base = `${base}\n\n当前 Prompt 模板：${promptTemplate}`
+  }
+
+  if (localContext?.trim()) {
+    base = `${base}\n\n以下是用户主动挂载的 FlowBox 本地工作区实时数据，请直接基于这些信息精准回答：\n<local_workspace_context>\n${localContext.trim()}\n</local_workspace_context>`
   }
 
   return base
@@ -64,7 +78,7 @@ export async function sendButlerMessage(request: ButlerRequestContext): Promise<
 
   return aiService.chatWithAssistant({
     input: composedInput,
-    systemPrompt: buildSystemPrompt(request.promptTemplate, request.skillSystemPrompt),
+    systemPrompt: buildSystemPrompt(request.promptTemplate, request.skillSystemPrompt, request.localContext),
     history: toChatHistory(request.history),
     temperature: 0.4,
   })
@@ -93,7 +107,7 @@ export async function sendButlerMessageStream(
 
   return aiService.chatWithAssistantStream({
     input: composedInput,
-    systemPrompt: buildSystemPrompt(request.promptTemplate, request.skillSystemPrompt),
+    systemPrompt: buildSystemPrompt(request.promptTemplate, request.skillSystemPrompt, request.localContext),
     history: toChatHistory(request.history),
     temperature: 0.4,
     onToken,

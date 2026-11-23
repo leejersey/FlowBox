@@ -10,6 +10,7 @@ export interface TrendingCategoryMeta {
 
 export const TRENDING_CATEGORIES: TrendingCategoryMeta[] = [
   { id: 'all', label: '全部板块', shortLabel: '全部', emoji: '🔥', badgeClass: 'bg-surface-container-highest text-on-surface' },
+  { id: 'radar', label: '雷达命中', shortLabel: '雷达命中', emoji: '🎯', badgeClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-400' },
   { id: 'ai', label: 'AI & Agent', shortLabel: 'AI / Agent', emoji: '🤖', badgeClass: 'bg-violet-500/12 text-violet-600 dark:text-violet-400' },
   { id: 'devtools', label: '开发工具 & CLI', shortLabel: '开发工具', emoji: '⚡', badgeClass: 'bg-amber-500/12 text-amber-600 dark:text-amber-400' },
   { id: 'frontend', label: '前端 & UI', shortLabel: '前端 UI', emoji: '🎨', badgeClass: 'bg-sky-500/12 text-sky-600 dark:text-sky-400' },
@@ -23,7 +24,10 @@ export const TRENDING_PERIODS: { id: TrendingPeriod; label: string; description:
   { id: 'past_24_hours', label: '今日飙升', description: '过去 24 小时热度飙升的开源项目' },
   { id: 'past_week', label: '每周高星', description: '本周 GitHub 关注度与新增星标领先项目' },
   { id: 'past_month', label: '月度热榜', description: '近 30 天持续走高的标杆开源项目' },
+  { id: 'rising_stars', label: '新秀黑马', description: '近 14 天刚开源即暴涨的新兴高星黑马项目' },
 ]
+
+export const DEFAULT_RADAR_KEYWORDS = ['MCP', 'Agent', 'Tauri', 'Rust', 'LLM']
 
 export const TRENDING_SORTS: { id: TrendingSortBy; label: string }[] = [
   { id: 'stars', label: '高星飙升' },
@@ -32,10 +36,10 @@ export const TRENDING_SORTS: { id: TrendingSortBy; label: string }[] = [
 ]
 
 const VALID_CATEGORY_IDS = new Set<TrendingCategoryId>(
-  TRENDING_CATEGORIES.map(c => c.id).filter(id => id !== 'all'),
+  TRENDING_CATEGORIES.map(c => c.id).filter(id => id !== 'all' && id !== 'radar'),
 )
 
-const CATEGORY_RULES: { id: Exclude<TrendingCategoryId, 'all' | 'other'>; patterns: RegExp[] }[] = [
+const CATEGORY_RULES: { id: Exclude<TrendingCategoryId, 'all' | 'radar' | 'other'>; patterns: RegExp[] }[] = [
   {
     id: 'ai',
     patterns: [
@@ -81,11 +85,11 @@ const CATEGORY_RULES: { id: Exclude<TrendingCategoryId, 'all' | 'other'>; patter
   },
 ]
 
-export function normalizeCategoryId(raw?: string | null): Exclude<TrendingCategoryId, 'all'> {
+export function normalizeCategoryId(raw?: string | null): Exclude<TrendingCategoryId, 'all' | 'radar'> {
   if (!raw) return 'other'
   const lower = raw.trim().toLowerCase() as TrendingCategoryId
   if (VALID_CATEGORY_IDS.has(lower)) {
-    return lower as Exclude<TrendingCategoryId, 'all'>
+    return lower as Exclude<TrendingCategoryId, 'all' | 'radar'>
   }
   return 'other'
 }
@@ -96,7 +100,7 @@ export function inferTrendingCategory(input: {
   description?: string | null
   language?: string | null
   topics?: string[]
-}): Exclude<TrendingCategoryId, 'all'> {
+}): Exclude<TrendingCategoryId, 'all' | 'radar'> {
   const haystack = [
     input.repo_name,
     input.description ?? '',
@@ -127,9 +131,9 @@ export function inferTrendingCategory(input: {
   return 'other'
 }
 
-export function resolveRepoCategory(repo: Pick<TrendingRepo, 'repo_name' | 'description' | 'language' | 'category' | 'topics'>): Exclude<TrendingCategoryId, 'all'> {
+export function resolveRepoCategory(repo: Pick<TrendingRepo, 'repo_name' | 'description' | 'language' | 'category' | 'topics'>): Exclude<TrendingCategoryId, 'all' | 'radar'> {
   if (repo.category && VALID_CATEGORY_IDS.has(repo.category as TrendingCategoryId)) {
-    return repo.category as Exclude<TrendingCategoryId, 'all'>
+    return repo.category as Exclude<TrendingCategoryId, 'all' | 'radar'>
   }
   return inferTrendingCategory({
     repo_name: repo.repo_name,
@@ -182,4 +186,68 @@ export function sortTrendingRepos(repos: TrendingRepo[], sortBy: TrendingSortBy)
     return list.sort((a, b) => (b.pull_requests * 3 + b.forks) - (a.pull_requests * 3 + a.forks) || b.stars - a.stars)
   }
   return list.sort((a, b) => b.total_score - a.total_score || b.stars - a.stars)
+}
+
+/** 匹配自定义雷达关键词，返回命中的所有关键词 */
+export function matchRadarKeywords(
+  repo: Pick<TrendingRepo, 'repo_name' | 'description' | 'language' | 'ai_summary_zh' | 'ai_tags' | 'topics'>,
+  keywords: string[],
+): string[] {
+  const normalized = keywords.map(k => k.trim()).filter(Boolean)
+  if (normalized.length === 0) return []
+
+  const haystack = [
+    repo.repo_name,
+    repo.description,
+    repo.language,
+    repo.ai_summary_zh ?? '',
+    repo.ai_tags ?? '',
+    repo.topics ?? '',
+  ].join(' ').toLowerCase()
+
+  return normalized.filter(kw => haystack.includes(kw.toLowerCase()))
+}
+
+/** 生成结构化 GitHub 热点周报 Markdown（供 Obsidian 导出或剪贴板复制） */
+export function buildTrendingDigestMarkdown(params: {
+  periodLabel: string
+  date: string
+  repos: TrendingRepo[]
+  radarKeywords: string[]
+}): string {
+  const { periodLabel, date, repos, radarKeywords } = params
+  const topRepos = repos.slice(0, 12)
+  const radarHits = repos.filter(r => matchRadarKeywords(r, radarKeywords).length > 0)
+
+  const lines: string[] = [
+    `# 🔥 GitHub ${periodLabel} 开源情报 (${date})`,
+    '',
+    `> 共收录 **${repos.length}** 个热门项目，雷达命中 **${radarHits.length}** 个。`,
+    '',
+  ]
+
+  if (radarHits.length > 0) {
+    lines.push(`## 🎯 技术雷达命中（关键词：${radarKeywords.join(' / ')}）`, '')
+    for (const repo of radarHits.slice(0, 8)) {
+      const hits = matchRadarKeywords(repo, radarKeywords)
+      const summary = repo.ai_summary_zh || repo.description || '暂无简介'
+      lines.push(`- **[${repo.repo_name}](https://github.com/${repo.repo_name})**（⭐ +${repo.stars.toLocaleString()} · 命中：${hits.join(', ')}）— ${summary}`)
+    }
+    lines.push('')
+  }
+
+  lines.push(`## 🏆 ${periodLabel} Top ${topRepos.length}`, '')
+  topRepos.forEach((repo, idx) => {
+    const catMeta = getCategoryMeta(resolveRepoCategory(repo))
+    const deepDive = parseRepoDeepDive(repo.ai_deep_dive)
+    lines.push(`### ${idx + 1}. [${repo.repo_name}](https://github.com/${repo.repo_name})`)
+    lines.push(`- **板块**：${catMeta.emoji} ${catMeta.label} | **语言**：${repo.language || 'Unknown'} | **Stars**：+${repo.stars.toLocaleString()} | **Forks**：${repo.forks.toLocaleString()}`)
+    lines.push(`- **定位**：${deepDive?.one_liner || repo.ai_summary_zh || repo.description || '暂无简介'}`)
+    if (deepDive?.highlights && deepDive.highlights.length > 0) {
+      lines.push(`- **核心亮点**：${deepDive.highlights.join('；')}`)
+    }
+    lines.push('')
+  })
+
+  return lines.join('\n').trim() + '\n'
 }

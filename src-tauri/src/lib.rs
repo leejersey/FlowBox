@@ -76,6 +76,12 @@ pub fn run() {
             sql: include_str!("../migrations/011_trending_v2.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 12,
+            description: "butler_sessions",
+            sql: include_str!("../migrations/012_butler_sessions.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

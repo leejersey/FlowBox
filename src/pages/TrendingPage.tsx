@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Flame, RefreshCw, Sparkles, Search, ChevronDown, Loader2,
   Star, GitFork, GitPullRequest, TrendingUp, Rocket, ArrowUpDown,
-  BookOpen, Check
+  BookOpen, Check, Radar, UploadCloud, Plus, X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTrending } from '@/hooks/useTrending'
@@ -16,6 +16,7 @@ import { TrendingDetailPanel } from '@/components/trending/TrendingDetailPanel'
 import type { TrendingRepo } from '@/types/trending'
 import {
   getCategoryMeta,
+  matchRadarKeywords,
   parseJsonStringArray,
   parseRepoDeepDive,
   resolveRepoCategory,
@@ -79,12 +80,14 @@ function RankBadge({ rank }: { rank: number }) {
 function TrendingListCard({
   repo,
   rank,
+  radarHits,
   isSelected,
   isSaved,
   onSelect,
 }: {
   repo: TrendingRepo
   rank: number
+  radarHits: string[]
   isSelected: boolean
   isSaved: boolean
   onSelect: (repo: TrendingRepo) => void
@@ -101,6 +104,8 @@ function TrendingListCard({
         'group relative flex flex-col p-3.5 rounded-2xl transition-all duration-200 border cursor-pointer select-none',
         isSelected
           ? 'border-primary/50 bg-primary/10 shadow-md ring-1 ring-primary/30'
+          : radarHits.length > 0
+          ? 'bg-surface-container hover:bg-surface-container-highest border-orange-500/35 hover:border-orange-500/60 shadow-xs'
           : 'bg-surface-container hover:bg-surface-container-highest border-outline-variant/20 hover:border-outline-variant/40 shadow-xs',
       )}
     >
@@ -114,6 +119,14 @@ function TrendingListCard({
             <h3 className="text-xs font-display font-bold text-on-surface truncate flex-1" title={repo.repo_name}>
               {repo.repo_name}
             </h3>
+            {radarHits.length > 0 && (
+              <span
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px] font-bold shrink-0"
+                title={`命中雷达关键词：${radarHits.join(', ')}`}
+              >
+                🎯 {radarHits[0]}
+              </span>
+            )}
             {isSaved && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold shrink-0">
                 <Check className="w-2.5 h-2.5" />
@@ -262,6 +275,11 @@ export function TrendingPage() {
     setCategoryFilter,
     categoryCounts,
     topCategoryBreakdown,
+    radarKeywords,
+    addRadarKeyword,
+    removeRadarKeyword,
+    exportingDigest,
+    exportDigest,
     repos,
     totalCount,
     selectedRepo,
@@ -284,9 +302,13 @@ export function TrendingPage() {
     loadRepoOverview,
     generateDeepDive,
     saveToIdea,
+    saveToTodo,
+    askButler,
   } = useTrending()
 
   const [searchInput, setSearchInput] = useState('')
+  const [showRadarEditor, setShowRadarEditor] = useState(false)
+  const [radarInput, setRadarInput] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
@@ -368,6 +390,28 @@ export function TrendingPage() {
               )}
               <button
                 type="button"
+                onClick={() => setShowRadarEditor(v => !v)}
+                className={cn(
+                  'p-2 rounded-xl transition-colors cursor-pointer',
+                  showRadarEditor
+                    ? 'bg-orange-500/15 text-orange-500'
+                    : 'bg-surface-container hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface',
+                )}
+                title="配置技术订阅雷达关键词"
+              >
+                <Radar className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={exportDigest}
+                disabled={exportingDigest}
+                className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer disabled:opacity-50"
+                title="导出本期热点周报（Obsidian / 剪贴板）"
+              >
+                {exportingDigest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                type="button"
                 onClick={refresh}
                 disabled={refreshing}
                 className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer disabled:opacity-50"
@@ -378,16 +422,76 @@ export function TrendingPage() {
             </div>
           </div>
 
-          {/* 周期分段切换：今日飙升 / 每周高星 / 月度热榜 */}
+          {/* 技术雷达关键词配置抽屉 */}
+          {showRadarEditor && (
+            <div className="p-3 rounded-2xl bg-surface-container-low border border-orange-500/25 space-y-2.5 animate-fade-in shrink-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                  <Radar className="w-3.5 h-3.5" />
+                  技术雷达订阅关键词（命中自动高亮）
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowRadarEditor(false)}
+                  className="p-0.5 rounded hover:bg-surface-container text-on-surface-variant cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {radarKeywords.map(kw => (
+                  <span
+                    key={kw}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-orange-500/12 text-orange-600 dark:text-orange-400 text-[11px] font-semibold"
+                  >
+                    {kw}
+                    <button
+                      type="button"
+                      onClick={() => void removeRadarKeyword(kw)}
+                      className="hover:text-red-500 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (!radarInput.trim()) return
+                  void addRadarKeyword(radarInput)
+                  setRadarInput('')
+                }}
+                className="flex items-center gap-1.5"
+              >
+                <input
+                  type="text"
+                  value={radarInput}
+                  onChange={e => setRadarInput(e.target.value)}
+                  placeholder="添加关键词，如 MCP / DeepSeek / Tauri..."
+                  className="flex-1 bg-surface px-2.5 py-1.5 rounded-xl text-xs text-on-surface outline-none border border-outline-variant/25 focus:border-primary/50"
+                />
+                <button
+                  type="submit"
+                  className="px-2.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  添加
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* 周期分段切换：今日飙升 / 每周高星 / 月度热榜 / 新秀黑马 */}
           <div className="flex items-center justify-between gap-2 shrink-0">
-            <div className="flex-1 grid grid-cols-3 p-1 rounded-xl bg-surface-container border border-outline-variant/20">
+            <div className="flex-1 grid grid-cols-4 p-1 rounded-xl bg-surface-container border border-outline-variant/20">
               {TRENDING_PERIODS.map(item => (
                 <button
                   type="button"
                   key={item.id}
                   onClick={() => setPeriod(item.id)}
                   className={cn(
-                    'py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                    'py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer',
                     period === item.id
                       ? 'bg-surface text-primary shadow-xs'
                       : 'text-on-surface-variant hover:text-on-surface',
@@ -481,6 +585,7 @@ export function TrendingPage() {
                     key={repo.id}
                     repo={repo}
                     rank={i + 1}
+                    radarHits={matchRadarKeywords(repo, radarKeywords)}
                     isSelected={selectedRepo?.id === repo.id}
                     isSaved={savedRepoIds.has(repo.repo_id)}
                     onSelect={item => setSelectedRepoId(item.id)}
@@ -535,6 +640,8 @@ export function TrendingPage() {
             isGeneratingDeepDive={generatingDeepDiveId === selectedRepo.id}
             onClose={() => setSelectedRepoId(null)}
             onSaveToIdea={saveToIdea}
+            onSaveToTodo={saveToTodo}
+            onAskButler={askButler}
             onLoadOverview={loadRepoOverview}
             onGenerateDeepDive={generateDeepDive}
           />

@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import {
+  buildTrendingDigestMarkdown,
   inferTrendingCategory,
+  matchRadarKeywords,
   normalizeCategoryId,
   parseRepoDeepDive,
   sortTrendingRepos,
@@ -71,4 +73,38 @@ test('011_trending_v2 迁移已注册且 Tauri CSP 放通 GitHub 接口', async 
   assert.match(libRs, /011_trending_v2\.sql/)
   assert.match(tauriConf, /https:\/\/api\.github\.com/)
   assert.match(tauriConf, /https:\/\/raw\.githubusercontent\.com/)
+})
+
+test('技术雷达关键词匹配与热点周报 Markdown 生成', () => {
+  const repo = {
+    id: 1,
+    repo_id: '101',
+    repo_name: 'acme/mcp-agent-kit',
+    description: 'Build local MCP agents in Rust',
+    language: 'Rust',
+    stars: 1200,
+    forks: 90,
+    pull_requests: 12,
+    total_score: 980,
+    contributors: '[]',
+    ai_summary_zh: '基于 Rust 的本地 MCP 智能体工具包',
+    ai_tags: '["MCP","本地部署"]',
+    topics: '["agent","rust"]',
+    period: 'past_week',
+    fetched_date: '2026-11-22',
+    created_at: '2026-11-22',
+  }
+
+  const hits = matchRadarKeywords(repo, ['MCP', 'Tauri', 'Rust'])
+  assert.deepEqual(hits, ['MCP', 'Rust'])
+
+  const md = buildTrendingDigestMarkdown({
+    periodLabel: '每周高星',
+    date: '2026-11-22',
+    repos: [repo],
+    radarKeywords: ['MCP', 'Rust'],
+  })
+  assert.match(md, /# 🔥 GitHub 每周高星 开源情报/)
+  assert.match(md, /技术雷达命中/)
+  assert.match(md, /acme\/mcp-agent-kit/)
 })

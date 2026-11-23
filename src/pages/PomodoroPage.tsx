@@ -246,10 +246,10 @@ export function PomodoroPage() {
       )}
 
       {/* 正常工作台布局 */}
-      <div className="flex flex-col xl:flex-row h-full animate-fade-in w-full max-w-6xl mx-auto gap-4 lg:gap-8 overflow-y-auto lg:overflow-hidden pb-4 lg:pb-0 custom-scrollbar">
+      <div className="flex flex-col lg:flex-row h-full min-h-0 animate-fade-in w-full max-w-7xl mx-auto gap-4 lg:gap-8 overflow-y-auto lg:overflow-hidden pb-4 lg:pb-0 custom-scrollbar">
 
         {/* Left: Timer */}
-        <div className="flex-none xl:flex-[3] flex flex-col items-center justify-center w-full gap-6 lg:gap-8 py-6 xl:p-8 relative">
+        <div className="flex-none lg:flex-[3] flex flex-col items-center justify-center w-full gap-5 lg:gap-6 py-4 lg:p-6 relative">
           {/* 桌面模式工具条（迷你小窗 & Zen 模式切换） */}
           <div className="w-full flex items-center justify-between px-2 shrink-0 z-20">
             <div className="flex-1 max-w-[280px]">
@@ -339,7 +339,7 @@ export function PomodoroPage() {
         </div>
 
         {/* Right: Stats */}
-        <div className="flex-none xl:flex-[2] bg-surface-container-low/50 rounded-[32px] p-6 lg:p-8 flex flex-col xl:h-full xl:overflow-hidden border border-white/40 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
+        <div className="flex-none lg:flex-[2] bg-surface-container-low/50 rounded-[32px] p-6 lg:p-7 flex flex-col lg:h-full lg:min-h-0 lg:overflow-hidden border border-white/40 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
           <h2 className="text-2xl font-display font-bold text-on-surface mb-8">今日专注</h2>
 
           <div className="grid grid-cols-2 gap-4 mb-8">

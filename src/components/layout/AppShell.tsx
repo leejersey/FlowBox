@@ -144,16 +144,15 @@ export function AppShell() {
         return
       }
 
-      // ⌘1 ~ ⌘8, ⌘, 模块极速切换
+      // ⌘1 ~ ⌘7, ⌘, 模块极速切换
       if (isCmdOrCtrl && !e.shiftKey && !e.altKey) {
         if (e.key === '1') { e.preventDefault(); navigate('/') }
         else if (e.key === '2') { e.preventDefault(); navigate('/pomodoro') }
         else if (e.key === '3') { e.preventDefault(); navigate('/idea') }
         else if (e.key === '4') { e.preventDefault(); navigate('/clipboard') }
         else if (e.key === '5') { e.preventDefault(); navigate('/voice') }
-        else if (e.key === '6') { e.preventDefault(); navigate('/markdown') }
-        else if (e.key === '7') { e.preventDefault(); navigate('/trending') }
-        else if (e.key === '8') { e.preventDefault(); navigate('/stats') }
+        else if (e.key === '6') { e.preventDefault(); navigate('/trending') }
+        else if (e.key === '7') { e.preventDefault(); navigate('/stats') }
         else if (e.key === ',' && !supportsNativeSettingsMenu()) { e.preventDefault(); navigate('/settings') }
         else if (e.key.toLowerCase() === 'n') {
           // ⌘N 广播全局新建捕获事件
@@ -194,8 +193,8 @@ export function AppShell() {
     <div className={isMini ? 'h-screen w-screen overflow-hidden bg-surface' : 'flex h-screen w-screen overflow-hidden bg-surface relative'}>
       {!isMini && <TitleBar />}
       {!isMini && <Sidebar onSearchClick={toggleSearch} />}
-      <main className={isMini ? 'h-full w-full overflow-hidden' : 'flex-1 h-full pt-10 relative overflow-hidden flex flex-col min-w-0'}>
-        <div className={isMini ? 'h-full w-full' : 'flex-1 w-full h-full relative overflow-hidden px-4 lg:px-6 py-4 flex flex-col min-w-0'}>
+      <main className={isMini ? 'h-full w-full overflow-hidden' : 'flex-1 h-full min-h-0 pt-10 relative overflow-hidden flex flex-col min-w-0'}>
+        <div className={isMini ? 'h-full w-full' : 'flex-1 min-h-0 w-full relative overflow-hidden px-4 lg:px-6 py-3 flex flex-col min-w-0'}>
           <Outlet context={{ triggerReview: dailyReview.triggerReview, isMini, enterMini, exitMini }} />
         </div>
         {!isMini && <StatusBar />}

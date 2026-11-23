@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
 const source = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
-const lazyRoutes = ['Todo', 'Idea', 'Pomodoro', 'Clipboard', 'Voice', 'Markdown', 'Stats', 'Trending', 'Settings']
+const lazyRoutes = ['Todo', 'Idea', 'Pomodoro', 'Clipboard', 'Voice', 'Stats', 'Trending', 'Settings']
 
 test('feature routes use named-export lazy adapters', () => {
   for (const name of lazyRoutes) {

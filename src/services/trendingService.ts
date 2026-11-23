@@ -8,12 +8,16 @@ import { getDb } from './database'
 import * as settingsService from './settingsService'
 import * as aiService from './aiService'
 import * as ideaService from './ideaService'
+import * as todoService from './todoService'
+import { exportMarkdownToObsidian } from './obsidianService'
 import type {
   OSSInsightResponse,
   TrendingPeriod,
   TrendingRepo,
 } from '../types/trending'
 import {
+  buildTrendingDigestMarkdown,
+  DEFAULT_RADAR_KEYWORDS,
   inferTrendingCategory,
   normalizeCategoryId,
   parseJsonStringArray,
@@ -26,7 +30,9 @@ import { localDateKey } from '../lib/localDate'
 
 const OSS_INSIGHT_API = 'https://api.ossinsight.io/v1/trends/repos'
 const GITHUB_API_BASE = 'https://api.github.com/repos'
+const GITHUB_SEARCH_API = 'https://api.github.com/search/repositories'
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com'
+const SETTINGS_KEY_RADAR = 'trending.radar_keywords'
 
 function lastFetchedKey(period: TrendingPeriod): string {
   return `trending.last_fetched.${period}`
@@ -122,6 +128,93 @@ async function cacheTrendingRepos(
   await settingsService.settingsSet(lastFetchedKey(period), today)
 }
 
+interface GitHubSearchRepoItem {
+  id: number
+  full_name: string
+  description: string | null
+  language: string | null
+  stargazers_count: number
+  forks_count: number
+  open_issues_count: number
+  homepage: string | null
+  topics?: string[]
+  owner?: { login?: string }
+}
+
+/** 从 GitHub Search API 抓取近 14 天刚开源的高星新秀黑马项目 */
+async function fetchAndCacheRisingStars(): Promise<void> {
+  const since = new Date()
+  since.setDate(since.getDate() - 14)
+  const sinceKey = localDateKey(since)
+  const query = `created:>=${sinceKey} stars:>=50`
+  const url = `${GITHUB_SEARCH_API}?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=30`
+
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/vnd.github+json' },
+    signal: AbortSignal.timeout(15000),
+  })
+
+  if (!resp.ok) {
+    throw new Error(`GitHub 新秀榜请求失败 (${resp.status})`)
+  }
+
+  const json = (await resp.json()) as { items?: GitHubSearchRepoItem[] }
+  const items = json.items ?? []
+  const db = await getDb()
+  const today = localDateKey()
+
+  for (const item of items) {
+    const topics = Array.isArray(item.topics) ? item.topics.slice(0, 8) : []
+    const contributors = item.owner?.login ? JSON.stringify([item.owner.login]) : '[]'
+    const initialCategory = inferTrendingCategory({
+      repo_name: item.full_name,
+      description: item.description,
+      language: item.language,
+      topics,
+    })
+    const score = Math.round(item.stargazers_count + item.forks_count * 2 + item.open_issues_count)
+
+    await db.execute(
+      `INSERT INTO trending_repos (
+         repo_id, repo_name, description, language, stars, forks, pull_requests,
+         total_score, contributors, period, fetched_date, category, homepage, topics
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       ON CONFLICT(repo_id, period, fetched_date) DO UPDATE SET
+         repo_name = $2,
+         description = $3,
+         language = $4,
+         stars = $5,
+         forks = $6,
+         pull_requests = $7,
+         total_score = $8,
+         contributors = $9,
+         homepage = $13,
+         topics = $14,
+         category = CASE WHEN trending_repos.category IS NULL OR trending_repos.category = '' THEN $12 ELSE trending_repos.category END`,
+      [
+        String(item.id),
+        item.full_name,
+        item.description ?? '',
+        item.language ?? '',
+        item.stargazers_count,
+        item.forks_count,
+        item.open_issues_count,
+        score,
+        contributors,
+        'rising_stars',
+        today,
+        initialCategory,
+        item.homepage?.trim() ?? '',
+        JSON.stringify(topics),
+      ],
+    )
+  }
+
+  await settingsService.settingsSet(lastFetchedKey('rising_stars'), today)
+}
+
 // ─── 组合函数 ──────────────────────────────────────
 
 /** 从 API 获取并缓存到本地 */
@@ -129,6 +222,10 @@ export async function fetchAndCacheTrending(
   period: TrendingPeriod = 'past_week',
   language: string = 'All',
 ): Promise<void> {
+  if (period === 'rising_stars') {
+    await fetchAndCacheRisingStars()
+    return
+  }
   const data = await fetchFromOSSInsight(period, language)
   await cacheTrendingRepos(data, period)
 }
@@ -475,4 +572,76 @@ export async function saveToIdea(repo: TrendingRepo): Promise<void> {
   const tags = Array.from(new Set(['github', 'trending', category, repo.language].filter(Boolean)))
 
   await ideaService.ideaCreate(content, tags)
+}
+
+/** 一键将开源项目转为待办体验任务 */
+export async function saveToTodo(repo: TrendingRepo): Promise<number> {
+  const deepDive = parseRepoDeepDive(repo.ai_deep_dive)
+  const category = resolveRepoCategory(repo)
+  const summary = deepDive?.one_liner || repo.ai_summary_zh || repo.description || ''
+  const detailLines = [
+    summary,
+    deepDive?.quickstart ? `上手方式：${deepDive.quickstart}` : '',
+    `GitHub：https://github.com/${repo.repo_name}`,
+  ].filter(Boolean)
+
+  const created = await todoService.todoCreate({
+    title: `体验开源项目：${repo.repo_name}`,
+    content: detailLines.join('\n\n'),
+    priority: 1,
+    source: 'manual',
+    tags: Array.from(new Set(['github', category, repo.language].filter(Boolean))).slice(0, 4),
+  })
+  return created.id
+}
+
+// ─── 技术雷达关键词设置 ────────────────────────────
+
+export async function loadRadarKeywords(): Promise<string[]> {
+  try {
+    const raw = await settingsService.settingsGet(SETTINGS_KEY_RADAR)
+    if (!raw) return DEFAULT_RADAR_KEYWORDS
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed)
+      ? parsed.map(v => String(v).trim()).filter(Boolean)
+      : DEFAULT_RADAR_KEYWORDS
+  } catch {
+    return DEFAULT_RADAR_KEYWORDS
+  }
+}
+
+export async function saveRadarKeywords(keywords: string[]): Promise<string[]> {
+  const cleaned = Array.from(new Set(keywords.map(k => k.trim()).filter(Boolean))).slice(0, 20)
+  await settingsService.settingsSet(SETTINGS_KEY_RADAR, JSON.stringify(cleaned))
+  return cleaned
+}
+
+// ─── 导出热点周报（Obsidian / 剪贴板） ─────────────
+
+export async function exportTrendingDigest(params: {
+  periodLabel: string
+  repos: TrendingRepo[]
+  radarKeywords: string[]
+}): Promise<{ target: 'obsidian' | 'clipboard'; filePath?: string }> {
+  const today = localDateKey()
+  const markdownText = buildTrendingDigestMarkdown({
+    periodLabel: params.periodLabel,
+    date: today,
+    repos: params.repos,
+    radarKeywords: params.radarKeywords,
+  })
+
+  const vaultPath = (await settingsService.settingsGet('obsidian.vault_path'))?.trim()
+  if (vaultPath) {
+    const fileName = `${today} GitHub ${params.periodLabel}情报.md`
+    const result = await exportMarkdownToObsidian({
+      vaultPath,
+      fileName,
+      markdownText,
+    })
+    return { target: 'obsidian', filePath: result.filePath }
+  }
+
+  await navigator.clipboard.writeText(markdownText)
+  return { target: 'clipboard' }
 }

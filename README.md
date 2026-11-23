@@ -41,10 +41,10 @@
 - 原声回放，导出文本
 
 ### 🔥 Dev Trending（GitHub 热点榜）
-- **多周期排行榜**：支持「今日飙升 / 每周高星 / 月度热榜」切换（数据源：OSS Insight API + GitHub），并支持按高星飙升、综合热度、社区活跃排序
-- **板块分类独立排名**：内置 6 大领域板块（AI & Agent、开发工具 & CLI、前端 & UI、后端 & 基础设施、桌面 & 效率、安全 & 网络），规则初筛秒出结果，结合 AI 批量速览精准归类，支持板块内独立排名与语言/关键词组合过滤
+- **四维排行榜**：支持「今日飙升 / 每周高星 / 月度热榜 / 新秀黑马（近 14 天刚开源高星）」切换（数据源：OSS Insight API + GitHub Search API），并支持按高星飙升、综合热度、社区活跃排序
+- **板块分类独立排名 + 技术订阅雷达**：内置 6 大领域板块（AI & Agent、开发工具 & CLI、前端 & UI、后端 & 基础设施、桌面 & 效率、安全 & 网络）+ 自定义关键词雷达订阅（命中自动高亮，支持专属雷达命中筛选）
 - **Master-Detail 项目速读工作台**：无需跳转浏览器即可在右侧面板预览仓库 README 原文，或一键生成 **AI 结构化项目速读卡**（一句话说透、核心痛点、3 大亮点、上手门槛、同类对比）
-- **一键收藏到灵感**：自动整理仓库定位、核心亮点与链接并标记已收藏状态
+- **生产力闭环**：支持一键「收藏灵感」、一键「加入待办」、一键「问 Butler（带入项目速读与 README 上下文）」以及一键导出本期「热点周报」到 Obsidian / 剪贴板
 - 本地 SQLite 分周期独立缓存，支持离线浏览，14 天自动清理
 
 ### 📊 效率分析看板
@@ -56,7 +56,7 @@
 
 ### 🔍 全局搜索与快捷心流
 - `Cmd+/` 唤出毛玻璃命令面板，跨待办 / 灵感 / 语音 / 剪贴板实时模糊搜索并执行快捷指令
-- 结果按模块分组高亮，键盘 `↑↓` 自动跟随滚动导航，`Enter` 一键跳转；支持 `Cmd+1~8` 极速切换主模块
+- 结果按模块分组高亮，键盘 `↑↓` 自动跟随滚动导航，`Enter` 一键跳转；支持 `Cmd+1~7` 极速切换主模块
 - 与 AI Butler 浮层原子互斥，删除/清空等破坏性操作均带轻确认防误触
 
 ### 🧲 跨模块智能关联
@@ -75,15 +75,14 @@
 - **AI 洞察**：流式生成个性化总结 + 明日行动建议
 - 回顾历史自动保存（最近 30 天）
 
-### 🤖 AI Butler（全局智能管家）
+### 🤖 AI Butler（全局智能管家 · Local Agent）
 - `Shift + Space` 全局呼出（可在设置中自定义），`Cmd + K` 应用内唤起
+- **本地工作区上下文挂载**：一键勾选 `@剪贴板 / @待办 / @灵感 / @热榜 / @本周` 实时注入本地 SQLite 数据，支持从 GitHub 热点页一键带入项目上下文深度追问
+- **可执行本地动作卡片**：AI 回复自动识别创建待办、保存灵感、开启番茄钟意图，渲染可一键确认执行（或批量执行）的动作卡片，全模型通用（DeepSeek / OpenAI / Ollama）
+- **多会话历史管理**：基于 SQLite `butler_sessions` & `butler_messages` 表支持新建对话、历史切换、删除会话与首句自动命名
 - **多轮对话与流式控制**：自适应多行输入（`Enter` 发送 / `Shift+Enter` 换行），流式输出支持随时点击停止中断
-- **技能系统**：8 个内置技能（润色、翻译、摘要、修复代码、分析截图、解释代码、写周报、头脑风暴）
-- **自定义技能**：在设置→Butler 技能中创建/编辑自定义 Prompt 模板，支持专属 System Prompt
-- **Prompt 选择器联动**：Butler 底栏可切换技能的 System Prompt 作为全局上下文
-- **Markdown 渲染**：AI 回复原生支持标题、列表、代码块、表格等富文本排版
-- **对话持久化**：基于 SQLite `butler_messages` 表，关闭窗口不丢失历史
-- 毛玻璃悬浮面板，ESC / 点击遮罩关闭
+- **技能系统与自定义模板**：8 个内置技能 + 设置内自定义 Prompt / System Prompt，底栏随时切换全局上下文
+- **Markdown 渲染**：AI 回复原生支持标题、列表、代码块、表格等富文本排版，ESC / 点击遮罩关闭
 
 ---
 
@@ -167,7 +166,7 @@ npm run tauri build
 ```
 FlowBox/
 ├── src/                          # 前端源码
-│   ├── pages/                    # 页面组件（10 个）
+│   ├── pages/                    # 页面组件（9 个）
 │   │   ├── TodoPage.tsx          # 待办管理
 │   │   ├── IdeaPage.tsx          # 灵感速记（含详情弹窗）
 │   │   ├── PomodoroPage.tsx      # 番茄专注
@@ -175,7 +174,6 @@ FlowBox/
 │   │   ├── VoicePage.tsx         # 语音备忘录
 │   │   ├── StatsPage.tsx         # 效率分析
 │   │   ├── TrendingPage.tsx      # Dev Trending（GitHub 热门仓库）
-│   │   ├── MarkdownPage.tsx      # Markdown 转换器
 │   │   ├── SettingsPage.tsx      # 偏好设置
 │   │   └── ButlerPage.tsx        # AI Butler 独立窗口入口
 │   ├── components/               # UI 组件
@@ -222,8 +220,10 @@ FlowBox/
 │   │   └── useScreenshotOcr.ts   # 截图 OCR 流程
 │   ├── services/                 # 数据服务层（22 个）
 │   │   ├── aiService.ts          # AI 引擎（对话 / 转写 / 摘要 / Vision）
-│   │   ├── butlerService.ts      # Butler 指令编排（Skill 驱动）
-│   │   ├── butlerDbService.ts    # Butler 对话 SQLite 持久化
+│   │   ├── butlerService.ts      # Butler 指令编排（Skill + 上下文 + 动作协议）
+│   │   ├── butlerContextService.ts # 本地工作区上下文聚合（@剪贴板/@待办/@灵感/@热榜/@本周）
+│   │   ├── butlerActionService.ts  # Butler 本地可执行动作执行器
+│   │   ├── butlerDbService.ts    # Butler 多会话 SQLite 持久化
 │   │   ├── skillService.ts       # Butler 技能 CRUD + 预设种子
 │   │   ├── trendingService.ts    # Dev Trending（API + 缓存 + AI 摘要）
 │   │   ├── todoService.ts        # 待办 CRUD
@@ -245,7 +245,9 @@ FlowBox/
 │   │   └── database.ts           # SQLite 连接单例
 │   ├── lib/                      # 工具库
 │   │   ├── utils.ts              # 通用工具（cn 等）
-│   │   ├── trendingCategory.ts   # GitHub 热点板块分类与排序引擎
+│   │   ├── trendingCategory.ts   # GitHub 热点板块分类、雷达与周报生成引擎
+│   │   ├── butlerActions.ts      # Butler 可执行动作块解析器
+│   │   ├── butlerSession.ts      # Butler 会话标题自动提炼
 │   │   └── icons.ts              # Lucide 图标动态映射
 │   ├── stores/                   # Zustand 全局状态
 │   │   ├── useAppStore.ts        # 应用级状态（Butler 开关等）
@@ -273,7 +275,7 @@ FlowBox/
 │   │       ├── voice_transcribe.rs    # 火山引擎 ASR 转写
 │   │       ├── ocr.rs                 # Vision 文字识别
 │   │       └── secrets.rs             # Keychain 读写
-│   ├── migrations/               # 数据库迁移（11 个）
+│   ├── migrations/               # 数据库迁移（12 个）
 │   │   ├── 001_init.sql          # 核心表结构
 │   │   ├── 002_error_logs.sql    # 错误日志表
 │   │   ├── 003_butler_messages.sql # Butler 对话持久化表
@@ -281,7 +283,8 @@ FlowBox/
 │   │   ├── 005_butler_skills.sql # Butler 技能管理表
 │   │   ├── 006_trending.sql      # Dev Trending 热门仓库缓存表
 │   │   ├── 007–010               # 番茄恢复、usage 去重、关联规范化与清理
-│   │   └── 011_trending_v2.sql   # 热点多周期索引、板块分类、AI 速读与 README 缓存
+│   │   ├── 011_trending_v2.sql   # 热点多周期索引、板块分类、AI 速读与 README 缓存
+│   │   └── 012_butler_sessions.sql # Butler 多会话管理表与消息会话关联
 │   ├── capabilities/             # Tauri 安全能力声明
 │   └── tauri.conf.json           # 窗口 / CSP / 权限配置
 ├── docs/                         # 架构与功能文档
@@ -302,16 +305,6 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 | **Ollama** | Butler 对话、本地推理 | 完全离线，隐私最高 |
 
 语音转写推荐使用**火山引擎 ASR**（需在语音技术控制台申请 AppID + Token），如需更高精度可切换到 OpenAI Whisper。
-
----
-
-## 📝 Markdown 双向转换器
-
-- **网页 → Markdown**：粘贴富文本 / HTML，自动转为结构化 Markdown（基于 Turndown）
-- **Markdown → 富文本**：输入 Markdown，实时渲染为精美排版（基于 react-markdown + @tailwindcss/typography）
-- **一键复制富文本**：复制后可直接粘贴到 Word、飞书、Notion、微信公众号等，样式完美保留
-- 顶部一键方向切换按钮
-- Obsidian Vault 导出桥接
 
 ---
 
@@ -340,8 +333,9 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 - [x] 剪贴板批量拼接 + Diff 对比
 - [x] Rust 原生录音 + 火山引擎 ASR 转写
 - [x] Butler Skills 技能管理系统（8 预设 + 自定义 Prompt 模板）
-- [x] Dev Trending v2 — 日/周/月多周期榜单 + 6 大板块分类排名 + 应用内 README 预览与 AI 项目速读卡
-- [x] 桌面端 UI/交互全面打磨（过渡动效、防误触轻确认、浮层互斥、Butler 多行输入与流式停止）
+- [x] Dev Trending v2/v3 — 日/周/月/新秀黑马四榜 + 6 大板块排名 + 技术雷达 + 应用内 README 预览与 AI 项目速读卡 + 一键转待办/问 Butler/导出 Obsidian 周报
+- [x] AI Butler v2（Local Agent）— `@剪贴板/@待办/@灵感/@热榜/@本周` 上下文挂载 + 可执行动作卡片 + 多会话历史管理
+- [x] 桌面端 UI/交互全面打磨（1280×820 窗口适配、过渡动效、防误触轻确认、浮层互斥、Butler 多行输入与流式停止）
 - [ ] Obsidian Vault 自动导出集成
 - [ ] AI 周报自动生成（基于效率分析数据）
 - [ ] Flow 模式（沉浸式心流引擎 + 应用偏离提醒）

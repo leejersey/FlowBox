@@ -16,7 +16,6 @@ const IdeaPage = lazy(() => import('./pages/IdeaPage').then(module => ({ default
 const PomodoroPage = lazy(() => import('./pages/PomodoroPage').then(module => ({ default: module.PomodoroPage })))
 const ClipboardPage = lazy(() => import('./pages/ClipboardPage').then(module => ({ default: module.ClipboardPage })))
 const VoicePage = lazy(() => import('./pages/VoicePage').then(module => ({ default: module.VoicePage })))
-const MarkdownPage = lazy(() => import('./pages/MarkdownPage').then(module => ({ default: module.MarkdownPage })))
 const StatsPage = lazy(() => import('./pages/StatsPage').then(module => ({ default: module.StatsPage })))
 const TrendingPage = lazy(() => import('./pages/TrendingPage').then(module => ({ default: module.TrendingPage })))
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(module => ({ default: module.SettingsPage })))
@@ -85,7 +84,6 @@ function App() {
             <Route path="pomodoro" element={<PomodoroPage />} />
             <Route path="clipboard" element={<ClipboardPage />} />
             <Route path="voice" element={<VoicePage />} />
-            <Route path="markdown" element={<MarkdownPage />} />
             <Route path="stats" element={<StatsPage />} />
             <Route path="trending" element={<TrendingPage />} />
             <Route path="settings" element={<SettingsPage />} />

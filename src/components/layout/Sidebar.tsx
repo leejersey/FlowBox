@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   CheckSquare, Lightbulb, Timer, Clipboard, Mic, BarChart3,
-  Settings, FileType2, Search, Flame, ChevronLeft, ChevronRight, type LucideIcon
+  Settings, Search, Flame, ChevronLeft, ChevronRight, type LucideIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -36,10 +36,9 @@ const navSections: NavSection[] = [
     ]
   },
   {
-    title: '提效工具',
+    title: '极客情报',
     items: [
-      { path: '/markdown', icon: FileType2, label: '格式转换', eng: 'Markdown' },
-      { path: '/trending', icon: Flame, label: '极客热榜', eng: 'Trending' },
+      { path: '/trending', icon: Flame, label: 'GitHub 热点', eng: 'Trending' },
     ]
   }
 ]

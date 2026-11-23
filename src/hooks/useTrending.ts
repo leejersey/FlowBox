@@ -13,11 +13,17 @@ import type {
   TrendingSortBy,
 } from '@/types/trending'
 import {
+  DEFAULT_RADAR_KEYWORDS,
+  matchRadarKeywords,
+  parseRepoDeepDive,
   resolveRepoCategory,
   sortTrendingRepos,
   TRENDING_CATEGORIES,
+  TRENDING_PERIODS,
 } from '@/lib/trendingCategory'
 import { showToast } from '@/store/useToastStore'
+import { useButlerStore } from '@/stores/butlerStore'
+import { useAppStore } from '@/stores/useAppStore'
 
 const isTauriApp = isTauri()
 
@@ -36,12 +42,19 @@ export function useTrending() {
   const [loadingOverviewId, setLoadingOverviewId] = useState<number | null>(null)
   const [generatingDeepDiveId, setGeneratingDeepDiveId] = useState<number | null>(null)
   const [savedRepoIds, setSavedRepoIds] = useState<Set<string>>(() => new Set())
+  const [radarKeywords, setRadarKeywords] = useState<string[]>(DEFAULT_RADAR_KEYWORDS)
+  const [exportingDigest, setExportingDigest] = useState(false)
   const [lastFetched, setLastFetched] = useState<string | null>(null)
   const activePeriodRef = useRef<TrendingPeriod>(period)
 
   useEffect(() => {
     activePeriodRef.current = period
   }, [period])
+
+  useEffect(() => {
+    if (!isTauriApp) return
+    void trendingService.loadRadarKeywords().then(setRadarKeywords).catch(() => {})
+  }, [])
 
   // ─── 按周期加载数据 ────────────────────────────
 
@@ -166,7 +179,7 @@ export function useTrending() {
     }
   }, [])
 
-  // ─── 收藏到灵感 ────────────────────────────────
+  // ─── 收藏到灵感 / 转待办 / 问 Butler / 雷达 / 导出 ──
 
   const saveToIdea = useCallback(async (repo: TrendingRepo) => {
     try {
@@ -178,11 +191,89 @@ export function useTrending() {
     }
   }, [])
 
+  const saveToTodo = useCallback(async (repo: TrendingRepo) => {
+    try {
+      const todoId = await trendingService.saveToTodo(repo)
+      showToast('已加入待办清单', 'success')
+      return todoId
+    } catch (err) {
+      showToast(`加入待办失败: ${String(err)}`, 'error')
+      return null
+    }
+  }, [])
+
+  const askButler = useCallback((repo: TrendingRepo) => {
+    const deepDive = parseRepoDeepDive(repo.ai_deep_dive)
+    const parts = [
+      `项目名称：${repo.repo_name}`,
+      `语言：${repo.language || '未知'} | Stars：+${repo.stars} | Forks：${repo.forks}`,
+      `仓库简介：${repo.description || '无'}`,
+      deepDive
+        ? `AI 速读定位：${deepDive.one_liner}\n解决痛点：${deepDive.problem}\n核心亮点：${deepDive.highlights.join('；')}\n上手方式：${deepDive.quickstart}\n同类对比：${deepDive.comparison}`
+        : repo.ai_summary_zh
+        ? `AI 摘要：${repo.ai_summary_zh}`
+        : '',
+      repo.readme_excerpt ? `README 节选：\n${repo.readme_excerpt.slice(0, 2200)}` : '',
+    ].filter(Boolean)
+
+    useButlerStore.getState().setDraftContext({
+      title: `GitHub: ${repo.repo_name}`,
+      content: parts.join('\n\n'),
+      suggestedPrompt: `请结合 ${repo.repo_name} 的特点，帮我分析它的适用场景、核心优缺点，以及值不值得在项目中引入？`,
+    })
+    useAppStore.getState().setButlerActive(true)
+  }, [])
+
+  const addRadarKeyword = useCallback(async (keyword: string) => {
+    const trimmed = keyword.trim()
+    if (!trimmed) return
+    const next = Array.from(new Set([...radarKeywords, trimmed]))
+    setRadarKeywords(next)
+    if (isTauriApp) {
+      await trendingService.saveRadarKeywords(next).catch(() => {})
+    }
+  }, [radarKeywords])
+
+  const removeRadarKeyword = useCallback(async (keyword: string) => {
+    const next = radarKeywords.filter(k => k !== keyword)
+    setRadarKeywords(next)
+    if (isTauriApp) {
+      await trendingService.saveRadarKeywords(next).catch(() => {})
+    }
+  }, [radarKeywords])
+
+  const exportDigest = useCallback(async () => {
+    if (repos.length === 0) {
+      showToast('当前榜单暂无可导出数据', 'info')
+      return
+    }
+    setExportingDigest(true)
+    try {
+      const periodLabel = TRENDING_PERIODS.find(p => p.id === period)?.label ?? '热点'
+      const sorted = sortTrendingRepos(repos, sortBy)
+      const res = await trendingService.exportTrendingDigest({
+        periodLabel,
+        repos: sorted,
+        radarKeywords,
+      })
+      if (res.target === 'obsidian') {
+        showToast(`已导出热点周报到 Obsidian`, 'success')
+      } else {
+        showToast('未配置 Obsidian 路径，已将 Markdown 周报复制到剪贴板', 'success')
+      }
+    } catch (err) {
+      showToast(`导出周报失败: ${String(err)}`, 'error')
+    } finally {
+      setExportingDigest(false)
+    }
+  }, [period, radarKeywords, repos, sortBy])
+
   // ─── 板块数量统计 ──────────────────────────────
 
   const categoryCounts = useMemo(() => {
     const counts: Record<TrendingCategoryId, number> = {
       all: repos.length,
+      radar: 0,
       ai: 0,
       devtools: 0,
       frontend: 0,
@@ -192,17 +283,24 @@ export function useTrending() {
       other: 0,
     }
     for (const r of repos) {
+      if (matchRadarKeywords(r, radarKeywords).length > 0) {
+        counts.radar += 1
+      }
       const cat = resolveRepoCategory(r)
       counts[cat] += 1
     }
     return counts
-  }, [repos])
+  }, [repos, radarKeywords])
 
   // ─── 过滤 + 排序 ───────────────────────────────
 
   const filteredRepos = useMemo(() => {
     const filtered = repos.filter(r => {
-      if (categoryFilter !== 'all' && resolveRepoCategory(r) !== categoryFilter) return false
+      if (categoryFilter === 'radar') {
+        if (matchRadarKeywords(r, radarKeywords).length === 0) return false
+      } else if (categoryFilter !== 'all' && resolveRepoCategory(r) !== categoryFilter) {
+        return false
+      }
       if (languageFilter !== 'All' && r.language !== languageFilter) return false
       if (searchKeyword.trim()) {
         const kw = searchKeyword.trim().toLowerCase()
@@ -216,7 +314,7 @@ export function useTrending() {
       return true
     })
     return sortTrendingRepos(filtered, sortBy)
-  }, [repos, categoryFilter, languageFilter, searchKeyword, sortBy])
+  }, [repos, categoryFilter, radarKeywords, languageFilter, searchKeyword, sortBy])
 
   const selectedRepo = useMemo(
     () => repos.find(r => r.id === selectedRepoId) ?? null,
@@ -235,7 +333,7 @@ export function useTrending() {
 
   const topCategoryBreakdown = useMemo(() => {
     return TRENDING_CATEGORIES
-      .filter(c => c.id !== 'all' && categoryCounts[c.id] > 0)
+      .filter(c => c.id !== 'all' && c.id !== 'radar' && categoryCounts[c.id] > 0)
       .map(c => ({ ...c, count: categoryCounts[c.id] }))
       .sort((a, b) => b.count - a.count)
   }, [categoryCounts])
@@ -249,6 +347,11 @@ export function useTrending() {
     setCategoryFilter,
     categoryCounts,
     topCategoryBreakdown,
+    radarKeywords,
+    addRadarKeyword,
+    removeRadarKeyword,
+    exportingDigest,
+    exportDigest,
     repos: filteredRepos,
     allRepos: repos,
     totalCount: repos.length,
@@ -272,5 +375,7 @@ export function useTrending() {
     loadRepoOverview,
     generateDeepDive,
     saveToIdea,
+    saveToTodo,
+    askButler,
   }
 }

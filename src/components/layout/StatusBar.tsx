@@ -77,7 +77,7 @@ export function StatusBar() {
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span><kbd className="font-mono bg-surface-container px-1 py-0.2 rounded border border-outline-variant/30">⌘1~8</kbd> 切换模块</span>
+            <span><kbd className="font-mono bg-surface-container px-1 py-0.2 rounded border border-outline-variant/30">⌘1~7</kbd> 切换模块</span>
             <span><kbd className="font-mono bg-surface-container px-1 py-0.2 rounded border border-outline-variant/30">⌘/</kbd> 搜索</span>
           </div>
         )}

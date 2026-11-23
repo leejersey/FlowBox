@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm'
 import {
   X, Star, GitFork, GitPullRequest, TrendingUp, ExternalLink,
   Lightbulb, Sparkles, BookOpen, RefreshCw, Loader2, Check,
-  Copy, Globe, Target, Wrench, Scale, Layers
+  Copy, Globe, Target, Wrench, Scale, Layers, CheckSquare, Bot
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TrendingRepo } from '@/types/trending'
@@ -24,6 +24,8 @@ interface TrendingDetailPanelProps {
   isGeneratingDeepDive: boolean
   onClose: () => void
   onSaveToIdea: (repo: TrendingRepo) => Promise<void>
+  onSaveToTodo: (repo: TrendingRepo) => Promise<number | null>
+  onAskButler: (repo: TrendingRepo) => void
   onLoadOverview: (repo: TrendingRepo, forceRefresh?: boolean) => Promise<TrendingRepo>
   onGenerateDeepDive: (repo: TrendingRepo, forceRefresh?: boolean) => Promise<TrendingRepo>
 }
@@ -41,11 +43,14 @@ export function TrendingDetailPanel({
   isGeneratingDeepDive,
   onClose,
   onSaveToIdea,
+  onSaveToTodo,
+  onAskButler,
   onLoadOverview,
   onGenerateDeepDive,
 }: TrendingDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<'summary' | 'readme'>('summary')
   const [saving, setSaving] = useState(false)
+  const [savingTodo, setSavingTodo] = useState(false)
   const [copiedUrl, setCopiedUrl] = useState(false)
 
   const categoryId = resolveRepoCategory(repo)
@@ -71,6 +76,15 @@ export function TrendingDetailPanel({
       await onSaveToIdea(repo)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSaveTodo = async () => {
+    setSavingTodo(true)
+    try {
+      await onSaveToTodo(repo)
+    } finally {
+      setSavingTodo(false)
     }
   }
 
@@ -102,6 +116,27 @@ export function TrendingDetailPanel({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => onAskButler(repo)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/12 text-primary hover:bg-primary/20 transition-all cursor-pointer"
+            title="带入当前项目上下文，向 AI Butler 深度追问"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span>问 Butler</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSaveTodo}
+            disabled={savingTodo}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-surface-container-highest text-on-surface hover:text-primary hover:bg-primary/10 transition-all cursor-pointer disabled:opacity-50"
+            title="一键加入待办清单（稍后体验）"
+          >
+            {savingTodo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckSquare className="w-3.5 h-3.5" />}
+            <span className="hidden xl:inline">加待办</span>
+          </button>
+
           <button
             type="button"
             onClick={handleSave}
