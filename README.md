@@ -165,6 +165,11 @@ git push origin v0.6.0
 ```
 
 > 桌面端内置 `tauri-plugin-updater`：启动后静默检测 GitHub Releases 的 `latest.json`，支持在 **设置 → 关于 FlowBox** 中一键下载更新包、验签并自动重启生效，无需每次手动下载 DMG。
+>
+> **macOS 首次下载 DMG 安装提示**：因开源项目暂未接入付费 Apple Developer 公证，首次从浏览器下载安装若提示「“FlowBox”已损坏，无法打开」，将应用拖入「应用程序」后在终端执行一次以下命令即可正常打开（后续应用内自动更新无需重复执行）：
+> ```bash
+> xattr -cr /Applications/FlowBox.app
+> ```
 
 ---
 

@@ -43,7 +43,13 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'FlowBox v__VERSION__'
-          releaseBody: '查看本次更新内容，桌面端用户可直接在「设置 → 关于 FlowBox」中一键自动更新。'
+          releaseBody: |
+            查看本次更新内容，已安装桌面端的用户可直接在「设置 → 关于 FlowBox」中一键自动更新。
+
+            > **macOS 首次下载 DMG 安装提示**：因开源应用未购买 Apple 付费公证，首次从浏览器下载安装若提示「“FlowBox”已损坏，无法打开」，请先拖入「应用程序」后在终端运行一次：
+            > ```bash
+            > xattr -cr /Applications/FlowBox.app
+            > ```
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
