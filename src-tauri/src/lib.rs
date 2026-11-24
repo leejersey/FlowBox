@@ -10,6 +10,7 @@ use tauri_plugin_autostart::MacosLauncher;
 
 const CLIPBOARD_PICKER_SHORTCUT: &str = "CommandOrControl+Shift+V";
 const QUICK_CAPTURE_SHORTCUT: &str = "Alt+Shift+Space";
+const TEXT_ACTION_SHORTCUT: &str = "Alt+Shift+KeyA";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -131,6 +132,12 @@ pub fn run() {
                         if let Ok(capture_shortcut) = QUICK_CAPTURE_SHORTCUT.parse::<Shortcut>() {
                             if capture_shortcut == *shortcut {
                                 commands::quick_capture::toggle_quick_capture(app.clone());
+                                return;
+                            }
+                        }
+                        if let Ok(text_shortcut) = TEXT_ACTION_SHORTCUT.parse::<Shortcut>() {
+                            if text_shortcut == *shortcut {
+                                services::text_action::trigger(app);
                             }
                         }
                     }
@@ -170,6 +177,9 @@ pub fn run() {
             commands::ocr::ocr_recognize_text,
             commands::quick_capture::toggle_quick_capture,
             commands::quick_capture::hide_quick_capture,
+            commands::text_action::text_action_get_selection,
+            commands::text_action::text_action_apply,
+            commands::text_action::text_action_hide,
             commands::focus_mode::macos_shortcuts_list,
             commands::focus_mode::macos_shortcut_run,
             commands::backup::db_backup_overview,
@@ -196,6 +206,11 @@ pub fn run() {
             if let Ok(capture_shortcut) = QUICK_CAPTURE_SHORTCUT.parse::<Shortcut>() {
                 if let Err(err) = app.handle().global_shortcut().register(capture_shortcut) {
                     log::warn!("failed to register quick capture shortcut ({QUICK_CAPTURE_SHORTCUT}): {err}");
+                }
+            }
+            if let Ok(text_shortcut) = TEXT_ACTION_SHORTCUT.parse::<Shortcut>() {
+                if let Err(err) = app.handle().global_shortcut().register(text_shortcut) {
+                    log::warn!("failed to register text action shortcut ({TEXT_ACTION_SHORTCUT}): {err}");
                 }
             }
             log::info!(
@@ -233,4 +248,21 @@ pub fn run() {
             #[cfg(not(target_os = "macos"))]
             let _ = (app, event);
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn global_overlay_shortcuts_parse() {
+        for raw in [CLIPBOARD_PICKER_SHORTCUT, QUICK_CAPTURE_SHORTCUT, TEXT_ACTION_SHORTCUT] {
+            assert!(raw.parse::<Shortcut>().is_ok(), "invalid shortcut: {raw}");
+        }
+        let all: Vec<Shortcut> = [CLIPBOARD_PICKER_SHORTCUT, QUICK_CAPTURE_SHORTCUT, TEXT_ACTION_SHORTCUT]
+            .iter()
+            .map(|raw| raw.parse().unwrap())
+            .collect();
+        assert!(all.iter().enumerate().all(|(i, a)| all.iter().skip(i + 1).all(|b| a != b)));
+    }
 }

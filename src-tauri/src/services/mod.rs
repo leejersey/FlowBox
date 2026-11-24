@@ -8,3 +8,4 @@ pub mod secrets;
 pub mod ocr;
 pub mod paste_back;
 pub mod db_backup;
+pub mod text_action;

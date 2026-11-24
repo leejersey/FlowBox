@@ -34,7 +34,9 @@ mod imp {
     use objc2_app_kit::{NSApplicationActivationOptions, NSRunningApplication, NSWorkspace};
 
     /// kVK_ANSI_V
-    const KEY_V: u16 = 9;
+    pub const KEY_V: u16 = 9;
+    /// kVK_ANSI_C
+    pub const KEY_C: u16 = 8;
     /// 切回原应用后等待其成为 key window 再发送按键
     const ACTIVATE_DELAY: Duration = Duration::from_millis(120);
 
@@ -57,7 +59,11 @@ mod imp {
         PREVIOUS_APP_PID.store(pid, Ordering::SeqCst);
     }
 
-    fn prompt_accessibility_once() {
+    pub fn is_accessibility_trusted() -> bool {
+        unsafe { AXIsProcessTrusted() }
+    }
+
+    pub fn prompt_accessibility_once() {
         if PERMISSION_PROMPTED.swap(true, Ordering::SeqCst) {
             return;
         }
@@ -70,10 +76,11 @@ mod imp {
         }
     }
 
-    fn post_cmd_v() -> Result<(), ()> {
+    /// 发送 ⌘+指定按键（需要辅助功能权限）
+    pub fn post_cmd_key(key: u16) -> Result<(), ()> {
         let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)?;
-        let down = CGEvent::new_keyboard_event(source.clone(), KEY_V, true)?;
-        let up = CGEvent::new_keyboard_event(source, KEY_V, false)?;
+        let down = CGEvent::new_keyboard_event(source.clone(), key, true)?;
+        let up = CGEvent::new_keyboard_event(source, key, false)?;
         down.set_flags(CGEventFlags::CGEventFlagCommand);
         up.set_flags(CGEventFlags::CGEventFlagCommand);
         down.post(CGEventTapLocation::HID);
@@ -92,7 +99,7 @@ mod imp {
     }
 
     pub fn paste_into_previous_app() -> PasteOutcome {
-        if !unsafe { AXIsProcessTrusted() } {
+        if !is_accessibility_trusted() {
             prompt_accessibility_once();
             return PasteOutcome::NeedsPermission;
         }
@@ -102,7 +109,7 @@ mod imp {
         // 不阻塞主线程：等待目标应用激活后再发送 ⌘V
         std::thread::spawn(|| {
             std::thread::sleep(ACTIVATE_DELAY);
-            if post_cmd_v().is_err() {
+            if post_cmd_key(KEY_V).is_err() {
                 log::warn!("failed to post Cmd+V event for clipboard picker");
             }
         });
@@ -124,3 +131,5 @@ mod imp {
 }
 
 pub use imp::{activate_previous_app, paste_into_previous_app, remember_frontmost_app};
+#[cfg(target_os = "macos")]
+pub use imp::{is_accessibility_trusted, post_cmd_key, prompt_accessibility_once, KEY_C, KEY_V};

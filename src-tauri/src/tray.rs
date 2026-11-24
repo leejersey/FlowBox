@@ -11,6 +11,7 @@ const MENU_SHOW_MAIN: &str = "tray-show-main";
 const MENU_TOGGLE_BUTLER: &str = "tray-toggle-butler";
 const MENU_TOGGLE_CLIPBOARD: &str = "tray-toggle-clipboard";
 const MENU_QUICK_CAPTURE: &str = "tray-quick-capture";
+const MENU_TEXT_ACTION: &str = "tray-text-action";
 const MENU_QUIT: &str = "tray-quit";
 
 pub fn install(app: &tauri::App) -> tauri::Result<()> {
@@ -36,6 +37,13 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
+    let text_action = MenuItem::with_id(
+        app,
+        MENU_TEXT_ACTION,
+        "AI 处理选中文字 (⌥⇧A)",
+        true,
+        None::<&str>,
+    )?;
     let quit = MenuItem::with_id(app, MENU_QUIT, "退出 FlowBox", true, Some("CmdOrCtrl+Q"))?;
 
     let menu = Menu::with_items(
@@ -45,6 +53,7 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
             &toggle_butler,
             &toggle_clipboard,
             &quick_capture,
+            &text_action,
             &PredefinedMenuItem::separator(app)?,
             &quit,
         ],
@@ -70,6 +79,9 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
             }
             MENU_QUICK_CAPTURE => {
                 crate::commands::quick_capture::toggle_quick_capture(app.clone());
+            }
+            MENU_TEXT_ACTION => {
+                crate::services::text_action::trigger(app);
             }
             MENU_QUIT => {
                 app.exit(0);

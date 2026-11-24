@@ -6,9 +6,9 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, fs};
 
 use serde::Serialize;
@@ -33,6 +33,26 @@ pub fn set_watcher_enabled(enabled: bool) {
 
 pub fn is_watcher_enabled() -> bool {
     WATCHER_ENABLED.load(Ordering::SeqCst)
+}
+
+/// 暂停记录截止时间（UNIX 毫秒）；期间剪贴板变化只同步基线 hash，不写入历史
+static SUPPRESS_UNTIL_MS: AtomicU64 = AtomicU64::new(0);
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// 在接下来的 `duration` 内不记录剪贴板变化（FlowBox 自己临时借用剪贴板时调用）
+pub fn suppress_for(duration: Duration) {
+    let until = now_ms() + duration.as_millis() as u64;
+    SUPPRESS_UNTIL_MS.fetch_max(until, Ordering::SeqCst);
+}
+
+fn is_suppressed() -> bool {
+    now_ms() < SUPPRESS_UNTIL_MS.load(Ordering::SeqCst)
 }
 
 #[cfg(target_os = "macos")]
@@ -223,6 +243,14 @@ pub fn start_clipboard_watcher(app_handle: AppHandle) {
 
             // 检查全局开关
             if !WATCHER_ENABLED.load(Ordering::SeqCst) {
+                continue;
+            }
+
+            if is_suppressed() {
+                // 跟随当前内容更新基线，恢复记录后不会把借用期间的内容当作新条目
+                if let Some(text) = read_clipboard_text() {
+                    last_hash = calculate_hash(text.trim());
+                }
                 continue;
             }
 

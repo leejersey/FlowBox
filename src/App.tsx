@@ -3,6 +3,7 @@ import { AppShell, type AppShellOutletContext } from './components/layout/AppShe
 import { ButlerPage } from './pages/ButlerPage'
 import { ClipboardPickerPage } from './pages/ClipboardPickerPage'
 import { QuickCapturePage } from './pages/QuickCapturePage'
+import { TextActionPage } from './pages/TextActionPage'
 import { useDatabase } from './hooks/useDatabase'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { useThemeStore } from './store/useThemeStore'
@@ -115,6 +116,8 @@ function App() {
         <Route path="/clipboard-picker" element={<ClipboardPickerPage />} />
         {/* 全局快速记录浮窗路由（⌥⇧Space） */}
         <Route path="/quick-capture" element={<QuickCapturePage />} />
+        {/* 选中文字一键 AI 处理浮窗路由（⌥⇧A） */}
+        <Route path="/text-action" element={<TextActionPage />} />
       </Routes>
       <ToastContainer />
     </BrowserRouter>
