@@ -6,3 +6,4 @@ pub mod voice_recorder;
 pub mod voice_transcribe;
 pub mod secrets;
 pub mod ocr;
+pub mod paste_back;

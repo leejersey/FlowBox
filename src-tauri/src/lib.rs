@@ -3,7 +3,7 @@ pub mod commands;
 pub mod settings_menu;
 pub mod tray;
 
-use tauri::{Manager, WindowEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_sql::{Builder as SqlBuilder, Migration, MigrationKind};
 use tauri_plugin_autostart::MacosLauncher;
@@ -131,6 +131,7 @@ pub fn run() {
             commands::clipboard::toggle_clipboard_picker,
             commands::clipboard::hide_clipboard_picker,
             commands::clipboard::clipboard_write_text,
+            commands::clipboard::clipboard_paste_selection,
             commands::butler::toggle_butler,
             commands::butler::hide_butler,
             commands::butler::show_butler,
@@ -182,6 +183,19 @@ pub fn run() {
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // 主窗口点红叉后仅隐藏到菜单栏；点击 Dock 图标时需要把它重新唤回
+            #[cfg(target_os = "macos")]
+            if let RunEvent::Reopen { .. } = event {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.show();
+                    let _ = win.unminimize();
+                    let _ = win.set_focus();
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }

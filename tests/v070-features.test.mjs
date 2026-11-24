@@ -31,3 +31,25 @@ test('macOS 顶部菜单栏托盘与番茄倒计时标题命令已注册', async
   assert.match(libRs, /WindowEvent::CloseRequested/)
   assert.match(trayRs, /TrayIconBuilder::with_id/)
 })
+
+test('主窗口隐藏到菜单栏后，点击 Dock 图标可通过 RunEvent::Reopen 唤回', async () => {
+  const libRs = await readFile(new URL('../src-tauri/src/lib.rs', import.meta.url), 'utf8')
+
+  assert.match(libRs, /RunEvent::Reopen/)
+  assert.match(libRs, /\.build\(tauri::generate_context!\(\)\)/)
+})
+
+test('剪贴板快选回车后切回原应用并模拟 ⌘V 粘贴', async () => {
+  const [libRs, clipboardRs, pasteRs, pickerTsx] = await Promise.all([
+    readFile(new URL('../src-tauri/src/lib.rs', import.meta.url), 'utf8'),
+    readFile(new URL('../src-tauri/src/commands/clipboard.rs', import.meta.url), 'utf8'),
+    readFile(new URL('../src-tauri/src/services/paste_back.rs', import.meta.url), 'utf8'),
+    readFile(new URL('../src/pages/ClipboardPickerPage.tsx', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(libRs, /clipboard_paste_selection/)
+  assert.match(clipboardRs, /paste_back::remember_frontmost_app\(\)/)
+  assert.match(pasteRs, /AXIsProcessTrusted/)
+  assert.match(pasteRs, /CGEventFlagCommand/)
+  assert.match(pickerTsx, /invoke<string>\('clipboard_paste_selection'/)
+})

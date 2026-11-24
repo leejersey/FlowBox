@@ -1,7 +1,8 @@
 /**
  * ClipboardPickerPage — 全局剪贴板快选浮窗（⇧⌘V）
  *
- * 由独立无边框透明窗口承载：搜索 + ↑↓ 选择 + Enter 立即写回系统剪贴板并隐藏
+ * 由独立无边框透明窗口承载：搜索 + ↑↓ 选择 + Enter 写回剪贴板、收起浮窗并粘贴到原应用
+ * （自动粘贴需 macOS 辅助功能权限，未授权时仅复制到剪贴板）
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -94,10 +95,12 @@ export function ClipboardPickerPage() {
     try {
       if (text) {
         if (isTauriApp) {
-          await invoke('clipboard_write_text', { text })
-        } else {
-          await navigator.clipboard.writeText(text)
+          // Rust 侧负责收起浮窗并切回原应用粘贴
+          await invoke<string>('clipboard_paste_selection', { text })
+          playCopySuccessSound()
+          return
         }
+        await navigator.clipboard.writeText(text)
         playCopySuccessSound()
       }
     } catch {
