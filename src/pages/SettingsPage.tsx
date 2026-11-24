@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useOutletContext, useSearchParams } from 'react-router-dom'
-import { Settings as SettingsIcon, Cpu, Keyboard, Cloud, ShieldCheck, User, ChevronRight, UploadCloud, Download, AlertTriangle, Plus, Moon, Play, Puzzle, RefreshCw, RotateCw, CheckCircle2 } from 'lucide-react'
+import { Settings as SettingsIcon, Cpu, Keyboard, ShieldCheck, User, ChevronRight, Download, AlertTriangle, Plus, Moon, Play, Puzzle, RefreshCw, RotateCw, CheckCircle2 } from 'lucide-react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import * as autostart from '@tauri-apps/plugin-autostart'
 import { cn } from '@/lib/utils'
@@ -20,7 +20,6 @@ import { applyBackgroundSetting, setAutostart, type BackgroundSettingKey } from 
 
 const menuItems = [
   { id: 'general', label: '通用设置', icon: SettingsIcon },
-  { id: 'account', label: '账号与云同步', icon: Cloud },
   { id: 'ai', label: 'AI 模型配置', icon: Cpu },
   { id: 'skills', label: 'Butler 技能', icon: Puzzle },
   { id: 'shortcuts', label: '快捷键', icon: Keyboard },
@@ -506,49 +505,6 @@ export function SettingsPage() {
                     >
                       <Play className="w-4 h-4" />
                       立即生成今日回顾
-                    </button>
-                  </div>
-                </section>
-              </div>
-            )}
-
-            {activeTab === 'account' && (
-              <div className="animate-fade-in">
-                <h2 className="text-2xl font-display font-bold text-on-surface mb-2">账号与云同步</h2>
-                <p className="text-sm text-on-surface-variant mb-8">FlowBox 是“本地优先”架构，但你可选择将数据加密同步到云端。</p>
-
-                <section className="mb-8">
-                  <div className="flex items-center gap-4 p-5 bg-surface rounded-2xl border border-white/10">
-                    <div className="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">
-                      <User className="w-8 h-8 text-on-surface-variant/50" />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <span className="font-bold text-on-surface text-[15px] mb-1">未登录</span>
-                      <span className="text-sm text-on-surface-variant">登录后体验跨设备无缝同步同步。</span>
-                    </div>
-                    <button className="px-5 py-2 rounded-xl bg-surface-container font-medium text-sm text-on-surface hover:bg-surface-container-highest transition-colors">
-                      去登录
-                    </button>
-                  </div>
-                </section>
-
-                <section className="mb-10">
-                  <h3 className="text-sm font-bold text-on-surface mb-4 uppercase tracking-wider">云同步</h3>
-                  <div className="flex flex-col gap-3">
-                    <button 
-                      onClick={() => showToast('同步服务端尚未就绪', 'info')}
-                      className="flex items-center justify-between p-4 bg-surface hover:bg-surface-container-highest rounded-2xl transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                          <UploadCloud className="w-5 h-5 text-blue-500" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-on-surface text-[15px]">手动触发云同步</span>
-                          <span className="text-xs text-on-surface-variant mt-0.5">将本地最新变动推送到 FlowBox 云。</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-on-surface-variant/50" />
                     </button>
                   </div>
                 </section>
