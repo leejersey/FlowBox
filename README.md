@@ -1,13 +1,13 @@
 # 🧊 FlowBox — AI 桌面效率工具
 
-![Version](https://img.shields.io/badge/version-v0.7.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-v0.8.0-blue?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 ![Tech](https://img.shields.io/badge/stack-Tauri%20v2%20%2B%20React%2019-purple?style=flat-square)
 
 > **Local-First · AI-Powered · Privacy-Centric**
 >
-> FlowBox 是一款面向个人开发者和知识工作者的 macOS 桌面 AI 效率工具，集成待办管理、灵感速记、番茄专注、智能剪贴板、语音备忘录、效率分析、Dev Trending 七大核心模块，所有数据本地存储，AI 能力按需接入。
+> FlowBox 是一款面向个人开发者和知识工作者的 macOS 桌面 AI 效率工具，集成待办管理、灵感速记、番茄专注、智能剪贴板、语音备忘录、效率分析、Dev Trending 七大核心模块，并提供可在任意应用内呼出的全局浮窗，所有数据本地存储，AI 能力按需接入。
 
 ---
 
@@ -26,6 +26,7 @@
 ### 🍅 番茄专注
 - 25/5/15 分钟番茄钟，可关联待办任务，支持 Mini 置顶小窗与禅模式（`Esc` 快速退出）
 - 自动记录每次专注时长
+- **联动 macOS 专注模式**：专注开始 / 结束时自动运行指定的「快捷指令」（如开关勿扰）
 
 ### 📎 智能剪贴板
 - 后台自动监听系统剪贴板变化
@@ -52,7 +53,17 @@
 - 专注时长趋势折线图（Recharts）
 - **应用使用追踪**：每 5 秒采样前台应用，按周期增量写入使用时长，饼图展示使用分布
 - 每日专注时段热力图
-- AI 周报生成（占位）
+- **AI 周报生成**：聚合本周待办、专注、灵感与热点，支持职场周报 / 个人复盘两种风格，一键复制或导出 Obsidian
+
+### ⚡ 全局浮窗（任意应用内可用）
+- **`⌥⇧A` 选中文字 AI 处理**：在任意应用选中文字，用 Butler 技能或自定义指令润色 / 翻译 / 修代码，`Enter` 直接替换原文，原剪贴板自动恢复
+- **`⌥⇧Space` 快速记录**：零摩擦记下灵感或待办，`Tab` 切换类型、`#标签` 自动提取，保存后焦点回到原应用
+- **`⇧⌘V` 剪贴板快选**：搜索历史剪贴板，回车直接粘贴到原应用
+- 以上功能均可从顶部菜单栏托盘呼出；自动粘贴 / 替换需授予「辅助功能」权限
+
+### 💾 数据备份与恢复
+- 每日自动备份（保留 7 份）+ 应用升级前自动快照，基于 SQLite Online Backup，运行中也能得到一致快照
+- 设置 → 隐私与安全 中手动备份、一键恢复（恢复前自动为当前数据留存快照，可撤销）
 
 ### 🔍 全局搜索与快捷心流
 - `Cmd+/` 唤出毛玻璃命令面板，跨待办 / 灵感 / 语音 / 剪贴板实时模糊搜索并执行快捷指令
@@ -349,8 +360,11 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 - [x] AI Butler v2（Local Agent）— `@剪贴板/@待办/@灵感/@热榜/@本周` 上下文挂载 + 可执行动作卡片 + 多会话历史管理
 - [x] 应用内自动更新（`tauri-plugin-updater` + GitHub Releases 自动签名发版，原地更新重启生效）
 - [x] 桌面端 UI/交互全面打磨（1280×820 窗口适配、过渡动效、防误触轻确认、浮层互斥、Butler 多行输入与流式停止）
+- [x] AI 周报自动生成（基于效率分析数据）
+- [x] 全局浮窗：选中文字 AI 处理（`⌥⇧A`）、快速记录（`⌥⇧Space`）、剪贴板快选自动粘贴（`⇧⌘V`）
+- [x] 本地数据库自动备份与一键恢复
+- [x] 番茄钟联动 macOS 专注模式
 - [ ] Obsidian Vault 自动导出集成
-- [ ] AI 周报自动生成（基于效率分析数据）
 - [ ] Flow 模式（沉浸式心流引擎 + 应用偏离提醒）
 - [ ] 情绪追踪 + AI 洞察
 - [ ] 多语言 i18n 支持
@@ -360,7 +374,7 @@ FlowBox 支持多种 AI 提供商，在 **设置 → AI 模型配置** 中切换
 
 ## 📌 版本记录
 
-完整版本更新日志请查看 [CHANGELOG.md](./CHANGELOG.md)（当前最新版本：**v0.7.0**）。
+完整版本更新日志请查看 [CHANGELOG.md](./CHANGELOG.md)（当前最新版本：**v0.8.0**）。
 
 ---
 
