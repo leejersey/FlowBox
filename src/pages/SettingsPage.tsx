@@ -533,7 +533,7 @@ export function SettingsPage() {
                 </section>
 
                 <section className="mb-10">
-                  <h3 className="text-sm font-bold text-on-surface mb-4 uppercase tracking-wider">数据导出与同步</h3>
+                  <h3 className="text-sm font-bold text-on-surface mb-4 uppercase tracking-wider">云同步</h3>
                   <div className="flex flex-col gap-3">
                     <button 
                       onClick={() => showToast('同步服务端尚未就绪', 'info')}
@@ -546,22 +546,6 @@ export function SettingsPage() {
                         <div className="flex flex-col">
                           <span className="font-bold text-on-surface text-[15px]">手动触发云同步</span>
                           <span className="text-xs text-on-surface-variant mt-0.5">将本地最新变动推送到 FlowBox 云。</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-on-surface-variant/50" />
-                    </button>
-
-                    <button 
-                      onClick={() => showToast('数据导出功能开发中', 'info')}
-                      className="flex items-center justify-between p-4 bg-surface hover:bg-surface-container-highest rounded-2xl transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center shrink-0">
-                          <Download className="w-5 h-5 text-teal-600" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-on-surface text-[15px]">本地导出数据包 (JSON)</span>
-                          <span className="text-xs text-on-surface-variant mt-0.5">下载你本地 SQLite 中的全部结构化数据。</span>
                         </div>
                       </div>
                       <ChevronRight className="w-5 h-5 text-on-surface-variant/50" />
