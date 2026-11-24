@@ -4,7 +4,7 @@
 
 import * as todoService from './todoService'
 import * as ideaService from './ideaService'
-import * as pomodoroService from './pomodoroService'
+import { requestPomodoroStart } from './pomodoroBridgeService'
 import type { ButlerAction } from '@/lib/butlerActions'
 import { emitDataChanged } from '@/lib/dataEvents'
 
@@ -39,7 +39,8 @@ export async function executeButlerAction(action: ButlerAction): Promise<ActionE
     }
   }
 
-  await pomodoroService.pomodoroStart({
+  // 经由主窗口启动，保证托盘倒计时与专注模式联动能感知到
+  await requestPomodoroStart({
     type: action.mode,
     duration_minutes: action.duration_minutes,
   })

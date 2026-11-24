@@ -14,6 +14,8 @@ import { lazy, Suspense, useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { isTauri } from '@tauri-apps/api/core'
 import { settingsNavigation } from './services/settingsNavigationService'
+import { servePomodoroStartRequests } from './services/pomodoroBridgeService'
+import { registerMainWindowListener } from './services/appInitializationService'
 
 const TodoPage = lazy(() => import('./pages/TodoPage').then(module => ({ default: module.TodoPage })))
 const IdeaPage = lazy(() => import('./pages/IdeaPage').then(module => ({ default: module.IdeaPage })))
@@ -36,6 +38,9 @@ function MainWindowEffects() {
   useClipboardPersistence()
   useAppUsageTracker()
   usePomodoroFocusMode()
+
+  // 处理 Butler 等浮窗发起的番茄钟启动请求
+  useEffect(() => registerMainWindowListener(windowLabel, servePomodoroStartRequests), [])
 
   useEffect(() => {
     const store = useUpdaterStore.getState()
