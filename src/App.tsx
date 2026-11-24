@@ -2,12 +2,14 @@ import { BrowserRouter, Routes, Route, Outlet, useOutletContext, useNavigate } f
 import { AppShell, type AppShellOutletContext } from './components/layout/AppShell'
 import { ButlerPage } from './pages/ButlerPage'
 import { ClipboardPickerPage } from './pages/ClipboardPickerPage'
+import { QuickCapturePage } from './pages/QuickCapturePage'
 import { useDatabase } from './hooks/useDatabase'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { useThemeStore } from './store/useThemeStore'
 import { useUpdaterStore } from './store/useUpdaterStore'
 import { useAppUsageTracker } from './hooks/useAppUsageTracker'
 import { useClipboardPersistence } from './hooks/useClipboardWatcher'
+import { usePomodoroFocusMode } from './hooks/usePomodoroFocusMode'
 import { lazy, Suspense, useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { isTauri } from '@tauri-apps/api/core'
@@ -33,6 +35,7 @@ function SettingsNavigationBridge() {
 function MainWindowEffects() {
   useClipboardPersistence()
   useAppUsageTracker()
+  usePomodoroFocusMode()
 
   useEffect(() => {
     const store = useUpdaterStore.getState()
@@ -105,6 +108,8 @@ function App() {
         <Route path="/butler" element={<ButlerPage />} />
         {/* 全局剪贴板快选浮窗路由（⇧⌘V） */}
         <Route path="/clipboard-picker" element={<ClipboardPickerPage />} />
+        {/* 全局快速记录浮窗路由（⌥⇧Space） */}
+        <Route path="/quick-capture" element={<QuickCapturePage />} />
       </Routes>
       <ToastContainer />
     </BrowserRouter>

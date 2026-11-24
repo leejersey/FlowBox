@@ -8,6 +8,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import * as ideaService from '@/services/ideaService'
 import type { Idea, IdeaListQuery } from '@/types/idea'
 import { showToast } from '@/store/useToastStore'
+import { onDataChanged } from '@/lib/dataEvents'
 
 const isTauriApp = isTauri()
 
@@ -32,6 +33,9 @@ export function useIdeas(initialQuery: IdeaListQuery = { is_archived: false }) {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  // 其他窗口（快速记录浮窗、Butler）写入后同步刷新
+  useEffect(() => onDataChanged('idea', () => void refresh()), [refresh])
 
   const createIdea = useCallback(async (content: string, tags: string[] = []) => {
     if (!content.trim()) return

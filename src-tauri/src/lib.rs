@@ -9,6 +9,7 @@ use tauri_plugin_sql::{Builder as SqlBuilder, Migration, MigrationKind};
 use tauri_plugin_autostart::MacosLauncher;
 
 const CLIPBOARD_PICKER_SHORTCUT: &str = "CommandOrControl+Shift+V";
+const QUICK_CAPTURE_SHORTCUT: &str = "Alt+Shift+Space";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -124,6 +125,12 @@ pub fn run() {
                         if let Ok(clip_shortcut) = CLIPBOARD_PICKER_SHORTCUT.parse::<Shortcut>() {
                             if clip_shortcut == *shortcut {
                                 commands::clipboard::toggle_clipboard_picker(app.clone());
+                                return;
+                            }
+                        }
+                        if let Ok(capture_shortcut) = QUICK_CAPTURE_SHORTCUT.parse::<Shortcut>() {
+                            if capture_shortcut == *shortcut {
+                                commands::quick_capture::toggle_quick_capture(app.clone());
                             }
                         }
                     }
@@ -161,6 +168,10 @@ pub fn run() {
             commands::secrets::secret_set,
             commands::secrets::secret_exists,
             commands::ocr::ocr_recognize_text,
+            commands::quick_capture::toggle_quick_capture,
+            commands::quick_capture::hide_quick_capture,
+            commands::focus_mode::macos_shortcuts_list,
+            commands::focus_mode::macos_shortcut_run,
             commands::backup::db_backup_overview,
             commands::backup::db_backup_create,
             commands::backup::db_backup_restore,
@@ -180,6 +191,11 @@ pub fn run() {
             if let Ok(clip_shortcut) = CLIPBOARD_PICKER_SHORTCUT.parse::<Shortcut>() {
                 if let Err(err) = app.handle().global_shortcut().register(clip_shortcut) {
                     log::warn!("failed to register clipboard picker shortcut ({CLIPBOARD_PICKER_SHORTCUT}): {err}");
+                }
+            }
+            if let Ok(capture_shortcut) = QUICK_CAPTURE_SHORTCUT.parse::<Shortcut>() {
+                if let Err(err) = app.handle().global_shortcut().register(capture_shortcut) {
+                    log::warn!("failed to register quick capture shortcut ({QUICK_CAPTURE_SHORTCUT}): {err}");
                 }
             }
             log::info!(

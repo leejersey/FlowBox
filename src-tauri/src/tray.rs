@@ -10,6 +10,7 @@ pub const TRAY_ID: &str = "flowbox-tray";
 const MENU_SHOW_MAIN: &str = "tray-show-main";
 const MENU_TOGGLE_BUTLER: &str = "tray-toggle-butler";
 const MENU_TOGGLE_CLIPBOARD: &str = "tray-toggle-clipboard";
+const MENU_QUICK_CAPTURE: &str = "tray-quick-capture";
 const MENU_QUIT: &str = "tray-quit";
 
 pub fn install(app: &tauri::App) -> tauri::Result<()> {
@@ -28,6 +29,13 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
+    let quick_capture = MenuItem::with_id(
+        app,
+        MENU_QUICK_CAPTURE,
+        "快速记录灵感 / 待办 (⌥⇧Space)",
+        true,
+        None::<&str>,
+    )?;
     let quit = MenuItem::with_id(app, MENU_QUIT, "退出 FlowBox", true, Some("CmdOrCtrl+Q"))?;
 
     let menu = Menu::with_items(
@@ -36,6 +44,7 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
             &show_main,
             &toggle_butler,
             &toggle_clipboard,
+            &quick_capture,
             &PredefinedMenuItem::separator(app)?,
             &quit,
         ],
@@ -58,6 +67,9 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
             }
             MENU_TOGGLE_CLIPBOARD => {
                 crate::commands::clipboard::toggle_clipboard_picker(app.clone());
+            }
+            MENU_QUICK_CAPTURE => {
+                crate::commands::quick_capture::toggle_quick_capture(app.clone());
             }
             MENU_QUIT => {
                 app.exit(0);

@@ -15,6 +15,7 @@ import type { AppShellOutletContext } from '@/components/layout/AppShell'
 import { SKILL_CATEGORIES } from '@/types/skill'
 import { SkillEditPanel } from '@/components/skills/SkillEditPanel'
 import { DataBackupSection } from '@/components/settings/DataBackupSection'
+import { FocusModeSection } from '@/components/settings/FocusModeSection'
 import * as settingsService from '@/services/settingsService'
 import { applyBackgroundSetting, setAutostart, type BackgroundSettingKey } from '@/services/backgroundSettingsService'
 
@@ -33,6 +34,7 @@ const shortcutList = [
   { action: '打开全局搜索与命令面板', mac: '⌘ /', win: 'Ctrl /' },
   { action: '切换应用内 AI Butler 浮层', mac: '⌘ K', win: 'Ctrl K' },
   { action: '呼出全局剪贴板快选浮窗', mac: '⇧ ⌘ V', win: 'Shift Ctrl V' },
+  { action: '全局快速记录灵感 / 待办', mac: '⌥ ⇧ Space', win: 'Alt Shift Space' },
   { action: '当前页面快速新建（待办 / 灵感）', mac: '⌘ N', win: 'Ctrl N' },
   { action: '极速切换主功能模块', mac: '⌘ 1~7', win: 'Ctrl 1~7' },
   { action: '打开系统偏好设置', mac: '⌘ ,', win: 'Ctrl ,' },
@@ -453,6 +455,8 @@ export function SettingsPage() {
                     </div>
                   </div>
                 </section>
+
+                <FocusModeSection />
 
                 {/* 每日回顾设置 */}
                 <section className="mt-10">

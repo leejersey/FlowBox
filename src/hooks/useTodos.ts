@@ -8,6 +8,7 @@ import type { Todo, CreateTodoPayload, UpdateTodoPayload, TodoListQuery } from '
 import * as todoService from '../services/todoService'
 import { updateTodoAndRefresh } from '../lib/todoOptimisticUpdate'
 import { showToast } from '@/store/useToastStore'
+import { onDataChanged } from '@/lib/dataEvents'
 
 // 检测是否在 Tauri 环境中（兼容 Tauri v2）
 const isTauriApp = isTauri()
@@ -36,6 +37,9 @@ export function useTodos(query: TodoListQuery = {}) {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  // 其他窗口（快速记录浮窗、Butler）写入后同步刷新
+  useEffect(() => onDataChanged('todo', () => void refresh()), [refresh])
 
   const create = useCallback(async (payload: CreateTodoPayload) => {
     try {

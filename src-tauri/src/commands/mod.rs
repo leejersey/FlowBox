@@ -7,3 +7,5 @@ pub mod screenshot;
 pub mod secrets;
 pub mod ocr;
 pub mod backup;
+pub mod quick_capture;
+pub mod focus_mode;

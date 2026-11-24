@@ -1,4 +1,4 @@
-//! 剪贴板快选「回填粘贴」：记住呼出浮窗前的前台应用，选中后切回该应用并模拟 ⌘V
+//! 全局浮窗焦点归还：记住呼出浮窗前的前台应用，关闭时切回该应用；剪贴板快选还会模拟 ⌘V 回填
 //!
 //! 模拟按键需要 macOS「辅助功能」权限；未授权时仅写入剪贴板，并弹出一次系统授权引导。
 
@@ -81,18 +81,23 @@ mod imp {
         Ok(())
     }
 
-    pub fn paste_into_previous_app() -> PasteOutcome {
-        if !unsafe { AXIsProcessTrusted() } {
-            prompt_accessibility_once();
-            return PasteOutcome::NeedsPermission;
-        }
-
+    /// 把焦点还给呼出浮窗前的应用（无需辅助功能权限）
+    pub fn activate_previous_app() {
         let pid = PREVIOUS_APP_PID.swap(-1, Ordering::SeqCst);
         if pid > 0 {
             if let Some(app) = NSRunningApplication::runningApplicationWithProcessIdentifier(pid) {
                 app.activateWithOptions(NSApplicationActivationOptions::empty());
             }
         }
+    }
+
+    pub fn paste_into_previous_app() -> PasteOutcome {
+        if !unsafe { AXIsProcessTrusted() } {
+            prompt_accessibility_once();
+            return PasteOutcome::NeedsPermission;
+        }
+
+        activate_previous_app();
 
         // 不阻塞主线程：等待目标应用激活后再发送 ⌘V
         std::thread::spawn(|| {
@@ -111,9 +116,11 @@ mod imp {
 
     pub fn remember_frontmost_app() {}
 
+    pub fn activate_previous_app() {}
+
     pub fn paste_into_previous_app() -> PasteOutcome {
         PasteOutcome::NeedsPermission
     }
 }
 
-pub use imp::{paste_into_previous_app, remember_frontmost_app};
+pub use imp::{activate_previous_app, paste_into_previous_app, remember_frontmost_app};

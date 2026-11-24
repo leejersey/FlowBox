@@ -6,6 +6,7 @@ import * as todoService from './todoService'
 import * as ideaService from './ideaService'
 import * as pomodoroService from './pomodoroService'
 import type { ButlerAction } from '@/lib/butlerActions'
+import { emitDataChanged } from '@/lib/dataEvents'
 
 export interface ActionExecutionResult {
   summary: string
@@ -22,6 +23,7 @@ export async function executeButlerAction(action: ButlerAction): Promise<ActionE
       source: 'manual',
       tags: action.tags,
     })
+    emitDataChanged('todo')
     return {
       summary: `已创建待办：${action.title}`,
       navigateTo: `/?highlight=todo-${created.id}`,
@@ -30,6 +32,7 @@ export async function executeButlerAction(action: ButlerAction): Promise<ActionE
 
   if (action.type === 'create_idea') {
     const created = await ideaService.ideaCreate(action.content, action.tags)
+    emitDataChanged('idea')
     return {
       summary: '已保存到灵感便签',
       navigateTo: `/idea?highlight=idea-${created.id}`,

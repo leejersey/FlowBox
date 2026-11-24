@@ -49,6 +49,20 @@
         "center": true,
         "visible": false,
         "skipTaskbar": true
+      },
+      {
+        "label": "quick-capture",
+        "title": "Quick Capture",
+        "url": "/quick-capture",
+        "width": 560,
+        "height": 220,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "center": true,
+        "visible": false,
+        "skipTaskbar": true
       }
     ],
     "security": {
