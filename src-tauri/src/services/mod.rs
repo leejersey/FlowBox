@@ -7,3 +7,4 @@ pub mod voice_transcribe;
 pub mod secrets;
 pub mod ocr;
 pub mod paste_back;
+pub mod db_backup;

@@ -88,8 +88,22 @@ pub fn run() {
         },
     ];
 
+    let latest_migration_version = migrations.iter().map(|m| m.version).max().unwrap_or(0);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        // 必须注册在 SQL 插件之前：应用待恢复备份、迁移前快照都要在数据库被打开前完成
+        .plugin(
+            tauri::plugin::Builder::<tauri::Wry, ()>::new("db-backup")
+                .setup(move |app, _api| {
+                    services::db_backup::prepare_on_startup(app, latest_migration_version);
+                    Ok(())
+                })
+                .build(),
+        )
+        .manage(commands::backup::DbBackupConfig {
+            latest_version: latest_migration_version,
+        })
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(
@@ -147,6 +161,11 @@ pub fn run() {
             commands::secrets::secret_set,
             commands::secrets::secret_exists,
             commands::ocr::ocr_recognize_text,
+            commands::backup::db_backup_overview,
+            commands::backup::db_backup_create,
+            commands::backup::db_backup_restore,
+            commands::backup::db_backup_delete,
+            commands::backup::db_backup_reveal,
             settings_menu::settings_menu_ready,
             tray::tray_set_title,
         ])

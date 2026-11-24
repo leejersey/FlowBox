@@ -14,6 +14,7 @@ import type { ButlerSkill } from '@/types/skill'
 import type { AppShellOutletContext } from '@/components/layout/AppShell'
 import { SKILL_CATEGORIES } from '@/types/skill'
 import { SkillEditPanel } from '@/components/skills/SkillEditPanel'
+import { DataBackupSection } from '@/components/settings/DataBackupSection'
 import * as settingsService from '@/services/settingsService'
 import { applyBackgroundSetting, setAutostart, type BackgroundSettingKey } from '@/services/backgroundSettingsService'
 
@@ -634,17 +635,7 @@ export function SettingsPage() {
                 <h2 className="text-2xl font-display font-bold text-on-surface mb-2">隐私与安全</h2>
                 <p className="text-sm text-on-surface-variant mb-8">我们严肃对待你的数据。默认情况下，你的所有记录仅保存在本机设备上。</p>
 
-                <section className="mb-10">
-                  <h3 className="text-sm font-bold text-on-surface mb-4 uppercase tracking-wider">本地存储存储位置</h3>
-                  <div className="bg-surface p-4 rounded-2xl border border-white/10">
-                    <p className="text-sm text-on-surface-variant mb-3 leading-relaxed">
-                      应用的所有状态与文本均存储在加密的本地 SQLite 数据库文件中：
-                    </p>
-                    <code className="block p-3 bg-surface-container-highest rounded-xl text-xs font-mono text-on-surface-variant/80 break-all select-all">
-                      ~/.local/share/com.flowbox.app/flowbox.db
-                    </code>
-                  </div>
-                </section>
+                <DataBackupSection />
 
                 <section>
                   <h3 className="text-sm font-bold text-red-500 mb-4 uppercase tracking-wider">危险区域</h3>

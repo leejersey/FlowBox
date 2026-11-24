@@ -6,3 +6,4 @@ pub mod voice;
 pub mod screenshot;
 pub mod secrets;
 pub mod ocr;
+pub mod backup;
